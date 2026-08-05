@@ -45,6 +45,13 @@ class AuthController extends Controller
         }
         if ($user) $sanctions->assertAccountAllowed($user);
 
+        if ($this->isGooglePlayReviewEmail($email)) {
+            return response()->json([
+                'message' => 'Google Play inceleme hesabı için yeniden kullanılabilir erişim kodunu gir.',
+                'data' => ['email' => $email, 'expires_in' => null],
+            ], 202);
+        }
+
         $code = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
         $loginCode = DB::transaction(function () use ($email, $validated, $request, $code) {
             LoginCode::where('email', $email)->whereNull('consumed_at')->update(['consumed_at' => now()]);
@@ -85,6 +92,11 @@ class AuthController extends Controller
             'device_name' => ['required', 'string', 'max:120'],
         ]);
         $email = mb_strtolower(trim($validated['email']));
+
+        if ($this->isGooglePlayReviewEmail($email)) {
+            return $this->verifyGooglePlayReview($email, $validated['code'], $validated['device_name'], $sanctions);
+        }
+
         $loginCode = LoginCode::where('email', $email)->whereNull('consumed_at')->latest('id')->first();
 
         if (! $loginCode || $loginCode->expires_at->isPast()) {
@@ -172,6 +184,40 @@ class AuthController extends Controller
         $request->user()->currentAccessToken()?->delete();
 
         return response()->json(['message' => 'Oturum kapatıldı.']);
+    }
+
+    private function isGooglePlayReviewEmail(string $email): bool
+    {
+        if (! config('services.google_play_review.enabled')) {
+            return false;
+        }
+
+        $reviewEmail = mb_strtolower(trim((string) config('services.google_play_review.email')));
+
+        return $reviewEmail !== '' && hash_equals($reviewEmail, $email);
+    }
+
+    private function verifyGooglePlayReview(string $email, string $code, string $deviceName, ModerationSanctionService $sanctions): JsonResponse
+    {
+        $codeHash = (string) config('services.google_play_review.code_hash');
+        if ($codeHash === '' || ! Hash::check($code, $codeHash)) {
+            throw ValidationException::withMessages(['code' => 'Girdiğin kod hatalı.']);
+        }
+
+        $user = User::where('email', $email)->first();
+        if (! $user || $user->role !== User::ROLE_USER) {
+            throw ValidationException::withMessages(['email' => 'Google Play inceleme hesabı kullanıma hazır değil.']);
+        }
+
+        $sanctions->assertAccountAllowed($user);
+        if (! $user->email_verified_at) {
+            $user->forceFill(['email_verified_at' => now()])->save();
+        }
+
+        return response()->json(['data' => [
+            'user' => $this->userData($user),
+            'token' => $user->createToken($deviceName, ['mobile'])->plainTextToken,
+        ]]);
     }
 
     private function userData(User $user): array

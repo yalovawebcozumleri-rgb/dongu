@@ -20,6 +20,12 @@ return [
         'access_token' => env('EXPO_ACCESS_TOKEN'),
     ],
 
+    'google_play_review' => [
+        'enabled' => filter_var(env('GOOGLE_PLAY_REVIEW_ENABLED', false), FILTER_VALIDATE_BOOL),
+        'email' => env('GOOGLE_PLAY_REVIEW_EMAIL'),
+        'code_hash' => env('GOOGLE_PLAY_REVIEW_CODE_HASH'),
+    ],
+
     'postmark' => [
         'token' => env('POSTMARK_TOKEN'),
     ],

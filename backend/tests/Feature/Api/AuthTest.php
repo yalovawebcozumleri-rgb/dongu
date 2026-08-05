@@ -5,6 +5,7 @@ namespace Tests\Feature\Api;
 use App\Mail\LoginCodeMail;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 use Tests\TestCase;
 
@@ -40,8 +41,8 @@ class AuthTest extends TestCase
         $this->assertDatabaseHas('users', [
             'email' => 'ramazan@example.com',
             'password' => null,
-            'terms_version' => '2026-08-05.1',
-            'privacy_notice_version' => '2026-08-05.1',
+            'terms_version' => '2026-08-05.2',
+            'privacy_notice_version' => '2026-08-05.2',
         ]);
         $this->assertDatabaseMissing('login_codes', ['email' => 'ramazan@example.com', 'consumed_at' => null]);
     }
@@ -72,6 +73,38 @@ class AuthTest extends TestCase
         $this->assertDatabaseCount('personal_access_tokens', 0);
         $this->app['auth']->forgetGuards();
         $this->withHeaders($headers)->getJson('/api/v1/auth/me')->assertUnauthorized();
+    }
+
+    public function test_google_play_review_account_can_reuse_its_configured_code_without_email(): void
+    {
+        Mail::fake();
+        config()->set('services.google_play_review', [
+            'enabled' => true,
+            'email' => 'googleplayreview@yalovawebcozumleri.com',
+            'code_hash' => Hash::make('438216'),
+        ]);
+        $user = User::factory()->create([
+            'name' => 'Google Play Review',
+            'email' => 'googleplayreview@yalovawebcozumleri.com',
+            'role' => User::ROLE_USER,
+            'status' => 'active',
+            'email_verified_at' => now(),
+        ]);
+
+        $this->postJson('/api/v1/auth/code/request', [
+            'intent' => 'login', 'email' => $user->email,
+        ])->assertAccepted()->assertJsonPath('data.expires_in', null);
+        Mail::assertNothingSent();
+
+        foreach (['Google Play Review 1', 'Google Play Review 2'] as $deviceName) {
+            $this->postJson('/api/v1/auth/code/verify', [
+                'email' => $user->email, 'code' => '438216', 'device_name' => $deviceName,
+            ])->assertOk()
+                ->assertJsonPath('data.user.id', $user->id)
+                ->assertJsonStructure(['data' => ['user', 'token']]);
+        }
+
+        $this->assertDatabaseCount('personal_access_tokens', 2);
     }
 
     public function test_code_is_single_use_and_limited_to_five_wrong_attempts(): void
