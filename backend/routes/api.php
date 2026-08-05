@@ -1,0 +1,93 @@
+<?php
+
+use App\Http\Controllers\Api\AdvertisementController;
+use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\FavoriteController;
+use App\Http\Controllers\Api\LeaderboardController;
+use App\Http\Controllers\Api\ListingController;
+use App\Http\Controllers\Api\ListingReportController;
+use App\Http\Controllers\LegalDocumentController;
+use App\Http\Controllers\Api\NotificationController;
+use App\Http\Controllers\Api\PickupRequestController;
+use App\Http\Controllers\Api\ProfileImpactController;
+use App\Http\Controllers\Api\ProfileAvatarController;
+use App\Http\Controllers\Api\PublicUserProfileController;
+use App\Http\Controllers\Api\PushTokenController;
+use App\Http\Controllers\Api\RewardedListingBoostController;
+use App\Http\Controllers\Api\SupporterController;
+use App\Http\Controllers\Api\UserAddressController;
+use App\Http\Controllers\Api\UserBlockController;
+use App\Http\Controllers\Api\UserReportController;
+use App\Http\Controllers\Api\UsagePolicyController;
+use Illuminate\Support\Facades\Route;
+
+Route::prefix('v1')->group(function () {
+    Route::get('/legal-documents/{document}', [LegalDocumentController::class, 'api'])->whereIn('document', ['terms', 'privacy'])->middleware('throttle:60,1');
+    Route::post('/auth/code/request', [AuthController::class, 'requestCode'])->middleware('throttle:5,10');
+    Route::post('/auth/code/verify', [AuthController::class, 'verifyCode'])->middleware('throttle:10,10');
+
+    Route::get('/listings', [ListingController::class, 'index']);
+    Route::get('/listings/{listing}', [ListingController::class, 'show']);
+    Route::get('/advertisements', [AdvertisementController::class, 'index'])->middleware('throttle:60,1');
+    Route::get('/advertisements/{advertisement}/image', [AdvertisementController::class, 'image'])->middleware('throttle:120,1');
+    Route::post('/advertisements/{advertisement}/impressions', [AdvertisementController::class, 'impression'])->middleware('throttle:30,1');
+    Route::post('/advertisements/{advertisement}/clicks', [AdvertisementController::class, 'click'])->middleware('throttle:30,1');
+    Route::get('/supporters', [SupporterController::class, 'index'])->middleware('throttle:60,1');
+    Route::get('/supporters/{supporter}', [SupporterController::class, 'show'])->middleware('throttle:60,1');
+    Route::get('/supporters/{supporter}/logo', [SupporterController::class, 'logo'])->middleware('throttle:120,1');
+    Route::post('/supporters/{supporter}/events', [SupporterController::class, 'event'])->middleware('throttle:120,1');
+    Route::get('/leaderboard', [LeaderboardController::class, 'index'])->middleware('throttle:60,1');
+    Route::get('/admob/rewarded/callback', [RewardedListingBoostController::class, 'callback'])->middleware('throttle:120,1');
+    Route::get('/users/{user}/public-profile', [PublicUserProfileController::class, 'show'])->middleware('throttle:60,1');
+    Route::get('/users/{user}/reviews', [PublicUserProfileController::class, 'reviews'])->middleware('throttle:60,1');
+
+    Route::middleware(['auth:sanctum', 'account.allowed'])->group(function () {
+        Route::get('/auth/me', [AuthController::class, 'me']);
+        Route::patch('/auth/profile', [AuthController::class, 'updateProfile'])->middleware('throttle:20,1');
+        Route::post('/auth/profile/avatar', [ProfileAvatarController::class, 'store'])->middleware('throttle:10,10');
+        Route::delete('/auth/profile/avatar', [ProfileAvatarController::class, 'destroy'])->middleware('throttle:10,10');
+        Route::get('/profile/impact', ProfileImpactController::class)->middleware('throttle:60,1');
+        Route::get('/usage-policy', UsagePolicyController::class)->middleware('throttle:60,1');
+        Route::post('/auth/logout', [AuthController::class, 'logout']);
+        Route::delete('/auth/account', [AuthController::class, 'destroyAccount'])->middleware('throttle:3,60');
+
+        Route::apiResource('addresses', UserAddressController::class)->except('show');
+        Route::get('/blocks', [UserBlockController::class, 'index']);
+        Route::get('/favorites', [FavoriteController::class, 'index']);
+        Route::get('/notifications', [NotificationController::class, 'index']);
+        Route::get('/notifications/unread-count', [NotificationController::class, 'unreadCount']);
+        Route::patch('/notifications/read-all', [NotificationController::class, 'markAllRead']);
+        Route::patch('/notifications/{notification}/read', [NotificationController::class, 'markRead']);
+        Route::get('/notification-preferences', [NotificationController::class, 'preferences']);
+        Route::patch('/leaderboard/privacy', [LeaderboardController::class, 'updatePrivacy']);
+        Route::patch('/notification-preferences', [NotificationController::class, 'updatePreferences']);
+        Route::post('/listings/{listing}/favorite', [FavoriteController::class, 'store'])->middleware('throttle:30,1');
+        Route::post('/listings/{listing}/report', [ListingReportController::class, 'store'])->middleware('throttle:10,60');
+        Route::delete('/listings/{listing}/favorite', [FavoriteController::class, 'destroy'])->middleware('throttle:30,1');
+        Route::post('/users/{user}/block', [UserBlockController::class, 'store'])->middleware('throttle:20,1');
+        Route::delete('/users/{user}/block', [UserBlockController::class, 'destroy']);
+        Route::post('/users/{user}/report', [UserReportController::class, 'store'])->middleware('throttle:10,60');
+        Route::get('/conversations', [PickupRequestController::class, 'index']);
+        Route::get('/my/pickup-requests', [PickupRequestController::class, 'purchaseHistory']);
+        Route::post('/push-tokens', [PushTokenController::class, 'store'])->middleware('throttle:10,1');
+        Route::delete('/push-tokens', [PushTokenController::class, 'destroy']);
+        Route::post('/listings/{listing}/pickup-requests', [PickupRequestController::class, 'store'])->middleware('throttle:100,1');
+        Route::get('/pickup-requests/{pickupRequest}/messages', [PickupRequestController::class, 'messages']);
+        Route::post('/pickup-requests/{pickupRequest}/read', [PickupRequestController::class, 'markRead']);
+        Route::delete('/pickup-requests/{pickupRequest}/conversation', [PickupRequestController::class, 'hide']);
+        Route::post('/pickup-requests/{pickupRequest}/messages/{message}/report', [PickupRequestController::class, 'reportMessage'])->middleware('throttle:10,1');
+        Route::post('/pickup-requests/{pickupRequest}/messages', [PickupRequestController::class, 'sendMessage'])->middleware('throttle:300,1');
+        Route::post('/pickup-requests/{pickupRequest}/accept', [PickupRequestController::class, 'accept']);
+        Route::post('/pickup-requests/{pickupRequest}/reject', [PickupRequestController::class, 'reject']);
+        Route::post('/pickup-requests/{pickupRequest}/cancel', [PickupRequestController::class, 'cancel']);
+        Route::post('/pickup-requests/{pickupRequest}/complete', [PickupRequestController::class, 'complete'])->middleware('throttle:10,1');
+        Route::post('/pickup-requests/{pickupRequest}/review', [PickupRequestController::class, 'review']);
+        Route::get('/my/listings', [ListingController::class, 'mine']);
+        Route::post('/listings', [ListingController::class, 'store'])->middleware('throttle:100,1');
+        Route::post('/listings/{listing}/renew', [ListingController::class, 'renew'])->middleware('throttle:10,1');
+        Route::post('/listings/{listing}/rewarded-boost/challenge', [RewardedListingBoostController::class, 'challenge'])->middleware('throttle:5,60');
+        Route::post('/listings/{listing}/rewarded-boost/complete', [RewardedListingBoostController::class, 'complete'])->middleware('throttle:5,60');
+        Route::get('/listings/{listing}/rewarded-boost/status', [RewardedListingBoostController::class, 'status'])->middleware('throttle:30,1');
+        Route::delete('/listings/{listing}', [ListingController::class, 'destroy']);
+    });
+});

@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+umask 077
+
+readonly APP_ROOT="/var/www/dongu"
+readonly SHARED_ROOT="${APP_ROOT}/shared"
+readonly BACKUP_ROOT="/var/backups/dongu"
+readonly MYSQL_CONFIG="${SHARED_ROOT}/backup.cnf"
+readonly RETENTION_DAYS="14"
+readonly STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
+readonly TARGET="${BACKUP_ROOT}/${STAMP}"
+
+install -d -m 0700 "${TARGET}"
+
+mysqldump \
+    --defaults-extra-file="${MYSQL_CONFIG}" \
+    --single-transaction \
+    --quick \
+    --routines \
+    --triggers \
+    dongu | gzip -9 > "${TARGET}/database.sql.gz"
+
+tar -C "${SHARED_ROOT}" -czf "${TARGET}/storage.tar.gz" storage/app
+
+sha256sum "${TARGET}/database.sql.gz" "${TARGET}/storage.tar.gz" > "${TARGET}/SHA256SUMS"
+
+find "${BACKUP_ROOT}" -mindepth 1 -maxdepth 1 -type d -mtime +"${RETENTION_DAYS}" -exec rm -rf -- {} +

@@ -1,0 +1,11 @@
+[Unit]
+Description=Daily Dongu backup
+
+[Timer]
+OnCalendar=*-*-* 03:20:00
+RandomizedDelaySec=10m
+Persistent=true
+Unit=dongu-backup.service
+
+[Install]
+WantedBy=timers.target

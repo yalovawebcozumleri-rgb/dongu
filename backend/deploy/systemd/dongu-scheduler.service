@@ -1,0 +1,10 @@
+[Unit]
+Description=Dongu Laravel scheduler
+After=network.target mysql.service
+
+[Service]
+Type=oneshot
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/dongu/current
+ExecStart=/usr/bin/php artisan schedule:run

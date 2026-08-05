@@ -1,0 +1,35 @@
+diff --git a/node_modules/react-native-google-mobile-ads/plugin/build/index.d.ts b/node_modules/react-native-google-mobile-ads/plugin/build/index.d.ts
+index 9257225..3cea1f6 100644
+--- a/node_modules/react-native-google-mobile-ads/plugin/build/index.d.ts
++++ b/node_modules/react-native-google-mobile-ads/plugin/build/index.d.ts
+@@ -1,4 +1,4 @@
+-import { ConfigPlugin } from '@expo/config-plugins';
++import { ConfigPlugin } from 'expo/config-plugins';
+ type PluginParameters = {
+     androidAppId?: string;
+     iosAppId?: string;
+diff --git a/node_modules/react-native-google-mobile-ads/plugin/build/index.js b/node_modules/react-native-google-mobile-ads/plugin/build/index.js
+index ce367a0..64dcbbb 100644
+--- a/node_modules/react-native-google-mobile-ads/plugin/build/index.js
++++ b/node_modules/react-native-google-mobile-ads/plugin/build/index.js
+@@ -1,6 +1,6 @@
+ "use strict";
+ Object.defineProperty(exports, "__esModule", { value: true });
+-const config_plugins_1 = require("@expo/config-plugins");
++const config_plugins_1 = require("expo/config-plugins");
+ function addReplacingMainApplicationMetaDataItem(manifest, itemName, itemValue) {
+     config_plugins_1.AndroidConfig.Manifest.ensureToolsAvailable(manifest);
+     const newItem = {
+diff --git a/node_modules/react-native-google-mobile-ads/plugin/src/index.ts b/node_modules/react-native-google-mobile-ads/plugin/src/index.ts
+index 66e19f1..da58b98 100644
+--- a/node_modules/react-native-google-mobile-ads/plugin/src/index.ts
++++ b/node_modules/react-native-google-mobile-ads/plugin/src/index.ts
+@@ -4,7 +4,7 @@ import {
+   withAndroidManifest,
+   withPlugins,
+   withInfoPlist,
+-} from '@expo/config-plugins';
++} from 'expo/config-plugins';
+ 
+ type PluginParameters = {
+   androidAppId?: string;

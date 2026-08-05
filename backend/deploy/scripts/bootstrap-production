@@ -1,0 +1,114 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+if [[ "${EUID}" -ne 0 ]]; then
+    echo "Run this script as root." >&2
+    exit 1
+fi
+
+readonly APP_ROOT="/var/www/dongu"
+readonly SHARED_ROOT="${APP_ROOT}/shared"
+readonly ENV_FILE="${SHARED_ROOT}/.env"
+readonly BACKUP_CONFIG="${SHARED_ROOT}/backup.cnf"
+
+if [[ -e "${ENV_FILE}" ]]; then
+    echo "Refusing to replace existing production environment." >&2
+    exit 2
+fi
+
+DB_PASSWORD="$(openssl rand -hex 24)"
+APP_KEY="base64:$(openssl rand -base64 32 | tr -d '\n')"
+REVERB_APP_ID="dongu-$(openssl rand -hex 4)"
+REVERB_APP_KEY="$(openssl rand -hex 16)"
+REVERB_APP_SECRET="$(openssl rand -hex 32)"
+
+mysql <<SQL
+CREATE DATABASE dongu CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE USER 'dongu'@'127.0.0.1' IDENTIFIED BY '${DB_PASSWORD}';
+GRANT ALL PRIVILEGES ON dongu.* TO 'dongu'@'127.0.0.1';
+FLUSH PRIVILEGES;
+SQL
+
+umask 077
+
+cat > "${ENV_FILE}" <<EOF
+APP_NAME="Döngü"
+APP_ENV=production
+APP_KEY=${APP_KEY}
+APP_DEBUG=false
+APP_URL=https://dongu.yalovawebcozumleri.com
+
+APP_LOCALE=tr
+APP_FALLBACK_LOCALE=tr
+APP_FAKER_LOCALE=tr_TR
+
+LOG_CHANNEL=stack
+LOG_STACK=daily
+LOG_LEVEL=warning
+LOG_DAILY_DAYS=14
+
+DB_CONNECTION=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_DATABASE=dongu
+DB_USERNAME=dongu
+DB_PASSWORD=${DB_PASSWORD}
+
+SESSION_DRIVER=database
+SESSION_LIFETIME=120
+SESSION_ENCRYPT=true
+SESSION_PATH=/
+SESSION_DOMAIN=dongu.yalovawebcozumleri.com
+SESSION_SECURE_COOKIE=true
+
+FILESYSTEM_DISK=public
+QUEUE_CONNECTION=database
+CACHE_STORE=database
+BROADCAST_CONNECTION=reverb
+
+MAIL_MAILER=log
+MAIL_FROM_ADDRESS=yalovawebcozumleri@gmail.com
+MAIL_FROM_NAME="Döngü"
+
+REVERB_APP_ID=${REVERB_APP_ID}
+REVERB_APP_KEY=${REVERB_APP_KEY}
+REVERB_APP_SECRET=${REVERB_APP_SECRET}
+REVERB_HOST=dongu.yalovawebcozumleri.com
+REVERB_PORT=443
+REVERB_SCHEME=https
+REVERB_SERVER_HOST=127.0.0.1
+REVERB_SERVER_PORT=8080
+
+EXPO_PUSH_ENABLED=true
+EXPO_PUSH_ENDPOINT=https://exp.host/--/api/v2/push/send
+EXPO_ACCESS_TOKEN=
+
+LISTING_LIFETIME_DAYS=30
+EXPIRED_LISTING_RETENTION_DAYS=90
+DELETED_LISTING_RETENTION_DAYS=30
+REVIEW_WINDOW_HOURS=24
+REVOKED_PUSH_TOKEN_RETENTION_DAYS=30
+LOGIN_CODE_RETENTION_DAYS=7
+ADMIN_SESSION_RETENTION_DAYS=30
+
+LEGAL_OPERATOR_NAME="YAYIN ÖNCESİ DOLDURULACAK"
+LEGAL_OPERATOR_ADDRESS="YAYIN ÖNCESİ DOLDURULACAK"
+LEGAL_CONTACT_EMAIL=yalovawebcozumleri@gmail.com
+LEGAL_MINIMUM_AGE=18
+SUPPORTER_CONTACT_URL="https://wa.me/905413342219?text=Merhaba%2C%20D%C3%B6ng%C3%BC%20reklam%20ve%20destek%C3%A7i%20se%C3%A7enekleri%20hakk%C4%B1nda%20bilgi%20almak%20istiyorum."
+
+ADMOB_MODE=production
+EOF
+
+cat > "${BACKUP_CONFIG}" <<EOF
+[client]
+host=127.0.0.1
+user=dongu
+password=${DB_PASSWORD}
+EOF
+
+chown root:www-data "${ENV_FILE}" "${BACKUP_CONFIG}"
+chmod 0640 "${ENV_FILE}"
+chmod 0600 "${BACKUP_CONFIG}"
+
+echo "Production database and environment created. Mail and legal identity remain intentionally disabled/pending."

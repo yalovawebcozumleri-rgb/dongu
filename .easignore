@@ -1,0 +1,43 @@
+# Dependencies and generated output
+node_modules/
+.expo/
+dist/
+web-build/
+expo-env.d.ts
+*.tsbuildinfo
+
+# The Laravel application is deployed separately and is not part of the mobile binary.
+backend/
+
+# Generated native projects (Expo prebuild creates these on EAS).
+android/
+ios/
+.kotlin/
+*.orig.*
+
+# Local secrets and credentials
+.env
+.env.*
+!.env.example
+!.env.production.example
+google-services.json
+firebase-service-account*.json
+GoogleService-Info.plist
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.pem
+
+# Local tooling, caches, logs and attachments
+.git/
+.agents/
+.codex/
+.codex-remote-attachments/
+.metro-health-check*
+*.log
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+.DS_Store

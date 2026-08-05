@@ -1,0 +1,82 @@
+{
+  "expo": {
+    "name": "Döngü",
+    "slug": "dongu",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "plugins": [
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Yakındaki ilanları göstermek ve teslimat adresini haritada seçmek için konumuna erişmemize izin ver."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "İsteğe bağlı profil fotoğrafını seçebilmen için fotoğraf galerine erişmemize izin ver.",
+          "cameraPermission": false,
+          "microphonePermission": false
+        }
+      ],
+      "expo-notifications",
+      [
+        "react-native-google-mobile-ads",
+        {
+          "androidAppId": "ca-app-pub-3940256099942544~3347511713",
+          "iosAppId": "ca-app-pub-3940256099942544~1458002511",
+          "userTrackingUsageDescription": "Daha ilgili reklamlar gösterebilmek için cihaz tanımlayıcısının kullanılmasına izin ver."
+        }
+      ],
+      "expo-asset",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#0D4E32",
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 210,
+          "resizeMode": "contain"
+        }
+      ],
+      "expo-status-bar"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "Yakındaki ilanları göstermek ve teslimat adresini haritada seçmek için konumuna erişmemize izin ver."
+      },
+      "bundleIdentifier": "com.yalovawebcozumleri.dongu",
+      "buildNumber": "1"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#125F3D",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "softwareKeyboardLayoutMode": "resize",
+      "predictiveBackGestureEnabled": false,
+      "package": "com.yalovawebcozumleri.dongu",
+      "versionCode": 1
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "description": "Geri dönüştürülebilir ambalajları yakındaki kullanıcılarla güvenli şekilde döngüye kazandır.",
+    "scheme": "dongu",
+    "extra": {
+      "legal": {
+        "termsUrl": "https://dongu.yalovawebcozumleri.com/kullanim-sartlari",
+        "privacyUrl": "https://dongu.yalovawebcozumleri.com/gizlilik-politikasi",
+        "accountDeletionUrl": "https://dongu.yalovawebcozumleri.com/hesap-silme"
+      },
+      "eas": {
+        "projectId": "71e9dcc6-5139-46e9-a996-fcf819fb60ed"
+      }
+    },
+    "owner": "dongu-platform"
+  }
+}
