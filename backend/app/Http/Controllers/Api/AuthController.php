@@ -27,8 +27,18 @@ class AuthController extends Controller
             'email' => ['required', 'email:rfc', 'max:255'],
             'name' => ['nullable', 'required_if:intent,register', 'string', 'min:3', 'max:80'],
             'terms_accepted' => ['nullable', 'accepted_if:intent,register'],
-            'terms_version' => ['nullable', 'string', Rule::in([config('legal.documents.terms.version')])],
-            'privacy_notice_version' => ['nullable', 'string', Rule::in([config('legal.documents.privacy.version')])],
+            // Installed mobile builds can carry an older document version. The
+            // server stamps the versions current when consent is recorded.
+            'terms_version' => ['nullable', 'string', 'max:40'],
+            'privacy_notice_version' => ['nullable', 'string', 'max:40'],
+        ], [
+            'intent.required' => 'İşlem türü belirtilmedi. Lütfen yeniden deneyin.',
+            'intent.in' => 'Geçersiz işlem türü. Lütfen uygulamayı güncelleyip yeniden deneyin.',
+            'email.required' => 'E-posta adresi gereklidir.',
+            'email.email' => 'Geçerli bir e-posta adresi girin.',
+            'name.required_if' => 'Ad ve soyad gereklidir.',
+            'name.min' => 'Ad ve soyad en az 3 karakter olmalıdır.',
+            'terms_accepted.accepted_if' => 'Devam etmek için Kullanım Şartları ve Gizlilik Politikası’nı kabul etmelisiniz.',
         ]);
 
         $email = mb_strtolower(trim($validated['email']));
@@ -61,8 +71,8 @@ class AuthController extends Controller
                 'intent' => $validated['intent'],
                 'pending_name' => isset($validated['name']) ? trim($validated['name']) : null,
                 'terms_accepted' => (bool) ($validated['terms_accepted'] ?? false),
-                'terms_version' => $validated['terms_version'] ?? config('legal.documents.terms.version'),
-                'privacy_notice_version' => $validated['privacy_notice_version'] ?? config('legal.documents.privacy.version'),
+                'terms_version' => config('legal.documents.terms.version'),
+                'privacy_notice_version' => config('legal.documents.privacy.version'),
                 'code_hash' => Hash::make($code),
                 'expires_at' => now()->addMinutes(10),
                 'requested_ip' => $request->ip(),

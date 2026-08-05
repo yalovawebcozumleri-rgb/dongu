@@ -47,6 +47,38 @@ class AuthTest extends TestCase
         $this->assertDatabaseMissing('login_codes', ['email' => 'ramazan@example.com', 'consumed_at' => null]);
     }
 
+    public function test_installed_app_with_an_older_legal_version_can_request_a_registration_code(): void
+    {
+        Mail::fake();
+
+        $this->postJson('/api/v1/auth/code/request', [
+            'intent' => 'register',
+            'name' => 'Eski Sürüm Kullanıcısı',
+            'email' => 'legacy-build@example.com',
+            'terms_accepted' => true,
+            'terms_version' => '2026-08-05.1',
+            'privacy_notice_version' => '2026-08-05.1',
+        ])->assertAccepted();
+
+        $this->assertDatabaseHas('login_codes', [
+            'email' => 'legacy-build@example.com',
+            'terms_version' => '2026-08-05.2',
+            'privacy_notice_version' => '2026-08-05.2',
+        ]);
+    }
+
+    public function test_code_request_validation_messages_are_human_readable_in_turkish(): void
+    {
+        $this->postJson('/api/v1/auth/code/request', [
+            'intent' => 'invalid',
+            'email' => 'user@example.com',
+        ])->assertUnprocessable()
+            ->assertJsonPath(
+                'errors.intent.0',
+                'Geçersiz işlem türü. Lütfen uygulamayı güncelleyip yeniden deneyin.'
+            );
+    }
+
     public function test_existing_user_can_login_read_update_and_logout(): void
     {
         Mail::fake();
