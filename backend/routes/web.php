@@ -25,7 +25,12 @@ Route::get('/kullanim-sartlari', [LegalDocumentController::class, 'terms'])->nam
 Route::get('/gizlilik-politikasi', [LegalDocumentController::class, 'privacy'])->name('legal.privacy');
 Route::get('/legal/{document}', [LegalDocumentController::class, 'web'])->whereIn('document', ['terms', 'privacy'])->name('legal.show');
 
-Route::redirect('/', '/admin');
+Route::view('/', 'marketing.home')->name('marketing.home');
+Route::view('/nasil-calisir', 'marketing.how-it-works')->name('marketing.how-it-works');
+Route::view('/destekciler', 'marketing.supporters')->name('marketing.supporters');
+Route::view('/hakkimizda', 'marketing.about')->name('marketing.about');
+Route::view('/sss', 'marketing.faq')->name('marketing.faq');
+Route::view('/iletisim', 'marketing.contact')->name('marketing.contact');
 
 Route::middleware('guest')->group(function () {
     Route::get('/admin/login', [AuthController::class, 'create'])->name('admin.login');
