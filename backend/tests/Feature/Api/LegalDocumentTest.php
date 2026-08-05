@@ -14,7 +14,7 @@ class LegalDocumentTest extends TestCase
         $this->getJson('/api/v1/legal-documents/terms')
             ->assertOk()
             ->assertJsonPath('data.key', 'terms')
-            ->assertJsonPath('data.version', '2026-08-05.1')
+            ->assertJsonPath('data.version', '2026-08-05.2')
             ->assertJsonCount(15, 'data.sections')
             ->assertJsonFragment(['title' => '2. Platformun amacı, bağımsızlığı ve rolü'])
             ->assertJsonFragment(['short_title' => 'Kullanım Şartları']);
@@ -22,8 +22,10 @@ class LegalDocumentTest extends TestCase
         $this->getJson('/api/v1/legal-documents/privacy')
             ->assertOk()
             ->assertJsonPath('data.key', 'privacy')
-            ->assertJsonPath('data.version', '2026-08-05.1')
+            ->assertJsonPath('data.version', '2026-08-05.2')
             ->assertJsonFragment(['title' => 'KVKK Aydınlatma Metni ve Gizlilik Politikası'])
+            ->assertJsonPath('data.operator.name', 'Mustafa Polat (Yalova Web Çözümleri)')
+            ->assertJsonPath('data.operator.phone', '+90 541 334 22 19')
             ->assertJsonCount(12, 'data.sections');
 
         $this->get('/legal/terms')->assertOk()->assertSee('Kullanıcı Şartları');

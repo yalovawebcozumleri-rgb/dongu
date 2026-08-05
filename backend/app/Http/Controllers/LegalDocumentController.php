@@ -33,7 +33,9 @@ class LegalDocumentController extends Controller
         $document = config("legal.documents.{$key}");
         $replacements = [
             ':operator_name' => (string) config('legal.operator_name'),
+            ':operator_address' => (string) config('legal.operator_address'),
             ':contact_email' => (string) config('legal.contact_email'),
+            ':contact_phone' => (string) config('legal.contact_phone'),
             ':minimum_age' => (string) config('legal.minimum_age'),
         ];
 
@@ -42,6 +44,8 @@ class LegalDocumentController extends Controller
             'name' => config('legal.operator_name'),
             'address' => config('legal.operator_address'),
             'email' => config('legal.contact_email'),
+            'phone' => config('legal.contact_phone'),
+            'phone_uri' => config('legal.contact_phone_uri'),
         ];
         $document['summary'] = strtr($document['summary'], $replacements);
         $document['sections'] = array_map(function (array $section) use ($replacements) {

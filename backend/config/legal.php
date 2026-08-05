@@ -1,16 +1,18 @@
 <?php
 
 return [
-    'operator_name' => env('LEGAL_OPERATOR_NAME', 'Döngü platform işletmecisi'),
+    'operator_name' => env('LEGAL_OPERATOR_NAME', 'Mustafa Polat (Yalova Web Çözümleri)'),
     'operator_address' => env('LEGAL_OPERATOR_ADDRESS'),
     'contact_email' => env('LEGAL_CONTACT_EMAIL', 'yalovawebcozumleri@gmail.com'),
+    'contact_phone' => env('LEGAL_CONTACT_PHONE', '+90 541 334 22 19'),
+    'contact_phone_uri' => env('LEGAL_CONTACT_PHONE_URI', '+905413342219'),
     'minimum_age' => (int) env('LEGAL_MINIMUM_AGE', 18),
     'documents' => [
         'terms' => [
             'title' => 'Kullanıcı Şartları',
             'short_title' => 'Kullanım Şartları',
-            'version' => '2026-08-05.1',
-            'effective_date' => '4 Ağustos 2026',
+            'version' => '2026-08-05.2',
+            'effective_date' => '5 Ağustos 2026',
             'summary' => 'Bu şartlar; bağımsız Döngü platformunda DOA işaretli ambalajlar için ilan verme, alım talebi, mesajlaşma, teslimat, değerlendirme ve güvenlik kurallarını düzenler.',
             'sections' => [
                 ['title' => '1. Taraflar, kapsam ve kabul', 'paragraphs' => [
@@ -97,13 +99,13 @@ return [
         'privacy' => [
             'title' => 'KVKK Aydınlatma Metni ve Gizlilik Politikası',
             'short_title' => 'Gizlilik Politikası',
-            'version' => '2026-08-05.1',
-            'effective_date' => '4 Ağustos 2026',
+            'version' => '2026-08-05.2',
+            'effective_date' => '5 Ağustos 2026',
             'summary' => 'Bu metin, bağımsız Döngü platformunun hangi kişisel verileri hangi amaç ve hukuki sebeplerle işlediğini, kimlerle paylaşabileceğini, saklama yaklaşımını ve KVKK kapsamındaki haklarını açıklar.',
             'sections' => [
                 ['title' => '1. KVKK aydınlatması: veri sorumlusu ve iletişim', 'paragraphs' => [
-                    '6698 sayılı Kişisel Verilerin Korunması Kanunu (“KVKK”) kapsamında kişisel verilerin işleme amaç ve vasıtalarını belirleyen veri sorumlusu, Döngü platformunu işleten :operator_name tarafıdır. Döngü; Türkiye Çevre Ajansı, Depozito Yönetim Sistemi ve DOA’dan ayrı ve bağımsız bir veri sorumlusudur.',
-                    'Kişisel verilerinle ilgili sorularını ve KVKK kapsamındaki başvurularını :contact_email adresine iletebilirsin. Veri sorumlusunun tam yasal unvanı ile tebligata elverişli adresi canlı hizmete açılmadan önce bu metinde ve uygulamanın iletişim alanında yayımlanacaktır.',
+                    '6698 sayılı Kişisel Verilerin Korunması Kanunu (“KVKK”) kapsamında kişisel verilerin işleme amaç ve vasıtalarını belirleyen veri sorumlusu :operator_name olup Döngü platformu kişisel olarak Mustafa Polat tarafından işletilmektedir. “Yalova Web Çözümleri” hizmet ve iletişim adıdır. Döngü; Türkiye Çevre Ajansı, Depozito Yönetim Sistemi ve DOA’dan ayrı ve bağımsız bir platformdur.',
+                    'Kişisel verilerinle ilgili sorularını ve KVKK kapsamındaki başvurularını :contact_email adresine veya :contact_phone numaralı telefona iletebilirsin. Veri sorumlusunun tebligata elverişli adresi: :operator_address.',
                 ]],
                 ['title' => '2. İşlediğimiz kişisel veri kategorileri', 'paragraphs' => [
                     'Kimlik ve hesap: ad-soyad/görünen ad, isteğe bağlı profil fotoğrafı, hesap numarası, üyelik tarihi, hesap durumu, doğrulama ve kabul kayıtları. Profil fotoğrafı herkese açık profil, ilan ve mesajlaşma alanlarında; sıralama görünürlüğü açıksa Döngü sıralamasında gösterilir; kimlik doğrulaması veya biyometrik tanıma amacıyla kullanılmaz.',
@@ -148,7 +150,7 @@ return [
                 ]],
                 ['title' => '8. Yurt dışına aktarım', 'paragraphs' => [
                     'Push bildirimleri, mobil işletim sistemleri, uygulama mağazaları, Google Mobile Ads veya seçilen teknik hizmet sağlayıcıların altyapısı Türkiye dışında bulunabilir. Böyle bir aktarım yapılmadan önce KVKK’nın yurt dışı aktarıma ilişkin güncel 9. maddesine uygun yeterlilik kararı, uygun güvence veya mevzuatta izin verilen istisnai aktarım mekanizması değerlendirilir.',
-                    'Kullanılan sağlayıcılar ve aktarım mekanizması canlı sistem mimarisi kesinleştiğinde bu metinde güncellenir. Zorunlu olmayan yurt dışı aktarım açık rızaya dayanıyorsa rızanı geri çekebilirsin.',
+                    'Kullanılan hizmet sağlayıcılarında veya uygulanabilir aktarım mekanizmasında esaslı bir değişiklik olması hâlinde bu metnin sürümü güncellenir ve değişiklik yayımlanır. Zorunlu olmayan yurt dışı aktarım açık rızaya dayanıyorsa rızanı geri çekebilirsin.',
                 ]],
                 ['title' => '9. Saklama ve silme', 'paragraphs' => [
                     'Aktif hesap verileri hesabın sürdüğü müddetçe; işlem, güvenlik ve denetim kayıtları ilgili amaç ile yasal zamanaşımı süreleri boyunca saklanır. Süre sona erdiğinde veriler silinir, yok edilir veya anonimleştirilir.',
