@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
+import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 import { C } from '../../styles';
 import { ApiError, apiRequest } from '../lib/api';
 import { useNotice } from '../notice/NoticeProvider';
@@ -75,24 +76,29 @@ export default function ProfileInfoModal({ visible, token, initialName, initialE
     });
     if (result.canceled || !result.assets[0]) return;
     const asset = result.assets[0];
-    if (asset.fileSize && asset.fileSize > 5 * 1024 * 1024) {
-      showNotice({ tone: 'warning', title: 'Fotoğraf çok büyük', message: 'En fazla 5 MB boyutunda bir fotoğraf seçebilirsin.' });
-      return;
-    }
-    const form = new FormData();
-    form.append('avatar', {
-      uri: asset.uri,
-      name: asset.fileName || `profil-${Date.now()}.jpg`,
-      type: asset.mimeType || 'image/jpeg',
-    } as never);
     setAvatarSaving(true);
     try {
-      const response = await apiRequest<ProfileResponse>('/auth/profile/avatar', { method: 'POST', token, body: form, timeoutMs: 30000 });
+      const image = ImageManipulator.manipulate(asset.uri);
+      const maxEdge = Math.max(asset.width, asset.height);
+      if (maxEdge > 1024) {
+        image.resize(asset.width >= asset.height
+          ? { width: 1024, height: null }
+          : { width: null, height: 1024 });
+      }
+      const rendered = await image.renderAsync();
+      const prepared = await rendered.saveAsync({ compress: .82, format: SaveFormat.JPEG });
+      const form = new FormData();
+      form.append('avatar', {
+        uri: prepared.uri,
+        name: `profil-${Date.now()}.jpg`,
+        type: 'image/jpeg',
+      } as never);
+      const response = await apiRequest<ProfileResponse>('/auth/profile/avatar', { method: 'POST', token, body: form, timeoutMs: 45000 });
       setProfile(response.data.user);
       try { await onAvatarChanged?.(); } catch {}
       showNotice({ tone: 'success', title: 'Profil fotoğrafın güncellendi', message: 'Fotoğrafın profilinde, ilanlarında, mesajlaşmada ve sıralama tercihin açıksa sıralamada görünecek.' });
     } catch (error) {
-      showNotice({ tone: 'error', title: 'Fotoğraf yüklenemedi', message: error instanceof ApiError ? error.message : 'Fotoğraf servisine ulaşılamadı.' });
+      showNotice({ tone: 'error', title: 'Fotoğraf yüklenemedi', message: error instanceof ApiError ? error.message : 'Fotoğraf telefonda hazırlanamadı. Farklı bir fotoğraf seçip yeniden dene.' });
     } finally {
       setAvatarSaving(false);
     }
