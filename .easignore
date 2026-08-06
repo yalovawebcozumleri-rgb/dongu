@@ -3,8 +3,14 @@ node_modules/
 .expo/
 dist/
 web-build/
+builds/
 expo-env.d.ts
 *.tsbuildinfo
+
+# Store listing artwork is uploaded to Google Play separately.
+assets/store/
+assets/google-play-feature-1024x500.png
+assets/google-play-icon-512.png
 
 # The Laravel application is deployed separately and is not part of the mobile binary.
 backend/
@@ -35,6 +41,8 @@ GoogleService-Info.plist
 .agents/
 .codex/
 .codex-remote-attachments/
+.claude/
+*.bak
 .metro-health-check*
 *.log
 npm-debug.*
