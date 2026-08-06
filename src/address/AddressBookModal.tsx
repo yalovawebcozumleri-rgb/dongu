@@ -1,5 +1,5 @@
 import * as Location from 'expo-location';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -12,6 +12,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { C } from '../../styles';
 import { ApiError, apiRequest } from '../lib/api';
 import { useNotice } from '../notice/NoticeProvider';
@@ -19,8 +20,11 @@ import { DeliveryAddress } from './types';
 
 type AddressResponse = { data: Omit<DeliveryAddress, 'saved'> };
 type AddressCollectionResponse = { data: Omit<DeliveryAddress, 'saved'>[] };
+type RegionOption = { id: number; name: string };
+type RegionCollectionResponse = { data: RegionOption[] };
 type Coordinates = { latitude: number; longitude: number };
 type Mode = 'select' | 'manage';
+type PickerType = 'province' | 'district';
 
 type Props = {
   visible: boolean;
@@ -35,7 +39,11 @@ type Props = {
 type Draft = {
   id?: number;
   label: string;
-  publicArea: string;
+  provinceId: number | null;
+  provinceName: string;
+  districtId: number | null;
+  districtName: string;
+  neighborhood: string;
   fullAddress: string;
   deliveryNotes: string;
   isDefault: boolean;
@@ -43,7 +51,11 @@ type Draft = {
 
 const emptyDraft: Draft = {
   label: '',
-  publicArea: '',
+  provinceId: null,
+  provinceName: '',
+  districtId: null,
+  districtName: '',
+  neighborhood: '',
   fullAddress: '',
   deliveryNotes: '',
   isDefault: false,
@@ -76,25 +88,33 @@ const locationText = (address: Location.LocationGeocodedAddress) => {
   ]).join(', ');
 };
 
-const publicAreaText = (address: Location.LocationGeocodedAddress) => {
-  const neighborhood = address.district;
-  const district = address.subregion || address.city;
-  const city = address.city || address.region;
-  return uniqueAddressParts([neighborhood, district, city]).slice(0, 2).join(', ');
-};
+const normalizeRegion = (value?: string | null) => (value || '')
+  .trim()
+  .toLocaleLowerCase('tr-TR')
+  .normalize('NFD')
+  .replace(/[\u0300-\u036f]/g, '');
+
+const publicArea = (draft: Draft) => uniqueAddressParts([
+  draft.neighborhood,
+  draft.districtName,
+  draft.provinceName,
+]).join(', ');
 
 export default function AddressBookModal({
   visible,
   token,
   mode,
-  initialCoordinates,
   onClose,
   onSelect,
   embedded = false,
 }: Props) {
+  const insets = useSafeAreaInsets();
   const { showNotice, confirmNotice } = useNotice();
   const [addresses, setAddresses] = useState<DeliveryAddress[]>([]);
+  const [provinces, setProvinces] = useState<RegionOption[]>([]);
+  const [districts, setDistricts] = useState<RegionOption[]>([]);
   const [loading, setLoading] = useState(false);
+  const [regionsLoading, setRegionsLoading] = useState(false);
   const [editorOpen, setEditorOpen] = useState(false);
   const [draft, setDraft] = useState<Draft>(emptyDraft);
   const [coordinates, setCoordinates] = useState<Coordinates | null>(null);
@@ -102,6 +122,8 @@ export default function AddressBookModal({
   const [saving, setSaving] = useState(false);
   const [geocoding, setGeocoding] = useState(false);
   const [locating, setLocating] = useState(false);
+  const [picker, setPicker] = useState<PickerType | null>(null);
+  const [pickerSearch, setPickerSearch] = useState('');
 
   const loadAddresses = useCallback(async () => {
     setLoading(true);
@@ -114,29 +136,71 @@ export default function AddressBookModal({
       setLoading(false);
     }
   }, [showNotice, token]);
+  const loadProvinces = useCallback(async (): Promise<RegionOption[]> => {
+    try {
+      const response = await apiRequest<RegionCollectionResponse>('/regions/provinces');
+      setProvinces(response.data);
+      return response.data;
+    } catch (error) {
+      showNotice({ tone: 'error', title: 'İller alınamadı', message: error instanceof ApiError ? error.message : 'Bölge servisine ulaşılamadı.' });
+      return [];
+    }
+  }, [showNotice]);
+
+  const loadDistricts = useCallback(async (provinceId: number): Promise<RegionOption[]> => {
+    setRegionsLoading(true);
+    try {
+      const response = await apiRequest<RegionCollectionResponse>('/regions/provinces/' + provinceId + '/districts');
+      setDistricts(response.data);
+      return response.data;
+    } catch (error) {
+      showNotice({ tone: 'error', title: 'İlçeler alınamadı', message: error instanceof ApiError ? error.message : 'Bölge servisine ulaşılamadı.' });
+      setDistricts([]);
+      return [];
+    } finally {
+      setRegionsLoading(false);
+    }
+  }, [showNotice]);
 
   useEffect(() => {
     if (!visible) return;
     setEditorOpen(false);
     setDraft(emptyDraft);
     setCoordinates(null);
-    void loadAddresses();
-  }, [initialCoordinates, loadAddresses, visible]);
+    setDistricts([]);
+    setPicker(null);
+    setPickerSearch('');
+    void Promise.all([loadAddresses(), loadProvinces()]);
+  }, [loadAddresses, loadProvinces, visible]);
 
   const resolveAddress = async (next: Coordinates) => {
     setCoordinates(next);
     setGeocoding(true);
     try {
       const [address] = await Location.reverseGeocodeAsync(next);
-      if (address) {
-        setDraft(current => ({
-          ...current,
-          publicArea: publicAreaText(address) || current.publicArea,
-          fullAddress: locationText(address) || current.fullAddress,
-        }));
-      }
+      if (!address) return;
+
+      const availableProvinces = provinces.length ? provinces : await loadProvinces();
+      const provinceCandidates = [address.region, address.city].map(normalizeRegion).filter(Boolean);
+      const province = availableProvinces.find(item => provinceCandidates.includes(normalizeRegion(item.name)));
+      const availableDistricts = province ? await loadDistricts(province.id) : [];
+      const districtCandidates = [address.subregion, address.city, address.district].map(normalizeRegion).filter(Boolean);
+      const district = availableDistricts.find(item => districtCandidates.includes(normalizeRegion(item.name)));
+      const neighborhoodCandidate = address.district && normalizeRegion(address.district) !== normalizeRegion(district?.name)
+        ? address.district
+        : address.name || '';
+
+      setDraft(current => ({
+        ...current,
+        provinceId: province?.id || current.provinceId,
+        provinceName: province?.name || current.provinceName,
+        districtId: district?.id || current.districtId,
+        districtName: district?.name || current.districtName,
+        neighborhood: neighborhoodCandidate || current.neighborhood,
+        fullAddress: locationText(address) || current.fullAddress,
+      }));
     } catch {
-      // Adres bulunamazsa kullanıcı açık adresi elle tamamlayabilir.
+      showNotice({ tone: 'warning', title: 'Adres bilgisi tamamlanamadı', message: 'Konum alındı. İl, ilçe, mahalle ve tam adres alanlarını kontrol ederek tamamla.' });
     } finally {
       setGeocoding(false);
     }
@@ -145,15 +209,33 @@ export default function AddressBookModal({
   const startNew = () => {
     setDraft(emptyDraft);
     setCoordinates(null);
+    setDistricts([]);
     setPersist(true);
     setEditorOpen(true);
   };
 
-  const editAddress = (address: DeliveryAddress) => {
+  const editAddress = async (address: DeliveryAddress) => {
+    const areaParts = address.publicArea.split(',').map(part => part.trim()).filter(Boolean);
+    const provinceName = address.provinceName || areaParts[areaParts.length - 1] || '';
+    const districtName = address.districtName || areaParts[areaParts.length - 2] || '';
+    const neighborhood = address.neighborhood || areaParts[0] || '';
+    const availableProvinces = provinces.length ? provinces : await loadProvinces();
+    const province = address.provinceId
+      ? availableProvinces.find(item => item.id === address.provinceId)
+      : availableProvinces.find(item => normalizeRegion(item.name) === normalizeRegion(provinceName));
+    const availableDistricts = province ? await loadDistricts(province.id) : [];
+    const district = address.districtId
+      ? availableDistricts.find(item => item.id === address.districtId)
+      : availableDistricts.find(item => normalizeRegion(item.name) === normalizeRegion(districtName));
+
     setDraft({
       id: address.id,
       label: address.label,
-      publicArea: address.publicArea,
+      provinceId: province?.id || null,
+      provinceName: province?.name || provinceName,
+      districtId: district?.id || null,
+      districtName: district?.name || districtName,
+      neighborhood,
       fullAddress: address.fullAddress,
       deliveryNotes: address.deliveryNotes || '',
       isDefault: Boolean(address.isDefault),
@@ -162,7 +244,6 @@ export default function AddressBookModal({
     setPersist(true);
     setEditorOpen(true);
   };
-
 
   const goToCurrentLocation = async () => {
     setLocating(true);
@@ -202,7 +283,13 @@ export default function AddressBookModal({
       }
 
       setGeocoding(true);
-      const query = [draft.fullAddress.trim(), draft.publicArea.trim(), 'Türkiye'].filter(Boolean).join(', ');
+      const query = [
+        draft.fullAddress.trim(),
+        draft.neighborhood.trim(),
+        draft.districtName,
+        draft.provinceName,
+        'Türkiye',
+      ].filter(Boolean).join(', ');
       const [result] = await Location.geocodeAsync(query);
       if (!result) {
         showNotice({
@@ -232,34 +319,51 @@ export default function AddressBookModal({
       showNotice({ tone: 'warning', title: 'Adres adı gerekli', message: 'Bu adresi daha sonra kolayca bulmak için Ev, İş yeri veya Depo gibi bir ad yaz.' });
       return;
     }
-    if (draft.publicArea.trim().length < 2 || draft.fullAddress.trim().length < 10) {
-      showNotice({ tone: 'warning', title: 'Adres bilgilerini tamamla', message: 'İlçe/mahalle bilgisini ve teslimatın gerçekleşeceği açık adresi eksiksiz yaz.' });
+    if (!draft.provinceId) {
+      showNotice({ tone: 'warning', title: 'İl seçmelisin', message: 'Teslimat adresinin bulunduğu ili seç.' });
       return;
     }
-
-    const resolvedCoordinates = coordinates || await geocodeDraft();
-    if (!resolvedCoordinates) return;
-
-    const selection: DeliveryAddress = {
-      id: draft.id,
-      label: draft.label.trim(),
-      publicArea: draft.publicArea.trim(),
-      fullAddress: draft.fullAddress.trim(),
-      latitude: resolvedCoordinates.latitude,
-      longitude: resolvedCoordinates.longitude,
-      deliveryNotes: draft.deliveryNotes.trim() || null,
-      isDefault: draft.isDefault,
-      saved: false,
-    };
-
-    if (mode === 'select' && !persist && !draft.id) {
-      onSelect?.(selection);
-      onClose();
+    if (!draft.districtId) {
+      showNotice({ tone: 'warning', title: 'İlçe seçmelisin', message: 'Seçtiğin ile bağlı ilçelerden birini seç.' });
+      return;
+    }
+    if (draft.neighborhood.trim().length < 2) {
+      showNotice({ tone: 'warning', title: 'Mahalle gerekli', message: 'Teslimat adresinin bulunduğu mahalleyi yaz.' });
+      return;
+    }
+    if (draft.fullAddress.trim().length < 10) {
+      showNotice({ tone: 'warning', title: 'Tam adres gerekli', message: 'Cadde veya sokak ile bina ve daire bilgilerini içeren tam teslimat adresini yaz.' });
       return;
     }
 
     setSaving(true);
     try {
+      const resolvedCoordinates = coordinates || await geocodeDraft();
+      if (!resolvedCoordinates) return;
+
+      const selection: DeliveryAddress = {
+        id: draft.id,
+        label: draft.label.trim(),
+        provinceId: draft.provinceId,
+        provinceName: draft.provinceName,
+        districtId: draft.districtId,
+        districtName: draft.districtName,
+        neighborhood: draft.neighborhood.trim(),
+        publicArea: publicArea(draft),
+        fullAddress: draft.fullAddress.trim(),
+        latitude: resolvedCoordinates.latitude,
+        longitude: resolvedCoordinates.longitude,
+        deliveryNotes: draft.deliveryNotes.trim() || null,
+        isDefault: draft.isDefault,
+        saved: false,
+      };
+
+      if (mode === 'select' && !persist && !draft.id) {
+        onSelect?.(selection);
+        onClose();
+        return;
+      }
+
       const response = await apiRequest<AddressResponse>(
         draft.id ? '/addresses/' + draft.id : '/addresses',
         {
@@ -267,7 +371,9 @@ export default function AddressBookModal({
           token,
           body: {
             label: selection.label,
-            public_area: selection.publicArea,
+            province_id: selection.provinceId,
+            district_id: selection.districtId,
+            neighborhood: selection.neighborhood,
             full_address: selection.fullAddress,
             latitude: selection.latitude,
             longitude: selection.longitude,
@@ -314,6 +420,91 @@ export default function AddressBookModal({
     onSelect?.(address);
     onClose();
   };
+  const openDistrictPicker = () => {
+    if (!draft.provinceId) {
+      showNotice({ tone: 'info', title: 'Önce il seçmelisin', message: 'İlçe listesini görebilmek için önce teslimat adresinin bulunduğu ili seç.' });
+      return;
+    }
+    setPickerSearch('');
+    setPicker('district');
+  };
+
+  const selectProvince = async (province: RegionOption) => {
+    setDraft(current => ({
+      ...current,
+      provinceId: province.id,
+      provinceName: province.name,
+      districtId: null,
+      districtName: '',
+    }));
+    setCoordinates(null);
+    setPicker(null);
+    setPickerSearch('');
+    await loadDistricts(province.id);
+  };
+
+  const selectDistrict = (district: RegionOption) => {
+    setDraft(current => ({ ...current, districtId: district.id, districtName: district.name }));
+    setCoordinates(null);
+    setPicker(null);
+    setPickerSearch('');
+  };
+
+  const pickerOptions = picker === 'province' ? provinces : districts;
+  const filteredPickerOptions = useMemo(() => {
+    const search = normalizeRegion(pickerSearch);
+    return search
+      ? pickerOptions.filter(item => normalizeRegion(item.name).includes(search))
+      : pickerOptions;
+  }, [pickerOptions, pickerSearch]);
+
+  const contentBottom = Math.max(insets.bottom, 18) + 36;
+  const actionLabel = draft.id ? 'Değişiklikleri kaydet' : 'Teslimat adresi oluştur';
+  const regionPicker = (
+    <Modal visible={picker !== null} transparent animationType="fade" onRequestClose={() => setPicker(null)}>
+      <View style={a.pickerBackdrop}>
+        <Pressable style={StyleSheet.absoluteFill} onPress={() => setPicker(null)} />
+        <View style={[a.pickerSheet, { paddingBottom: Math.max(insets.bottom, 16) }]}>
+          <View style={a.pickerHandle} />
+          <View style={a.pickerHeader}>
+            <View>
+              <Text style={a.eyebrow}>TESLİMAT ADRESİ</Text>
+              <Text style={a.pickerTitle}>{picker === 'province' ? 'İl seç' : 'İlçe seç'}</Text>
+            </View>
+            <Pressable onPress={() => setPicker(null)} style={a.pickerClose}><Text style={a.pickerCloseText}>×</Text></Pressable>
+          </View>
+          <TextInput
+            value={pickerSearch}
+            onChangeText={setPickerSearch}
+            placeholder={picker === 'province' ? 'İl ara' : 'İlçe ara'}
+            style={a.searchInput}
+            autoFocus
+          />
+          <ScrollView keyboardShouldPersistTaps="handled" style={a.pickerList}>
+            {regionsLoading && picker === 'district' ? (
+              <ActivityIndicator color={C.green} style={a.pickerLoader} />
+            ) : filteredPickerOptions.length ? (
+              filteredPickerOptions.map(option => {
+                const selected = picker === 'province' ? draft.provinceId === option.id : draft.districtId === option.id;
+                return (
+                  <Pressable
+                    key={option.id}
+                    onPress={() => picker === 'province' ? void selectProvince(option) : selectDistrict(option)}
+                    style={[a.pickerOption, selected && a.pickerOptionSelected]}
+                  >
+                    <Text style={[a.pickerOptionText, selected && a.pickerOptionTextSelected]}>{option.name}</Text>
+                    {selected && <Text style={a.pickerCheck}>✓</Text>}
+                  </Pressable>
+                );
+              })
+            ) : (
+              <Text style={a.pickerEmpty}>Aramana uygun sonuç bulunamadı.</Text>
+            )}
+          </ScrollView>
+        </View>
+      </View>
+    </Modal>
+  );
 
   const content = (
       <KeyboardAvoidingView style={a.screen} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
@@ -328,13 +519,49 @@ export default function AddressBookModal({
         </View>
 
         {editorOpen ? (
-          <ScrollView contentContainerStyle={a.content} keyboardShouldPersistTaps="handled">
-            <Text style={a.help}>Teslimatın yapılacağı açık adresi yaz. Tam adres yalnızca işlem eşleştiğinde ilgili kullanıcıyla paylaşılır.</Text>
+          <ScrollView contentContainerStyle={[a.content, { paddingBottom: contentBottom }]} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+            <Text style={a.help}>Teslimatın yapılacağı adresi eksiksiz yaz. Tam adres yalnızca işlem eşleştiğinde ilgili kullanıcıyla paylaşılır.</Text>
+
+            <Text style={a.label}>Adres adı</Text>
+            <TextInput value={draft.label} onChangeText={label => setDraft(current => ({ ...current, label }))} placeholder="Ev, İş yeri, Depo" style={a.input} />
+
+            <Text style={a.label}>İl</Text>
+            <Pressable onPress={() => { setPickerSearch(''); setPicker('province'); }} style={a.selectInput}>
+              <Text style={[a.selectValue, !draft.provinceName && a.selectPlaceholder]}>{draft.provinceName || 'İl seç'}</Text>
+              <Text style={a.selectChevron}>⌄</Text>
+            </Pressable>
+
+            <Text style={a.label}>İlçe</Text>
+            <Pressable onPress={openDistrictPicker} style={[a.selectInput, !draft.provinceId && a.selectInputDisabled]}>
+              <Text style={[a.selectValue, !draft.districtName && a.selectPlaceholder]}>{draft.districtName || (draft.provinceId ? 'İlçe seç' : 'Önce il seç')}</Text>
+              {regionsLoading ? <ActivityIndicator size="small" color={C.green} /> : <Text style={a.selectChevron}>⌄</Text>}
+            </Pressable>
+
+            <Text style={a.label}>Mahalle</Text>
+            <Text style={a.fieldHelp}>Mahalle adını kendin yaz. Bu bilgi ilanda il ve ilçeyle birlikte gösterilir.</Text>
+            <TextInput
+              value={draft.neighborhood}
+              onChangeText={neighborhood => { setDraft(current => ({ ...current, neighborhood })); setCoordinates(null); }}
+              placeholder="Örn. Karpuzdere"
+              style={a.input}
+              autoCapitalize="words"
+            />
+
+            <Text style={a.label}>Tam teslimat adresi (gizli)</Text>
+            <Text style={a.fieldHelp}>Cadde veya sokak, site/blok, bina ve daire bilgilerini eksiksiz yaz.</Text>
+            <TextInput
+              value={draft.fullAddress}
+              onChangeText={fullAddress => { setDraft(current => ({ ...current, fullAddress })); setCoordinates(null); }}
+              placeholder="Cadde/sokak, bina no, daire no"
+              multiline
+              style={[a.input, a.multiline]}
+            />
+
             <View style={a.locationCard}>
               <View style={a.locationIcon}><Text style={a.locationIconText}>⌖</Text></View>
               <View style={a.locationCopy}>
-                <Text style={a.locationTitle}>{coordinates ? 'Adres konumu hazır' : 'Adres konumu kaydedilirken doğrulanacak'}</Text>
-                <Text style={a.locationText}>{coordinates ? 'Kilometre hesabında bu adresin konumu kullanılacak.' : 'Yazdığın adres, yakındaki ilanları doğru sıralamak için konuma dönüştürülecek.'}</Text>
+                <Text style={a.locationTitle}>{coordinates ? 'Adres konumu hazır' : 'Adres kaydedilirken konumu doğrulanacak'}</Text>
+                <Text style={a.locationText}>{coordinates ? 'Kilometre hesabında bu adres kullanılacak.' : 'İl, ilçe, mahalle ve tam adres kilometre hesabı için konuma dönüştürülecek.'}</Text>
               </View>
             </View>
             <Pressable disabled={locating || geocoding} onPress={() => void goToCurrentLocation()} style={a.currentLocationButton}>
@@ -342,24 +569,6 @@ export default function AddressBookModal({
               <Text style={a.currentLocationButtonText}>Mevcut konumumu kullan</Text>
             </Pressable>
             {geocoding && <View style={a.geocode}><ActivityIndicator color={C.green} /><Text style={a.geocodeText}>Adres konumu doğrulanıyor…</Text></View>}
-
-            <Text style={a.label}>Adres adı</Text>
-            <TextInput value={draft.label} onChangeText={label => setDraft(current => ({ ...current, label }))} placeholder="Ev, İş yeri, Depo" style={a.input} />
-
-            <Text style={a.label}>Mahalle, ilçe ve il</Text>
-            <Text style={a.fieldHelp}>İlanda tam adres yerine yalnızca bu genel bölge bilgisi gösterilir.</Text>
-            <TextInput value={draft.publicArea} onChangeText={publicArea => { setDraft(current => ({ ...current, publicArea })); setCoordinates(null); }} placeholder="Örn. Rüstempaşa, Yalova Merkez" style={a.input} />
-
-            <Text style={a.label}>Tam teslimat adresi (gizli)</Text>
-            <Text style={a.fieldHelp}>Mahalle, cadde/sokak, bina ve daire bilgilerini eksiksiz yaz. Bu bilgi ilanda herkese gösterilmez.</Text>
-            <TextInput
-              value={draft.fullAddress}
-              onChangeText={fullAddress => { setDraft(current => ({ ...current, fullAddress })); setCoordinates(null); }}
-              placeholder="Mahalle, cadde/sokak, bina numarası"
-              multiline
-              style={[a.input, a.multiline]}
-            />
-
             <Text style={a.label}>Teslimat tarifi (isteğe bağlı)</Text>
             <TextInput
               value={draft.deliveryNotes}
@@ -381,12 +590,12 @@ export default function AddressBookModal({
               </Pressable>
             )}
 
-            <Pressable disabled={saving || geocoding} onPress={() => void save()} style={[a.primary, saving && a.disabled]}>
-              {saving ? <ActivityIndicator color="#FFFFFF" /> : <Text style={a.primaryText}>{mode === 'select' ? 'Bu adresi kullan' : 'Adresi kaydet'}</Text>}
+            <Pressable disabled={saving || geocoding} onPress={() => void save()} style={[a.primary, (saving || geocoding) && a.disabled]}>
+              {saving ? <ActivityIndicator color="#FFFFFF" /> : <Text style={a.primaryText}>{actionLabel}</Text>}
             </Pressable>
           </ScrollView>
         ) : (
-          <ScrollView contentContainerStyle={a.content}>
+          <ScrollView contentContainerStyle={[a.content, { paddingBottom: contentBottom }]} showsVerticalScrollIndicator={false}>
             <Text style={a.help}>Açık adreslerin yalnızca sana gösterilir. İlanda yaklaşık bölge yayınlanır.</Text>
             {loading ? (
               <ActivityIndicator color={C.green} style={a.loader} />
@@ -423,6 +632,7 @@ export default function AddressBookModal({
             </Pressable>
           </ScrollView>
         )}
+        {regionPicker}
       </KeyboardAvoidingView>
   );
 
@@ -439,7 +649,7 @@ const a = StyleSheet.create({
   headerCopy: { flex: 1 },
   eyebrow: { color: C.green, fontSize: 11, letterSpacing: 1.4, fontWeight: '900' },
   title: { color: C.ink, fontSize: 22, fontWeight: '900', marginTop: 2 },
-  content: { padding: 20, paddingBottom: 40 },
+  content: { padding: 20 },
   help: { color: C.muted, fontSize: 12, lineHeight: 18, marginBottom: 15 },
   loader: { marginVertical: 40 },
   locationCard: { borderRadius: 18, borderWidth: 1, borderColor: C.line, backgroundColor: C.white, padding: 14, flexDirection: 'row', alignItems: 'center' },
@@ -456,7 +666,11 @@ const a = StyleSheet.create({
   label: { color: C.ink, fontSize: 12, fontWeight: '900', marginTop: 13, marginBottom: 4 },
   fieldHelp: { color: C.muted, fontSize: 11, lineHeight: 16, marginBottom: 7 },
   input: { minHeight: 50, borderRadius: 15, borderWidth: 1, borderColor: C.line, backgroundColor: C.white, paddingHorizontal: 14, color: C.ink, fontSize: 14, fontWeight: '700' },
-  multiline: { minHeight: 92, paddingTop: 13, textAlignVertical: 'top' },
+  selectInput: { minHeight: 50, borderRadius: 15, borderWidth: 1, borderColor: C.line, backgroundColor: C.white, paddingHorizontal: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  selectInputDisabled: { backgroundColor: '#F0F3EF', opacity: .72 },
+  selectValue: { color: C.ink, fontSize: 14, fontWeight: '800' },
+  selectPlaceholder: { color: C.muted, fontWeight: '700' },
+  selectChevron: { color: C.green, fontSize: 20, fontWeight: '900' },  multiline: { minHeight: 92, paddingTop: 13, textAlignVertical: 'top' },
   notes: { minHeight: 76, paddingTop: 13, textAlignVertical: 'top' },
   toggleRow: { flexDirection: 'row', alignItems: 'center', marginTop: 16 },
   check: { width: 25, height: 25, borderRadius: 8, borderWidth: 1.5, borderColor: '#B8C4BC', alignItems: 'center', justifyContent: 'center', marginRight: 10 },
@@ -484,4 +698,19 @@ const a = StyleSheet.create({
   emptyIcon: { color: C.green, fontSize: 35 },
   emptyTitle: { color: C.ink, fontSize: 17, fontWeight: '900', marginTop: 10 },
   emptyText: { color: C.muted, fontSize: 12, lineHeight: 18, textAlign: 'center', marginTop: 5, maxWidth: 270 },
-});
+  pickerBackdrop: { flex: 1, backgroundColor: 'rgba(12, 30, 21, .45)', justifyContent: 'flex-end' },
+  pickerSheet: { maxHeight: '78%', borderTopLeftRadius: 26, borderTopRightRadius: 26, backgroundColor: C.white, paddingHorizontal: 18, paddingTop: 10 },
+  pickerHandle: { width: 44, height: 5, borderRadius: 3, backgroundColor: '#CBD4CE', alignSelf: 'center', marginBottom: 15 },
+  pickerHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  pickerTitle: { color: C.ink, fontSize: 21, fontWeight: '900', marginTop: 2 },
+  pickerClose: { width: 40, height: 40, borderRadius: 20, backgroundColor: C.bg, alignItems: 'center', justifyContent: 'center' },
+  pickerCloseText: { color: C.ink, fontSize: 24, lineHeight: 27 },
+  searchInput: { minHeight: 48, borderRadius: 15, borderWidth: 1, borderColor: C.line, backgroundColor: C.bg, paddingHorizontal: 14, color: C.ink, fontSize: 14, fontWeight: '700', marginTop: 14 },
+  pickerList: { marginTop: 10 },
+  pickerLoader: { marginVertical: 35 },
+  pickerOption: { minHeight: 50, borderBottomWidth: 1, borderBottomColor: C.line, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 5 },
+  pickerOptionSelected: { backgroundColor: C.soft, borderRadius: 12, borderBottomWidth: 0, paddingHorizontal: 12, marginVertical: 2 },
+  pickerOptionText: { color: C.ink, fontSize: 14, fontWeight: '800' },
+  pickerOptionTextSelected: { color: C.green },
+  pickerCheck: { color: C.green, fontSize: 16, fontWeight: '900' },
+  pickerEmpty: { color: C.muted, fontSize: 13, textAlign: 'center', paddingVertical: 30 },});

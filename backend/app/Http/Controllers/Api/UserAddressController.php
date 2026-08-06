@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreUserAddressRequest;
 use App\Http\Resources\UserAddressResource;
+use App\Models\District;
 use App\Models\UserAddress;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
@@ -15,7 +16,7 @@ class UserAddressController extends Controller
     public function index(Request $request): AnonymousResourceCollection
     {
         return UserAddressResource::collection(
-            $request->user()->addresses()->orderByDesc('is_default')->latest()->get()
+            $request->user()->addresses()->with(['province:id,name', 'district:id,province_id,name'])->orderByDesc('is_default')->latest()->get()
         );
     }
 
@@ -23,6 +24,9 @@ class UserAddressController extends Controller
     {
         $address = DB::transaction(function () use ($request) {
             $validated = $request->validated();
+            if (isset($validated['province_id'], $validated['district_id'], $validated['neighborhood'])) {
+                $validated['public_area'] = $this->publicArea($validated);
+            }
             $makeDefault = ($validated['is_default'] ?? false) || ! $request->user()->addresses()->exists();
 
             if ($makeDefault) {
@@ -35,7 +39,7 @@ class UserAddressController extends Controller
             ]);
         });
 
-        return new UserAddressResource($address);
+        return new UserAddressResource($address->load(['province:id,name', 'district:id,province_id,name']));
     }
 
     public function update(StoreUserAddressRequest $request, UserAddress $address): UserAddressResource
@@ -44,13 +48,16 @@ class UserAddressController extends Controller
 
         DB::transaction(function () use ($request, $address) {
             $validated = $request->validated();
+            if (isset($validated['province_id'], $validated['district_id'], $validated['neighborhood'])) {
+                $validated['public_area'] = $this->publicArea($validated);
+            }
             if ($validated['is_default'] ?? false) {
                 $request->user()->addresses()->whereKeyNot($address->id)->update(['is_default' => false]);
             }
             $address->update($validated);
         });
 
-        return new UserAddressResource($address->refresh());
+        return new UserAddressResource($address->refresh()->load(['province:id,name', 'district:id,province_id,name']));
     }
 
     public function destroy(Request $request, UserAddress $address)
@@ -67,5 +74,16 @@ class UserAddressController extends Controller
         });
 
         return response()->json(['message' => 'Adres silindi.']);
+    }
+
+    private function publicArea(array $validated): string
+    {
+        $district = District::query()->with('province:id,name')->findOrFail($validated['district_id']);
+
+        return collect([
+            trim($validated['neighborhood']),
+            $district->name,
+            $district->province->name,
+        ])->unique(fn (string $part) => mb_strtolower($part, 'UTF-8'))->implode(', ');
     }
 }

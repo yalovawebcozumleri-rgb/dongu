@@ -6,19 +6,20 @@ use App\Http\Controllers\Api\FavoriteController;
 use App\Http\Controllers\Api\LeaderboardController;
 use App\Http\Controllers\Api\ListingController;
 use App\Http\Controllers\Api\ListingReportController;
-use App\Http\Controllers\LegalDocumentController;
 use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\PickupRequestController;
-use App\Http\Controllers\Api\ProfileImpactController;
 use App\Http\Controllers\Api\ProfileAvatarController;
+use App\Http\Controllers\Api\ProfileImpactController;
 use App\Http\Controllers\Api\PublicUserProfileController;
 use App\Http\Controllers\Api\PushTokenController;
+use App\Http\Controllers\Api\RegionController;
 use App\Http\Controllers\Api\RewardedListingBoostController;
 use App\Http\Controllers\Api\SupporterController;
+use App\Http\Controllers\Api\UsagePolicyController;
 use App\Http\Controllers\Api\UserAddressController;
 use App\Http\Controllers\Api\UserBlockController;
 use App\Http\Controllers\Api\UserReportController;
-use App\Http\Controllers\Api\UsagePolicyController;
+use App\Http\Controllers\LegalDocumentController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->group(function () {
@@ -40,6 +41,8 @@ Route::prefix('v1')->group(function () {
     Route::get('/admob/rewarded/callback', [RewardedListingBoostController::class, 'callback'])->middleware('throttle:120,1');
     Route::get('/users/{user}/public-profile', [PublicUserProfileController::class, 'show'])->middleware('throttle:60,1');
     Route::get('/users/{user}/reviews', [PublicUserProfileController::class, 'reviews'])->middleware('throttle:60,1');
+    Route::get('/regions/provinces', [RegionController::class, 'provinces'])->middleware('throttle:60,1');
+    Route::get('/regions/provinces/{province}/districts', [RegionController::class, 'districts'])->middleware('throttle:60,1');
 
     Route::middleware(['auth:sanctum', 'account.allowed'])->group(function () {
         Route::get('/auth/me', [AuthController::class, 'me']);

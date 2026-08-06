@@ -12,6 +12,11 @@ class UserAddressResource extends JsonResource
         return [
             'id' => $this->id,
             'label' => $this->label,
+            'provinceId' => $this->province_id,
+            'provinceName' => $this->province?->name,
+            'districtId' => $this->district_id,
+            'districtName' => $this->district?->name,
+            'neighborhood' => $this->neighborhood,
             'publicArea' => $this->public_area,
             'fullAddress' => $this->full_address,
             'latitude' => (float) $this->latitude,

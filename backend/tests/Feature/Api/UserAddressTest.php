@@ -23,6 +23,10 @@ class UserAddressTest extends TestCase
         $response->assertCreated()
             ->assertJsonPath('data.label', 'Ev')
             ->assertJsonPath('data.isDefault', true)
+            ->assertJsonPath('data.provinceName', 'Yalova')
+            ->assertJsonPath('data.districtName', 'Merkez')
+            ->assertJsonPath('data.neighborhood', 'Rüstempaşa')
+            ->assertJsonPath('data.publicArea', 'Rüstempaşa, Merkez, Yalova')
             ->assertJsonPath('data.fullAddress', 'Rüstempaşa Mahallesi, Örnek Sokak No: 12');
 
         $address = UserAddress::firstOrFail();
@@ -37,6 +41,21 @@ class UserAddressTest extends TestCase
 
         $this->patchJson('/api/v1/addresses/'.$address->id, $this->addressPayload())
             ->assertForbidden();
+    }
+
+    public function test_legacy_mobile_version_can_still_save_an_address(): void
+    {
+        $user = User::factory()->create(['status' => 'active']);
+        Sanctum::actingAs($user, ['mobile']);
+
+        $this->postJson('/api/v1/addresses', [
+            'label' => 'Eski sürüm adresi',
+            'public_area' => 'Karpuzdere, Yalova',
+            'full_address' => 'Kemer 2. Sokak No: 3/1 Daire: 27',
+            'latitude' => 40.617,
+            'longitude' => 29.111,
+            'is_default' => true,
+        ])->assertCreated()->assertJsonPath('data.publicArea', 'Karpuzdere, Yalova');
     }
 
     public function test_listing_uses_an_address_snapshot(): void
@@ -82,7 +101,9 @@ class UserAddressTest extends TestCase
     {
         return [
             'label' => 'Ev',
-            'public_area' => 'Yalova Merkez',
+            'province_id' => 77,
+            'district_id' => 1716,
+            'neighborhood' => 'Rüstempaşa',
             'full_address' => 'Rüstempaşa Mahallesi, Örnek Sokak No: 12',
             'latitude' => 40.6551234,
             'longitude' => 29.2764567,

@@ -8,7 +8,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class UserAddress extends Model
 {
     protected $fillable = [
-        'user_id', 'label', 'public_area', 'full_address', 'latitude',
+        'user_id', 'label', 'province_id', 'district_id', 'neighborhood',
+        'public_area', 'full_address', 'latitude',
         'longitude', 'delivery_notes', 'is_default',
     ];
 
@@ -26,5 +27,15 @@ class UserAddress extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function province(): BelongsTo
+    {
+        return $this->belongsTo(Province::class);
+    }
+
+    public function district(): BelongsTo
+    {
+        return $this->belongsTo(District::class);
     }
 }
