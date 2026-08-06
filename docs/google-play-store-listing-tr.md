@@ -30,7 +30,7 @@ Güvenli kullanım için kullanıcı engelleme, ilan/kullanıcı/mesaj bildirme,
 
 Döngü, DOA'nın sahibi, işletmecisi, yetkili satıcısı veya resmî temsilcisi değildir. DOA adı ve etiketi yalnızca platformda listelenebilecek ambalajların uygunluğunu tarif etmek amacıyla kullanılır. Ambalajların kabulü ve değeri, ilgili iade sistemi veya makine işletmecisinin güncel kurallarına bağlıdır. Döngü herhangi bir iade makinesini işletmez; kullanıcılar arasındaki ilan, iletişim ve teslimat sürecine aracılık eden bağımsız bir platformdur.
 
-Konum izni yalnızca yakındaki ilanları göstermek veya teslimat adresini haritadan seçmek istediğinde talep edilir. Profil fotoğrafı isteğe bağlıdır.
+Konum izni yalnızca yakındaki ilanları göstermek, yazılan adresi doğrulamak veya mevcut konumu teslimat adresi olarak kullanmak istediğinde talep edilir. Profil fotoğrafı isteğe bağlıdır.
 
 ## İlk sürüm notu
 

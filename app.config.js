@@ -32,14 +32,6 @@ module.exports = ({ config: base }) => {
 
   return plugin;
   });
-  const androidGoogleMapsApiKey = value('GOOGLE_MAPS_ANDROID_API_KEY');
-
-  if (androidGoogleMapsApiKey) {
-    plugins.push([
-      'react-native-maps',
-      { androidGoogleMapsApiKey },
-    ]);
-  }
 
   return {
     ...base,

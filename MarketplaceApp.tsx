@@ -741,7 +741,7 @@ function CreateModal({
                   {selectedAddress?.isDefault && <Text style={s.deliveryDefaultBadge}>VARSAYILAN</Text>}
                 </View>
                 <Text style={s.deliveryAddressText} numberOfLines={2}>
-                  {selectedAddress ? selectedAddress.publicArea + ' · ' + selectedAddress.fullAddress : 'Kayıtlı adreslerden seç veya haritada yeni bir konum belirle.'}
+                  {selectedAddress ? selectedAddress.publicArea + ' · ' + selectedAddress.fullAddress : 'Kayıtlı adreslerinden birini seç veya yeni bir teslimat adresi ekle.'}
                 </Text>
               </View>
               <Text style={s.menuArrow}>›</Text>

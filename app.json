@@ -10,7 +10,7 @@
       [
         "expo-location",
         {
-          "locationWhenInUsePermission": "Yakındaki ilanları göstermek ve teslimat adresini haritada seçmek için konumuna erişmemize izin ver."
+          "locationWhenInUsePermission": "Yakındaki ilanları göstermek, adresini doğrulamak ve isteğinle mevcut konumunu kullanmak için konumuna erişmemize izin ver."
         }
       ],
       [
@@ -45,7 +45,7 @@
     "ios": {
       "supportsTablet": true,
       "infoPlist": {
-        "NSLocationWhenInUseUsageDescription": "Yakındaki ilanları göstermek ve teslimat adresini haritada seçmek için konumuna erişmemize izin ver."
+        "NSLocationWhenInUseUsageDescription": "Yakındaki ilanları göstermek, adresini doğrulamak ve isteğinle mevcut konumunu kullanmak için konumuna erişmemize izin ver."
       },
       "bundleIdentifier": "com.yalovawebcozumleri.dongu",
       "buildNumber": "1"
