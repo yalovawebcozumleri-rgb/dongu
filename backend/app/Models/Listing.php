@@ -20,7 +20,7 @@ class Listing extends Model
     public const PACKAGING_CONDITION_VERSION = 'doa-2026-08-v1';
 
     protected $fillable = [
-        'user_id', 'status', 'public_area', 'approximate_latitude',
+        'user_id', 'province_id', 'district_id', 'status', 'public_area', 'approximate_latitude',
         'approximate_longitude', 'description',
         'packaging_condition_confirmed_at', 'packaging_condition_version',
         'published_at', 'expires_at', 'boosted_until',

@@ -11,11 +11,14 @@ use App\Models\PickupRequest;
 use App\Models\UserBlock;
 use App\Models\User;
 use App\Models\MarketplaceUsageEvent;
+use App\Models\Province;
 use App\Services\MarketplaceUsagePolicyService;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class ListingController extends Controller
 {
@@ -25,6 +28,7 @@ class ListingController extends Controller
             'latitude' => ['nullable', 'required_with:longitude,radius', 'numeric', 'between:-90,90'],
             'longitude' => ['nullable', 'required_with:latitude,radius', 'numeric', 'between:-180,180'],
             'radius' => ['nullable', 'numeric', 'min:1', 'max:50'],
+            'province' => ['nullable', 'string', 'max:80'],
             'material' => ['nullable', 'string', 'in:pet,glass,aluminum'],
             'sort' => ['nullable', 'string', 'in:distance,newest,quantity_desc,price_asc,gain_desc'],
             'per_page' => ['nullable', 'integer', 'min:1', 'max:50'],
@@ -45,7 +49,22 @@ class ListingController extends Controller
             ->where(fn ($query) => $query->whereNull('expires_at')->orWhere('expires_at', '>', now()));
 
         if ($user) {
-            $query->whereNotIn('user_id', UserBlock::relatedUserIds($user->id));
+            $query->where('user_id', '!=', $user->id)
+                ->whereNotIn('user_id', UserBlock::relatedUserIds($user->id));
+        }
+
+        if (! empty($filters['province'])) {
+            $provinceName = Str::lower(Str::ascii(trim($filters['province'])));
+            $provinceMap = Cache::rememberForever('regions.province.normalized-map.v1', fn () => Province::query()
+                ->get(['id', 'name'])
+                ->mapWithKeys(fn (Province $province) => [
+                    Str::lower(Str::ascii($province->name)) => $province->id,
+                ])
+                ->all());
+            $provinceId = $provinceMap[$provinceName] ?? null;
+
+            abort_unless($provinceId, 422, 'Bulunduğun il belirlenemedi. Konumunu yeniden seçip tekrar dene.');
+            $query->where('province_id', $provinceId);
         }
 
         if (! empty($filters['material'])) {
@@ -147,6 +166,8 @@ class ListingController extends Controller
                 $listing = $user->listings()->create([
                     'status' => Listing::STATUS_ACTIVE,
                     'public_area' => $publicArea,
+                    'province_id' => $savedAddress?->province_id,
+                    'district_id' => $savedAddress?->district_id,
                     'approximate_latitude' => round((float) $latitude, 3),
                     'approximate_longitude' => round((float) $longitude, 3),
                     'description' => trim($validated['description']),

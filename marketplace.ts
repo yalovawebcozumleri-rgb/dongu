@@ -10,6 +10,7 @@ export type Listing = {
   latitude: number;
   longitude: number;
   district: string;
+  provinceId?: number | null;
   seller: string;
   sellerId: number;
   sellerAvatarUrl?: string | null;

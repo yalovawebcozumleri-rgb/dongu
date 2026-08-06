@@ -194,6 +194,19 @@ function Home({
           {unreadNotificationCount > 0 && <View style={s.notificationBadge}><Text style={s.notificationBadgeText}>{unreadNotificationCount > 99 ? '99+' : unreadNotificationCount}</Text></View>}
         </Pressable>
       </View>
+      <View style={s.hero}>
+        <View style={s.heroCopy}>
+          <Text style={s.heroKicker}>BOŞ DURMASIN</Text>
+          <Text style={s.heroTitle}>Ambalajını{`\n`}değere dönüştür.</Text>
+          <Text style={s.heroText}>Yakınındaki ilanları keşfet,{`\n`}topla ve değerlendir.</Text>
+        </View>
+        <View style={s.heroArt}>
+          <View style={s.bottle}><Text style={s.artSymbol}>♻</Text></View>
+          <View style={s.can}><Text style={s.artSymbol}>↻</Text></View>
+          <View style={s.coinOne}><Text style={s.coinText}>₺</Text></View>
+          <View style={s.coinTwo}><Text style={s.coinText}>₺</Text></View>
+        </View>
+      </View>
       <Pressable accessibilityRole="button" accessibilityLabel={`Konum seçimi. ${locationLabel}. ${radius} kilometre çevresi`} accessibilityHint="Yakındaki ilanlar için konum ve mesafe seçimini açar" onPress={openLocation} style={({ pressed }) => [s.locationSelector, pressed && s.pressed]}>
         <View style={ls.selectorCopy}>
           <View style={ls.selectorTitleRow}>
@@ -209,19 +222,6 @@ function Home({
         </View>
         <View style={s.locationCircle}><Text style={s.locationCircleText}>⌖</Text></View>
       </Pressable>
-      <View style={s.hero}>
-        <View style={s.heroCopy}>
-          <Text style={s.heroKicker}>BOŞ DURMASIN</Text>
-          <Text style={s.heroTitle}>Ambalajını{`\n`}değere dönüştür.</Text>
-          <Text style={s.heroText}>Yakınındaki ilanları keşfet,{`\n`}topla ve değerlendir.</Text>
-        </View>
-        <View style={s.heroArt}>
-          <View style={s.bottle}><Text style={s.artSymbol}>♻</Text></View>
-          <View style={s.can}><Text style={s.artSymbol}>↻</Text></View>
-          <View style={s.coinOne}><Text style={s.coinText}>₺</Text></View>
-          <View style={s.coinTwo}><Text style={s.coinText}>₺</Text></View>
-        </View>
-      </View>
       <View style={s.sectionHeading}>
         <View>
           <Text style={s.sectionTitle}>Yakınındaki ilanlar</Text>
@@ -1000,6 +1000,7 @@ function AppContent({ fullName, userEmail = '', userEmailVerified = false, userI
       'page=' + encodeURIComponent(String(page)),
       'per_page=20',
     ];
+    if (supporterRegion.province) queryParts.push('province=' + encodeURIComponent(supporterRegion.province));
     if (category !== 'Tümü') queryParts.push('material=' + encodeURIComponent(MATERIAL_API_TYPES[category]));
 
     try {
@@ -1038,7 +1039,7 @@ function AppContent({ fullName, userEmail = '', userEmailVerified = false, userI
         if (mode === 'more') setListingLoadingMore(false);
       }
     }
-  }, [category, center.latitude, center.longitude, locationReady, radius, showNotice, sort, token]);
+  }, [category, center.latitude, center.longitude, locationReady, radius, showNotice, sort, supporterRegion.province, token]);
 
   useEffect(() => {
     void loadListings(1, 'replace');
@@ -1191,7 +1192,7 @@ function AppContent({ fullName, userEmail = '', userEmailVerified = false, userI
   const selected = listings.find(item => item.id === selectedId);
   const activeConversation = conversations.find(item => item.id === activeConversationId) || null;
   const unreadMessageCount = conversations.reduce((sum, item) => sum + item.unreadCount, 0);
-  const radiusListings = listings;
+  const radiusListings = listings.filter(item => String(item.sellerId) !== String(userId || ''));
   const openDetail = (id: number) => {
     setDetailBackRoute('home');
     setSelectedId(id);
@@ -1361,7 +1362,7 @@ function AppContent({ fullName, userEmail = '', userEmailVerified = false, userI
       try {
         const [address] = await Location.reverseGeocodeAsync(nextCenter);
         const area = address?.district || address?.subregion || address?.city;
-        const city = address?.city || address?.region;
+        const city = address?.region || address?.city;
         const administrativeDistrict = address?.subregion || address?.district || address?.city;
         setLocationLabel(area && city && area !== city ? area + ', ' + city : city || area || 'Mevcut konum');
         setSupporterRegion({ province: city || undefined, district: administrativeDistrict || undefined });
@@ -1543,6 +1544,7 @@ function AppContent({ fullName, userEmail = '', userEmailVerified = false, userI
         {route === 'my-listings' && !!token && (
           <MyListingsScreen
             token={token}
+            userId={userId || ''}
             back={() => setRoute('profile')}
             openListing={openMyListing}
             createListing={() => setCreateOpen(true)}

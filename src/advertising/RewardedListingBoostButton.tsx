@@ -7,6 +7,7 @@ import { useNotice } from '../notice/NoticeProvider';
 import { googleAds, initializeGoogleAds, rewardedUnitId } from './googleMobileAds';
 
 type Challenge = { data: { token: string; clientCompletionAllowed: boolean } };
+type BoostStatus = { data: { isBoosted: boolean; boostedUntil: string | null } };
 
 export default function RewardedListingBoostButton({ listing, token, userId, onBoosted }: {
   listing: Listing; token: string; userId: string; onBoosted: (listing: Listing) => void;
@@ -14,6 +15,27 @@ export default function RewardedListingBoostButton({ listing, token, userId, onB
   const { showNotice } = useNotice();
   const [busy, setBusy] = useState(false);
   const earnedRef = useRef(false);
+
+  const syncVerifiedReward = async () => {
+    for (let attempt = 0; attempt < 6; attempt += 1) {
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      try {
+        const status = await apiRequest<BoostStatus>(`/listings/${listing.id}/rewarded-boost/status`, { token });
+        if (status.data.isBoosted) {
+          onBoosted({
+            ...listing,
+            isBoosted: true,
+            boostedUntil: status.data.boostedUntil,
+          });
+          showNotice({ tone: 'success', title: 'İlanın öne çıkarıldı', message: 'İlanın 24 saat boyunca sonuçlarda daha görünür olacak.' });
+          return;
+        }
+      } catch {
+        // Google doğrulaması gecikirse ilan durumu bir sonraki yenilemede de alınabilir.
+      }
+    }
+    showNotice({ tone: 'info', title: 'Ödül doğrulanıyor', message: 'Google doğrulaması tamamlandığında ilanın 24 saatlik öne çıkarılması otomatik başlayacak.' });
+  };
 
   const start = async () => {
     const module = googleAds();
@@ -42,7 +64,7 @@ export default function RewardedListingBoostButton({ listing, token, userId, onB
             onBoosted(response.data);
             showNotice({ tone: 'success', title: 'İlanın öne çıkarıldı', message: 'İlanın 24 saat boyunca sonuçlarda daha görünür olacak.' });
           } else {
-            showNotice({ tone: 'info', title: 'Ödül doğrulanıyor', message: 'Google doğrulaması tamamlandığında ilanının 24 saatlik öne çıkarılması otomatik başlayacak.' });
+            await syncVerifiedReward();
           }
         }),
         ad.addAdEventListener(module.AdEventType.CLOSED, () => {
@@ -62,7 +84,12 @@ export default function RewardedListingBoostButton({ listing, token, userId, onB
     }
   };
 
-  if (listing.isBoosted) return <Text style={local.active}>✓ İlanın 24 saatlik öne çıkarma avantajına sahip</Text>;
+  const boostedUntil = listing.boostedUntil ? Date.parse(listing.boostedUntil) : null;
+  const boostActive = Boolean(listing.isBoosted && (!boostedUntil || boostedUntil > Date.now()));
+  const remainingHours = boostedUntil ? Math.max(1, Math.ceil((boostedUntil - Date.now()) / 3_600_000)) : 24;
+  if (boostActive) {
+    return <Text style={local.active}>✓ Öne çıkarma aktif · {remainingHours} saat kaldı</Text>;
+  }
   return <Pressable disabled={busy} onPress={() => void start()} style={({ pressed }) => [local.button, busy && local.disabled, pressed && s.pressed]}>
     {busy ? <ActivityIndicator color={C.dark} /> : <Text style={local.buttonText}>Reklam izle · 24 saat öne çıkar</Text>}
   </Pressable>;

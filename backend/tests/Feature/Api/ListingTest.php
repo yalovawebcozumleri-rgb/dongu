@@ -4,6 +4,7 @@ namespace Tests\Feature\Api;
 
 use App\Models\Listing;
 use App\Models\ListingPrivateLocation;
+use App\Models\Province;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
@@ -120,6 +121,39 @@ class ListingTest extends TestCase
             ->assertOk()
             ->assertJsonPath('data.0.id', $small->id);
     }
+
+    public function test_authenticated_feed_excludes_the_users_own_listings(): void
+    {
+        $owner = User::factory()->create();
+        $other = User::factory()->create();
+        $this->listing($owner, 40.991, 29.027);
+        $visible = $this->listing($other, 40.992, 29.028);
+        Sanctum::actingAs($owner, ['mobile']);
+
+        $this->getJson('/api/v1/listings')
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.id', $visible->id);
+    }
+
+    public function test_location_feed_never_crosses_the_selected_province_boundary(): void
+    {
+        $seller = User::factory()->create();
+        $yalovaId = Province::query()->where('name', 'Yalova')->value('id');
+        $istanbulId = Province::query()->where('name', 'İstanbul')->value('id');
+
+        $yalova = $this->listing($seller, 40.655, 29.276);
+        $yalova->update(['province_id' => $yalovaId]);
+        $istanbul = $this->listing($seller, 40.656, 29.277);
+        $istanbul->update(['province_id' => $istanbulId]);
+
+        $this->getJson('/api/v1/listings?province=Yalova')
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.id', $yalova->id)
+            ->assertJsonMissing(['id' => $istanbul->id]);
+    }
+
     private function payload(): array
     {
         return [

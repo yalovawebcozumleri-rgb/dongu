@@ -40,6 +40,7 @@ class ListingResource extends JsonResource
             'latitude' => (float) $this->approximate_latitude,
             'longitude' => (float) $this->approximate_longitude,
             'district' => $this->public_area,
+            'provinceId' => $this->province_id,
             'seller' => $this->seller->name,
             'sellerId' => $this->seller->id,
             'sellerAvatarUrl' => $this->seller->avatar_path ? app(ProfileAvatarService::class)->url($this->seller->avatar_path, true).'?v='.($this->seller->updated_at?->timestamp ?? 0) : null,

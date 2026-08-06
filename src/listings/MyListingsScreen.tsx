@@ -4,6 +4,7 @@ import { Listing, listingCount, listingPrice, money } from '../../marketplace';
 import { C } from '../../styles';
 import { ApiError, apiRequest } from '../lib/api';
 import { useNotice } from '../notice/NoticeProvider';
+import RewardedListingBoostButton from '../advertising/RewardedListingBoostButton';
 
 type ListingCollectionResponse = {
   data: Listing[];
@@ -18,8 +19,9 @@ const statusLabels: Record<Listing['status'], string> = {
   cancelled: 'Kaldırıldı',
 };
 
-export default function MyListingsScreen({ token, back, openListing, createListing, onListingUpdated, onListingRemoved }: {
+export default function MyListingsScreen({ token, userId, back, openListing, createListing, onListingUpdated, onListingRemoved }: {
   token: string;
+  userId: string;
   back: () => void;
   openListing: (listing: Listing) => void;
   createListing: () => void;
@@ -128,6 +130,12 @@ export default function MyListingsScreen({ token, back, openListing, createListi
             open={() => openListing(item)}
             renew={() => void renew(item)}
             remove={() => void remove(item)}
+            token={token}
+            userId={userId}
+            onBoosted={boosted => {
+              setListings(current => current.map(listing => listing.id === boosted.id ? boosted : listing));
+              onListingUpdated(boosted);
+            }}
           />
         )}
         contentContainerStyle={listings.length ? x.list : x.emptyList}
@@ -152,8 +160,8 @@ export default function MyListingsScreen({ token, back, openListing, createListi
   );
 }
 
-const MyListingCard = memo(function MyListingCard({ listing, pending, open, renew, remove }: {
-  listing: Listing; pending: boolean; open: () => void; renew: () => void; remove: () => void;
+const MyListingCard = memo(function MyListingCard({ listing, token, userId, pending, open, renew, remove, onBoosted }: {
+  listing: Listing; token: string; userId: string; pending: boolean; open: () => void; renew: () => void; remove: () => void; onBoosted: (listing: Listing) => void;
 }) {
   const active = listing.status === 'active';
   const expiresSoon = active && listing.expiresInDays !== null && listing.expiresInDays !== undefined && listing.expiresInDays <= 7;
@@ -171,6 +179,7 @@ const MyListingCard = memo(function MyListingCard({ listing, pending, open, rene
           {active && <Pressable accessibilityRole="button" onPress={remove} style={x.dangerButton}><Text style={x.dangerText}>Kaldır</Text></Pressable>}
         </View>
       )}
+      {active && <RewardedListingBoostButton listing={listing} token={token} userId={userId} onBoosted={onBoosted} />}
     </View>
   );
 });
