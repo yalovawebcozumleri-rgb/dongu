@@ -1,52 +1,14 @@
 <!doctype html>
 <html lang="tr">
 <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="theme-color" content="#0c2f20">
+    <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="theme-color" content="#f6f7f2">
     <meta name="description" content="@yield('description', 'Döngü, DOA işaretli depozitolu PET, cam ve alüminyum ambalajlar için insanları yakındaki ilanlarla buluşturan bağımsız platformdur.')">
-    <meta property="og:type" content="website">
-    <meta property="og:site_name" content="Döngü">
-    <meta property="og:title" content="@yield('title', 'Döngü')">
-    <meta property="og:description" content="@yield('description', 'Depozitolu ambalajların el değiştirmesini kolaylaştıran yerel ve güvenli buluşma platformu.')">
-    <meta property="og:image" content="{{ url('/images/site/dongu-social.png') }}">
-    <meta property="og:locale" content="tr_TR">
-    <link rel="canonical" href="{{ url()->current() }}">
-    <link rel="icon" type="image/png" href="{{ asset('images/site/dongu-icon.png') }}">
-    <link rel="preconnect" href="https://fonts.bunny.net">
-    <link href="https://fonts.bunny.net/css?family=manrope:400,500,600,700,800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="{{ asset('site/marketing.css') }}">
+    <meta property="og:type" content="website"><meta property="og:site_name" content="Döngü"><meta property="og:title" content="@yield('title', 'Döngü')"><meta property="og:description" content="@yield('description', 'Depozitolu ambalajlar için yerel ve güvenli buluşma platformu.')"><meta property="og:image" content="{{ url('/images/site/dongu-social.png') }}"><meta property="og:locale" content="tr_TR">
+    <link rel="canonical" href="{{ url()->current() }}"><link rel="icon" type="image/png" href="{{ asset('images/site/dongu-icon.png') }}"><link rel="preconnect" href="https://fonts.bunny.net"><link href="https://fonts.bunny.net/css?family=manrope:400,500,600,700,800&display=swap" rel="stylesheet"><link rel="stylesheet" href="{{ asset('site/marketing.css') }}"><link rel="stylesheet" href="{{ asset('site/marketing-v2.css') }}"><link rel="stylesheet" href="{{ asset('site/marketing-mobile-fix.css') }}">
     <title>@yield('title', 'Döngü') · Depozitolu ambalajlar için yeni döngü</title>
 </head>
-<body class="site-body">
-<a class="site-skip" href="#icerik">İçeriğe geç</a>
-<header class="site-header">
-    <div class="site-shell site-header-inner">
-        <a class="site-brand" href="{{ route('marketing.home') }}" aria-label="Döngü ana sayfa"><span class="site-brand-mark" aria-hidden="true">↻</span><span>döngü<span>.</span></span></a>
-        <nav class="site-nav" aria-label="Ana menü">
-            <a class="{{ request()->routeIs('marketing.how-it-works') ? 'is-active' : '' }}" href="{{ route('marketing.how-it-works') }}">Nasıl çalışır?</a>
-            <a class="{{ request()->routeIs('marketing.supporters') ? 'is-active' : '' }}" href="{{ route('marketing.supporters') }}">Destekçiler</a>
-            <a class="{{ request()->routeIs('marketing.about') ? 'is-active' : '' }}" href="{{ route('marketing.about') }}">Hakkımızda</a>
-            <a class="{{ request()->routeIs('marketing.faq') ? 'is-active' : '' }}" href="{{ route('marketing.faq') }}">SSS</a>
-            <a class="{{ request()->routeIs('marketing.contact') ? 'is-active' : '' }}" href="{{ route('marketing.contact') }}">İletişim</a>
-        </nav>
-        <a class="site-header-cta" href="{{ route('marketing.home') }}#uygulama">Google Play'de yakında</a>
-        <details class="site-mobile-menu"><summary aria-label="Menüyü aç"><span></span><span></span><span></span></summary><nav aria-label="Mobil menü"><a href="{{ route('marketing.how-it-works') }}">Nasıl çalışır?</a><a href="{{ route('marketing.supporters') }}">Destekçiler</a><a href="{{ route('marketing.about') }}">Hakkımızda</a><a href="{{ route('marketing.faq') }}">Sık sorulanlar</a><a href="{{ route('marketing.contact') }}">İletişim</a></nav></details>
-    </div>
-</header>
+<body class="site-body"><a class="site-skip" href="#icerik">İçeriğe geç</a>
+<header class="site-header"><div class="site-shell site-header-inner"><a class="site-brand" href="{{ route('marketing.home') }}" aria-label="Döngü ana sayfa"><img class="site-brand-mark" src="{{ asset('images/site/dongu-icon.png') }}" alt="" width="1024" height="1024"><span>döngü<span>.</span></span></a><nav class="site-nav" aria-label="Ana menü"><a class="{{ request()->routeIs('marketing.how-it-works') ? 'is-active' : '' }}" href="{{ route('marketing.how-it-works') }}">Nasıl çalışır?</a><a class="{{ request()->routeIs('marketing.supporters') ? 'is-active' : '' }}" href="{{ route('marketing.supporters') }}">Destekçiler</a><a class="{{ request()->routeIs('marketing.about') ? 'is-active' : '' }}" href="{{ route('marketing.about') }}">Hakkımızda</a><a class="{{ request()->routeIs('marketing.faq') ? 'is-active' : '' }}" href="{{ route('marketing.faq') }}">SSS</a><a class="{{ request()->routeIs('marketing.contact') ? 'is-active' : '' }}" href="{{ route('marketing.contact') }}">İletişim</a></nav><a class="site-header-cta" href="{{ route('marketing.home') }}#uygulama">Google Play’de yakında</a><details class="site-mobile-menu"><summary aria-label="Menüyü aç"><span></span><span></span><span></span></summary><nav aria-label="Mobil menü"><a href="{{ route('marketing.how-it-works') }}">Nasıl çalışır?</a><a href="{{ route('marketing.supporters') }}">Destekçiler</a><a href="{{ route('marketing.about') }}">Hakkımızda</a><a href="{{ route('marketing.faq') }}">Sık sorulanlar</a><a href="{{ route('marketing.contact') }}">İletişim</a></nav></details></div></header>
 <main id="icerik">@yield('content')</main>
-<footer class="site-footer">
-    <div class="site-shell">
-        <div class="site-footer-main">
-            <div><a class="site-brand site-brand-light" href="{{ route('marketing.home') }}"><span class="site-brand-mark" aria-hidden="true">↻</span><span>döngü<span>.</span></span></a><p>Depozitolu ambalajların yeniden değere dönüşmesi için insanları yakındaki fırsatlarla buluşturuyoruz.</p></div>
-            <div class="site-footer-links">
-                <div><strong>Keşfet</strong><a href="{{ route('marketing.how-it-works') }}">Nasıl çalışır?</a><a href="{{ route('marketing.supporters') }}">Döngü Destekçileri</a><a href="{{ route('marketing.about') }}">Hakkımızda</a></div>
-                <div><strong>Destek</strong><a href="{{ route('marketing.faq') }}">Sık sorulanlar</a><a href="{{ route('marketing.contact') }}">İletişim</a><a href="{{ route('account-deletion.create') }}">Hesap silme</a></div>
-                <div><strong>Yasal</strong><a href="{{ route('legal.terms') }}">Kullanım Şartları</a><a href="{{ route('legal.privacy') }}">Gizlilik ve KVKK</a><a href="mailto:yalovawebcozumleri@gmail.com">E-posta</a></div>
-            </div>
-        </div>
-        <div class="site-footer-bottom"><span>© {{ date('Y') }} Döngü. Tüm hakları saklıdır.</span><span>Döngü bağımsız bir platformdur; DOA, Türkiye Çevre Ajansı veya Depozito Yönetim Sistemi'nin resmî uygulaması değildir.</span></div>
-    </div>
-</footer>
-</body>
-</html>
+<footer class="site-footer"><div class="site-shell"><div class="site-footer-main"><div><a class="site-brand site-brand-light" href="{{ route('marketing.home') }}"><img class="site-brand-mark" src="{{ asset('images/site/dongu-icon.png') }}" alt="" width="1024" height="1024"><span>döngü<span>.</span></span></a><p>Depozitolu ambalajlar için yerel, güvenli ve komisyonsuz buluşma platformu.</p></div><div class="site-footer-links"><div><strong>Keşfet</strong><a href="{{ route('marketing.how-it-works') }}">Nasıl çalışır?</a><a href="{{ route('marketing.supporters') }}">Döngü Destekçileri</a><a href="{{ route('marketing.about') }}">Hakkımızda</a></div><div><strong>Destek</strong><a href="{{ route('marketing.faq') }}">Sık sorulanlar</a><a href="{{ route('marketing.contact') }}">İletişim</a><a href="{{ route('account-deletion.create') }}">Hesap silme</a></div><div><strong>Yasal</strong><a href="{{ route('legal.terms') }}">Kullanım Şartları</a><a href="{{ route('legal.privacy') }}">Gizlilik ve KVKK</a><a href="mailto:yalovawebcozumleri@gmail.com">E-posta</a></div></div></div><div class="site-footer-bottom"><span>© {{ date('Y') }} Döngü. Tüm hakları saklıdır.</span><span>Döngü bağımsız bir platformdur; DOA, Türkiye Çevre Ajansı veya Depozito Yönetim Sistemi’nin resmî uygulaması değildir.</span></div></div></footer>
+</body></html>

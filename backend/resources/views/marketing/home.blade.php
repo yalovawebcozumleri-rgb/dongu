@@ -1,67 +1,50 @@
 @extends('layouts.marketing')
 @section('title', 'Döngü')
-@section('description', 'DOA işaretli depozitolu PET, cam ve alüminyum ambalajlar için yakındaki ilanları keşfet, güvenli teslimatla döngüye katıl.')
+@section('description', 'DOA işaretli depozitolu PET, cam ve alüminyum ambalajlar için yakındaki ilanları keşfet; güvenli teslimatla döngüye katıl.')
 @section('content')
 <section class="site-hero">
-    <div class="site-hero-glow site-hero-glow-one"></div><div class="site-hero-glow site-hero-glow-two"></div>
+    <div class="site-hero-orb site-hero-orb-one"></div><div class="site-hero-orb site-hero-orb-two"></div>
     <div class="site-shell site-hero-grid">
         <div class="site-hero-copy">
-            <span class="site-kicker"><i></i> Depozitolu ambalajlar için yerel pazar</span>
-            <h1>Elindeki ambalaj,<br><em>bir başkasının fırsatı.</em></h1>
-            <p>Makineye gidemeyen ilan versin, almak isteyen yakındaki ambalajları teslim alsın. Döngü, iki tarafı güvenli ve şeffaf bir işlem akışında buluşturur.</p>
-            <div class="site-hero-actions"><a class="site-button site-button-lime" href="#nasil-calisir">Döngüyü keşfet <span>↗</span></a><a class="site-button site-button-ghost" href="{{ route('marketing.supporters') }}">İşletmeni görünür kıl</a></div>
-            <div class="site-trust-row"><span><b>01</b> Komisyonsuz model</span><span><b>02</b> Yakınındaki ilanlar</span><span><b>03</b> Teslimat kodu</span></div>
+            <span class="site-kicker"><i></i> Depozitolu ambalajlar için yerel buluşma noktası</span>
+            <h1>Elindeki ambalajı<br><em>değere dönüştür.</em></h1>
+            <p>Yakınındaki ilanları keşfet, talep gönder ve teslimatı güvenli işlem akışıyla tamamla.</p>
+            <div class="site-hero-actions"><a class="site-button site-button-lime" href="#nasil-calisir">Döngü’yü keşfet <span>↗</span></a><a class="site-button site-button-ghost" href="{{ route('marketing.how-it-works') }}">Nasıl çalışır?</a></div>
+            <div class="site-trust-row" aria-label="Döngü özellikleri"><span><b>✓</b> Komisyonsuz</span><span><b>✓</b> Konuma göre ilanlar</span><span><b>✓</b> Teslimat kodu</span></div>
         </div>
-        <div class="site-phone-stage" aria-label="Döngü mobil uygulama ekranları">
-            <div class="site-orbit site-orbit-one"></div><div class="site-orbit site-orbit-two"></div>
-            <div class="site-floating-note site-floating-note-top"><span>♻</span><b>Döngü puanı</b><small>Katkın görünür olsun</small></div>
-            <div class="site-phone site-phone-main"><img src="{{ asset('images/site/app-home.png') }}" alt="Döngü ana sayfa ve yakın ilanlar" width="1080" height="1920"></div>
-            <div class="site-phone site-phone-side"><img src="{{ asset('images/site/app-ranking.png') }}" alt="Döngü doğaya katkı sıralaması" width="1080" height="1920"></div>
-            <div class="site-floating-note site-floating-note-bottom"><b>50 km'ye kadar</b><small>Yakındaki ilanları keşfet</small></div>
+        <div class="site-app-showcase" aria-label="Döngü mobil uygulaması">
+            <div class="site-app-halo"></div>
+            <div class="site-phone-frame"><img src="{{ asset('images/site/app-home.png') }}" alt="Döngü uygulaması ana sayfası" width="1080" height="1920"></div>
+            <div class="site-app-chip site-app-chip-top"><span>72</span><small>ambalajlık ilan</small></div>
+            <div class="site-app-chip site-app-chip-bottom"><span>100 m</span><small>yakınında</small></div>
         </div>
     </div>
-    <div class="site-hero-ticker" aria-hidden="true"><div><span>PET</span><i>◆</i><span>CAM</span><i>◆</i><span>ALÜMİNYUM</span><i>◆</i><span>YEREL TESLİMAT</span><i>◆</i><span>PET</span><i>◆</i><span>CAM</span><i>◆</i><span>ALÜMİNYUM</span></div></div>
 </section>
 
-<section class="site-section site-intro" id="nasil-calisir"><div class="site-shell">
-    <div class="site-section-heading site-heading-split"><div><span class="site-eyebrow">YENİ BİR ALIŞKANLIK</span><h2>Makineye uzak olmak,<br>döngünün dışında kalmak değil.</h2></div><p>Bir tarafta biriken ambalajlar, diğer tarafta onları teslim almak isteyen insanlar var. Döngü, aradaki mesafeyi basit bir ilanla kapatır.</p></div>
-    <div class="site-process-grid">
-        <article><span>01</span><div class="site-process-icon">＋</div><h3>İlanını oluştur</h3><p>PET, cam ve alüminyum adetlerini, fiyatını ve teslimat konumunu ekle.</p></article>
-        <article><span>02</span><div class="site-process-icon">⌖</div><h3>Yakınındakini bul</h3><p>Konumuna göre çevrendeki güncel ilanları ve mesafelerini görüntüle.</p></article>
-        <article><span>03</span><div class="site-process-icon">···</div><h3>Güvenle anlaş</h3><p>Talep gönder, mesajlaş ve teslimat ayrıntılarını yalnızca ilgili kişiyle paylaş.</p></article>
-        <article class="is-highlight"><span>04</span><div class="site-process-icon">✓</div><h3>Teslimatı tamamla</h3><p>Tek kullanımlık teslimat koduyla işlemi doğrula, değerlendir ve katkını büyüt.</p></article>
+<section class="site-material-strip" aria-label="İlan verilebilen ambalaj türleri">
+    <div class="site-shell site-material-strip-inner">
+        <div class="site-material-intro"><span>Tek ilanda</span><strong>Üç ambalaj türü</strong></div>
+        <div class="site-material-mini"><div class="site-material-icon is-pet" aria-hidden="true"><svg viewBox="0 0 24 32"><path d="M9 2h6v4.5l2.1 3.1c.6.9.9 1.9.9 3V27a3 3 0 0 1-3 3H9a3 3 0 0 1-3-3V12.6c0-1.1.3-2.1.9-3L9 6.5V2Z"/><path d="M9 5h6M8 15h8v7H8z"/></svg></div><div><strong>PET</strong><span>Plastik şişeler</span></div></div>
+        <div class="site-material-mini"><div class="site-material-icon is-glass" aria-hidden="true"><svg viewBox="0 0 24 32"><path d="M9 2h6v8.1c0 .9.3 1.7 1 2.3l1 1c.7.7 1 1.5 1 2.5V27a3 3 0 0 1-3 3H9a3 3 0 0 1-3-3V15.9c0-1 .3-1.8 1-2.5l1-1c.7-.6 1-1.4 1-2.3V2Z"/><path d="M9 6h6M9 16v9"/></svg></div><div><strong>Cam</strong><span>Cam şişeler</span></div></div>
+        <div class="site-material-mini"><div class="site-material-icon is-alu" aria-hidden="true"><svg viewBox="0 0 24 32"><path d="M7 5.5v21c0 1.4 2.2 2.5 5 2.5s5-1.1 5-2.5v-21"/><ellipse cx="12" cy="5.5" rx="5" ry="2.5"/><path d="M10.1 5.3c.8-.7 2.7-.7 3.8 0l-1.3 1.2h-2.5V5.3ZM7 25.5c0 1.4 2.2 2.5 5 2.5s5-1.1 5-2.5"/></svg></div><div><strong>Alüminyum</strong><span>İçecek kutuları</span></div></div>
     </div>
-    <a class="site-text-link" href="{{ route('marketing.how-it-works') }}">Tüm süreci ayrıntılı incele <span>→</span></a>
+    <p class="site-material-note">Ambalajların boş, sağlam ve üzerindeki DOA işaretinin okunabilir olması gerekir.</p>
+</section>
+
+<section class="site-section site-process" id="nasil-calisir"><div class="site-shell">
+    <div class="site-section-heading site-heading-split"><div><span class="site-eyebrow">NASIL ÇALIŞIR?</span><h2>İlandan teslimata,<br>üç net adım.</h2></div><p>Döngü; ilan, iletişim ve teslimat sürecini tek yerde toplar.</p></div>
+    <div class="site-process-grid site-process-grid-three"><article><span>01</span><div class="site-process-icon">＋</div><h3>İlanını oluştur</h3><p>Ambalaj türünü, adedini, fiyatını ve teslimat konumunu ekle.</p></article><article><span>02</span><div class="site-process-icon">···</div><h3>Talebi değerlendir</h3><p>Talep gönder, mesajlaş ve uygun kullanıcıyla rezervasyon oluştur.</p></article><article class="is-highlight"><span>03</span><div class="site-process-icon">✓</div><h3>Teslimatı doğrula</h3><p>Tek kullanımlık kodla işlemi tamamla; değerlendirme ve puan süreci başlasın.</p></article></div>
 </div></section>
 
-<section class="site-section site-materials"><div class="site-shell">
-    <div class="site-section-heading"><span class="site-eyebrow">KABUL EDİLEN AMBALAJLAR</span><h2>Üç malzeme.<br>Tek bir döngü.</h2><p>İlana eklenen ambalajların üzerinde okunabilir DOA işareti bulunmalı; ambalajlar boş, sağlam ve teslim edilebilir durumda olmalıdır.</p></div>
-    <div class="site-material-grid">
-        <article class="site-material-pet"><div class="site-material-label">01 / PET</div><div class="site-material-shape site-bottle">PET</div><h3>Plastik şişeler</h3><p>Hafif, biriktirmesi kolay ve döngüye yeniden kazandırılmaya hazır.</p></article>
-        <article class="site-material-glass"><div class="site-material-label">02 / CAM</div><div class="site-material-shape site-bottle">CAM</div><h3>Cam şişeler</h3><p>Temiz, boş ve üzerindeki depozito işareti okunabilir olmalı.</p></article>
-        <article class="site-material-alu"><div class="site-material-label">03 / ALÜMİNYUM</div><div class="site-material-shape site-can">ALÜ</div><h3>Alüminyum kutular</h3><p>Doğru adet ve güncel durum bilgisiyle ilanını dakikalar içinde yayınla.</p></article>
-    </div>
+<section class="site-showcase-section"><div class="site-shell site-showcase-grid">
+    <div class="site-showcase-copy"><span class="site-eyebrow site-eyebrow-light">GÜVENLİ İŞLEM AKIŞI</span><h2>İlanı gör.<br>Talep gönder.<br><em>Güvenle tamamla.</em></h2><p>Kesin adres herkese açık değildir. Rezervasyon, mesajlaşma ve teslimat kodu yalnızca ilgili taraflar arasında ilerler.</p><div class="site-feature-pills"><span>Yaklaşık konum</span><span>Güvenli mesajlaşma</span><span>Teslimat kodu</span></div></div>
+    <div class="site-showcase-phones"><div class="site-screen-card is-back"><img src="{{ asset('images/site/app-ranking.png') }}" alt="Döngü sıralaması" loading="lazy" width="1080" height="1920"></div><div class="site-screen-card is-front"><img src="{{ asset('images/site/app-listing.png') }}" alt="Döngü ilan detayı" loading="lazy" width="1080" height="1920"></div></div>
 </div></section>
 
-<section class="site-section site-product-section"><div class="site-shell site-product-grid">
-    <div class="site-product-visual"><div class="site-product-card site-product-card-back"><img src="{{ asset('images/site/app-supporters.png') }}" alt="Bölgedeki Döngü Destekçileri" loading="lazy" width="1080" height="1920"></div><div class="site-product-card site-product-card-front"><img src="{{ asset('images/site/app-listing.png') }}" alt="Döngü ilan detayı" loading="lazy" width="1080" height="1920"></div></div>
-    <div class="site-product-copy"><span class="site-eyebrow site-eyebrow-light">GÜVENLİ İŞLEM AKIŞI</span><h2>Sadece ilan değil.<br><em>Baştan sona kontrollü teslimat.</em></h2><p>Kesin adres herkese açık değildir. Talep, rezervasyon ve teslimat kodu adımları sayesinde taraflar ne zaman hangi aşamada olduğunu bilir.</p><ul class="site-feature-list"><li><b>Yaklaşık konum gizliliği</b><span>Açık adres yalnızca yetkili işlem taraflarıyla paylaşılır.</span></li><li><b>Gerçek mesajlaşma</b><span>Engelleme, bildirme ve kullanım sınırlarıyla daha güvenli iletişim.</span></li><li><b>Doğrulanmış tamamlanma</b><span>Teslimat kodu, değerlendirme ve işlem geçmişi aynı akışta.</span></li></ul></div>
+<section class="site-section site-two-worlds"><div class="site-shell site-two-worlds-grid">
+    <article class="site-world-card site-world-ranking"><span class="site-eyebrow">DOĞAYA KATKI</span><h2>Katkın görünür olsun.</h2><p>Tamamlanan teslimatlarla puan kazan, sıralamadaki yerini ve rozetlerini gör.</p><a class="site-text-link" href="{{ route('marketing.how-it-works') }}">Döngü’yü tanı <span>→</span></a><div class="site-rank-preview"><b>01</b><div><strong>Döngü Lideri</strong><small>Bu ayın katkısı</small></div><span>12.500</span></div></article>
+    <article class="site-world-card site-world-supporters"><span class="site-eyebrow site-eyebrow-light">DÖNGÜ DESTEKÇİLERİ</span><h2>Bölgenizdeki işletmeleri keşfedin.</h2><p>Döngü’yü destekleyen yerel işletmeler, kullanıcılarla kendi bölgelerinde buluşur.</p><a class="site-button site-button-lime" href="{{ route('marketing.supporters') }}">Destekçileri keşfet <span>↗</span></a></article>
 </div></section>
 
-<section class="site-section site-ranking-section"><div class="site-shell site-ranking-grid">
-    <div><span class="site-eyebrow">DOĞAYA KATKI</span><h2>Her teslimat,<br>görünür bir katkıya dönüşür.</h2><p>Satıcılar tamamlanan teslimatlarla Döngü puanı kazanır. Aylık ve tüm zamanlar sıralamasında katkılar görünür olur; başarılar rozetlerle büyür.</p><div class="site-mini-stats"><div><strong>50</strong><span>kişilik sıralama</span></div><div><strong>9</strong><span>başarı rozeti</span></div><div><strong>1</strong><span>ortak amaç</span></div></div></div>
-    <div class="site-ranking-card"><div class="site-ranking-head"><span>Bu ayın katkı liderleri</span><b>İlk 3</b></div><div class="site-podium"><div class="site-podium-item second"><span>2</span><b>Doğa Dostu</b><small>2.850 puan</small></div><div class="site-podium-item first"><span>1</span><b>Döngü Lideri</b><small>4.120 puan</small></div><div class="site-podium-item third"><span>3</span><b>Yeşil Öncü</b><small>2.140 puan</small></div></div><p class="site-demo-note">Görsel temsilidir; gerçek sıralama uygulamada tamamlanan işlemlerle oluşur.</p></div>
-</div></section>
-
-<section class="site-section site-supporter-banner"><div class="site-shell"><div class="site-supporter-panel">
-    <div class="site-supporter-copy"><span class="site-eyebrow site-eyebrow-light">DÖNGÜ DESTEKÇİLERİ</span><h2>Bölgenizde görünür,<br>döngünün içinde olun.</h2><p>Yerel işletmenizi yakınınızdaki kullanıcılara tanıtın. Görüntülenme ve yönlendirme istatistiklerinizi kendi panelinizden takip edin.</p><a class="site-button site-button-lime" href="{{ route('marketing.supporters') }}">Destekçi modelini keşfet <span>↗</span></a></div>
-    <div class="site-supporter-mosaic"><div class="site-logo-tile">KAFE</div><div class="site-logo-tile">SERVİS</div><div class="site-logo-tile">MARKET</div><div class="site-logo-tile site-logo-tile-accent">SİZİN<br>İŞLETMENİZ</div></div>
-</div></div></section>
-
-<section class="site-section site-faq-preview"><div class="site-shell site-faq-grid">
-    <div><span class="site-eyebrow">AKLINDA KALMASIN</span><h2>Sade, şeffaf<br>ve anlaşılır.</h2><p>Döngü'nün ne yaptığı kadar ne yapmadığını da açıkça anlatıyoruz.</p><a class="site-text-link" href="{{ route('marketing.faq') }}">Tüm soruları görüntüle <span>→</span></a></div>
-    <div class="site-accordion"><details open><summary>Döngü ambalajları satın alıyor mu?<span>＋</span></summary><p>Hayır. Döngü, ilan verenlerle ambalajları teslim almak isteyen kullanıcıları buluşturan bağımsız bir platformdur.</p></details><details><summary>Hangi ambalajlar ilan edilebilir?<span>＋</span></summary><p>Üzerinde okunabilir DOA işareti bulunan, desteklenen PET, cam ve alüminyum ambalajlar ilan edilebilir.</p></details><details><summary>Kesin adresim herkese görünür mü?<span>＋</span></summary><p>Hayır. Herkese açık alanlarda yaklaşık bölge gösterilir; kesin teslimat bilgisi yalnızca işlem akışındaki yetkili taraflarla paylaşılır.</p></details></div>
-</div></section>
-
-<section class="site-final-cta" id="uygulama"><div class="site-shell"><span class="site-kicker"><i></i> DÖNGÜ BAŞLIYOR</span><h2>Bir şişeyle başlar.<br><em>Bir şehirle büyür.</em></h2><p>Döngü yakında Google Play'de. İlk kullanıcılar arasında yerini almak için bizi takip et.</p><div class="site-hero-actions"><span class="site-store-button"><b>▶</b><span><small>ÇOK YAKINDA</small>Google Play</span></span><a class="site-button site-button-ghost-light" href="{{ route('marketing.contact') }}">Bize ulaş</a></div></div></section>
+<section class="site-final-cta" id="uygulama"><div class="site-shell"><img class="site-final-logo" src="{{ asset('images/site/dongu-icon.png') }}" alt="" width="1024" height="1024"><span class="site-kicker"><i></i> DÖNGÜ BAŞLIYOR</span><h2>Ambalajlar el değiştirir.<br><em>Katkı büyür.</em></h2><p>Döngü çok yakında Google Play’de.</p><div class="site-hero-actions"><span class="site-store-button"><b>▶</b><span><small>ÇOK YAKINDA</small>Google Play</span></span><a class="site-button site-button-ghost-light" href="{{ route('marketing.contact') }}">Bize ulaş</a></div></div></section>
 @endsection
