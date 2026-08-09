@@ -10,6 +10,7 @@ use App\Models\Listing;
 use App\Models\Review;
 use App\Models\User;
 use App\Models\UserBlock;
+use App\Services\MarketplaceUsagePolicyService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -17,7 +18,7 @@ use Illuminate\Support\Facades\Storage;
 
 class PublicUserProfileController extends Controller
 {
-    public function show(Request $request, User $user): JsonResponse
+    public function show(Request $request, User $user, MarketplaceUsagePolicyService $usagePolicy): JsonResponse
     {
         abort_unless($user->status === 'active', 404);
         $viewer = $request->user('sanctum');
@@ -51,7 +52,7 @@ class PublicUserProfileController extends Controller
             'id' => $user->id, 'name' => $user->name,
             'avatarUrl' => $user->avatarReference(),
             'memberSince' => $user->created_at?->toDateString(),
-            'isNewUser' => $user->created_at?->greaterThanOrEqualTo(now()->subDays(30)) ?? true,
+            'isNewUser' => $usagePolicy->isNewAccount($user),
             'isOwnProfile' => $viewer?->id === $user->id,
             'blockedByMe' => $viewer ? UserBlock::where('blocker_id', $viewer->id)->where('blocked_id', $user->id)->exists() : false,
             'rating' => ['average' => $user->rating !== null ? (float) $user->rating : null, 'count' => (int) $user->rating_count],

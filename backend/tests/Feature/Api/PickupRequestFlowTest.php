@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Api;
 
+use App\Models\ConversationUserState;
 use App\Models\Listing;
 use App\Models\MarketplaceUsagePolicy;
 use App\Models\PickupRequest;
@@ -126,6 +127,72 @@ class PickupRequestFlowTest extends TestCase
             ->assertOk()
             ->assertJsonPath('data.hidden', true);
         $this->getJson('/api/v1/conversations')->assertOk()->assertJsonCount(0, 'data');
+    }
+    public function test_normal_conversation_with_messages_can_be_hidden_and_new_message_restores_only_recipient(): void
+    {
+        $seller = User::factory()->create(['status' => 'active']);
+        $buyer = User::factory()->create(['status' => 'active']);
+        $listing = $this->listing($seller);
+
+        Sanctum::actingAs($buyer, ['mobile']);
+        $requestId = $this->postJson("/api/v1/listings/{$listing->id}/pickup-requests", [
+            'intent' => 'message',
+            'message' => 'Merhaba, ilan hâlâ güncel mi?',
+        ])->assertCreated()->json('data.id');
+
+        $this->deleteJson("/api/v1/pickup-requests/{$requestId}/conversation")->assertOk();
+        ConversationUserState::updateOrCreate([
+            'pickup_request_id' => $requestId,
+            'user_id' => $seller->id,
+        ], ['hidden_at' => now()]);
+
+        Sanctum::actingAs($seller, ['mobile']);
+        $this->postJson("/api/v1/pickup-requests/{$requestId}/messages", [
+            'message' => 'Evet, ilan güncel.',
+        ])->assertCreated();
+
+        $this->assertDatabaseHas('conversation_user_states', [
+            'pickup_request_id' => $requestId,
+            'user_id' => $buyer->id,
+            'hidden_at' => null,
+        ]);
+        $this->assertNotNull(ConversationUserState::query()
+            ->where('pickup_request_id', $requestId)
+            ->where('user_id', $seller->id)
+            ->value('hidden_at'));
+    }
+
+    public function test_reopening_hidden_inquiry_from_listing_only_restores_initiating_user(): void
+    {
+        $seller = User::factory()->create(['status' => 'active']);
+        $buyer = User::factory()->create(['status' => 'active']);
+        $listing = $this->listing($seller);
+
+        Sanctum::actingAs($buyer, ['mobile']);
+        $requestId = $this->postJson("/api/v1/listings/{$listing->id}/pickup-requests", [
+            'intent' => 'message',
+        ])->assertCreated()->json('data.id');
+
+        foreach ([$buyer->id, $seller->id] as $userId) {
+            ConversationUserState::updateOrCreate([
+                'pickup_request_id' => $requestId,
+                'user_id' => $userId,
+            ], ['hidden_at' => now()]);
+        }
+
+        $this->postJson("/api/v1/listings/{$listing->id}/pickup-requests", [
+            'intent' => 'message',
+        ])->assertOk()->assertJsonPath('data.id', $requestId);
+
+        $this->assertDatabaseHas('conversation_user_states', [
+            'pickup_request_id' => $requestId,
+            'user_id' => $buyer->id,
+            'hidden_at' => null,
+        ]);
+        $this->assertNotNull(ConversationUserState::query()
+            ->where('pickup_request_id', $requestId)
+            ->where('user_id', $seller->id)
+            ->value('hidden_at'));
     }
     public function test_existing_pending_request_is_opened_without_downgrading_its_status(): void
     {

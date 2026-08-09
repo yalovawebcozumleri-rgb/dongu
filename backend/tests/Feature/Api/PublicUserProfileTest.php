@@ -5,6 +5,7 @@ namespace Tests\Feature\Api;
 use App\Models\Achievement;
 use App\Models\CycleScoreSummary;
 use App\Models\Listing;
+use App\Models\MarketplaceUsagePolicy;
 use App\Models\PickupRequest;
 use App\Models\Review;
 use App\Models\User;
@@ -72,6 +73,26 @@ class PublicUserProfileTest extends TestCase
             ->assertOk()
             ->assertJsonPath('data.activeListings.0.id', $listing->id)
             ->assertJsonPath('data.activeListings.0.requestStatus', 'pending');
+    }
+    public function test_new_user_badge_follows_the_admin_managed_new_account_period(): void
+    {
+        MarketplaceUsagePolicy::current()->update(['new_account_hours' => 12]);
+        $newUser = User::factory()->create(['status' => 'active', 'created_at' => now()->subHours(6)]);
+        $standardUser = User::factory()->create(['status' => 'active', 'created_at' => now()->subHours(13)]);
+
+        $this->getJson("/api/v1/users/{$newUser->id}/public-profile")
+            ->assertOk()
+            ->assertJsonPath('data.isNewUser', true);
+
+        $this->getJson("/api/v1/users/{$standardUser->id}/public-profile")
+            ->assertOk()
+            ->assertJsonPath('data.isNewUser', false);
+
+        MarketplaceUsagePolicy::current()->update(['new_account_hours' => 24]);
+
+        $this->getJson("/api/v1/users/{$standardUser->id}/public-profile")
+            ->assertOk()
+            ->assertJsonPath('data.isNewUser', true);
     }
     public function test_blocked_or_inactive_profiles_are_not_visible(): void
     {

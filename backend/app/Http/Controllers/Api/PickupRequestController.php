@@ -165,7 +165,10 @@ class PickupRequestController extends Controller
                 'cancelled_by_user_id' => null,
                 'cancelled_at' => null,
             ])->save();
-            ConversationUserState::query()->where('pickup_request_id', $pickupRequest->id)->update(['hidden_at' => null]);
+            ConversationUserState::query()
+                ->where('pickup_request_id', $pickupRequest->id)
+                ->where('user_id', $lockedBuyer->id)
+                ->update(['hidden_at' => null]);
 
             $message = trim((string) ($validated['message'] ?? ''));
             if ($message !== '') {
@@ -183,6 +186,13 @@ class PickupRequestController extends Controller
             if ($validated['intent'] === 'pickup' && $canCreatePickupEvent) {
                 $this->systemMessage($pickupRequest, 'Alım talebi satıcıya gönderildi.');
                 $notificationKind = 'pickup_request';
+            }
+
+            if ($initialMessageId) {
+                ConversationUserState::query()
+                    ->where('pickup_request_id', $pickupRequest->id)
+                    ->where('user_id', $lockedListing->user_id)
+                    ->update(['hidden_at' => null]);
             }
 
             return $pickupRequest->touch() ? $pickupRequest : $pickupRequest;
@@ -307,6 +317,12 @@ class PickupRequestController extends Controller
         if ($message->wasRecentlyCreated) {
             $pickupRequest->touch();
             $recipientId = $pickupRequest->buyer_id === $request->user()->id ? $pickupRequest->seller_id : $pickupRequest->buyer_id;
+            if ($pickupRequest->status === PickupRequest::INQUIRY) {
+                ConversationUserState::query()
+                    ->where('pickup_request_id', $pickupRequest->id)
+                    ->where('user_id', $recipientId)
+                    ->update(['hidden_at' => null]);
+            }
             ConversationChanged::dispatch($recipientId, $pickupRequest->id, 'message');
             $this->notify(
                 $recipientId,
@@ -326,9 +342,8 @@ class PickupRequestController extends Controller
     {
         $this->ensureParticipant($request, $pickupRequest);
         $isBlocked = UserBlock::existsBetween($pickupRequest->buyer_id, $pickupRequest->seller_id);
-        $isEmptyInquiry = $pickupRequest->status === PickupRequest::INQUIRY
-            && ! $pickupRequest->messages()->where('type', 'user')->exists();
-        abort_unless($isBlocked || $isEmptyInquiry || in_array($pickupRequest->status, [PickupRequest::REJECTED, PickupRequest::CANCELLED, PickupRequest::COMPLETED, PickupRequest::CLOSED], true), 422,
+        $isInquiry = $pickupRequest->status === PickupRequest::INQUIRY;
+        abort_unless($isBlocked || $isInquiry || in_array($pickupRequest->status, [PickupRequest::REJECTED, PickupRequest::CANCELLED, PickupRequest::COMPLETED, PickupRequest::CLOSED], true), 422,
             'Aktif görüşme listeden kaldırılamaz. Önce talep veya rezervasyon sonuçlanmalıdır.');
         ConversationUserState::updateOrCreate([
             'pickup_request_id' => $pickupRequest->id,
