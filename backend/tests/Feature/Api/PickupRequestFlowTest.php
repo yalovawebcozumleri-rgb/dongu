@@ -3,9 +3,12 @@
 namespace Tests\Feature\Api;
 
 use App\Models\Listing;
+use App\Models\MarketplaceUsagePolicy;
 use App\Models\PickupRequest;
 use App\Models\User;
+use App\Models\UserNotification;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Artisan;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
@@ -108,6 +111,48 @@ class PickupRequestFlowTest extends TestCase
 
 
 
+    public function test_empty_message_conversation_can_be_hidden_by_its_owner(): void
+    {
+        $seller = User::factory()->create(['status' => 'active']);
+        $buyer = User::factory()->create(['status' => 'active']);
+        $listing = $this->listing($seller);
+
+        Sanctum::actingAs($buyer, ['mobile']);
+        $requestId = $this->postJson("/api/v1/listings/{$listing->id}/pickup-requests", [
+            'intent' => 'message',
+        ])->assertCreated()->assertJsonPath('data.lastMessage', null)->json('data.id');
+
+        $this->deleteJson("/api/v1/pickup-requests/{$requestId}/conversation")
+            ->assertOk()
+            ->assertJsonPath('data.hidden', true);
+        $this->getJson('/api/v1/conversations')->assertOk()->assertJsonCount(0, 'data');
+    }
+    public function test_existing_pending_request_is_opened_without_downgrading_its_status(): void
+    {
+        $seller = User::factory()->create(['status' => 'active']);
+        $buyer = User::factory()->create(['status' => 'active']);
+        $stranger = User::factory()->create(['status' => 'active']);
+        $listing = $this->listing($seller);
+
+        Sanctum::actingAs($buyer, ['mobile']);
+        $requestId = $this->postJson("/api/v1/listings/{$listing->id}/pickup-requests", [
+            'intent' => 'pickup',
+        ])->assertCreated()->assertJsonPath('data.status', PickupRequest::PENDING)->json('data.id');
+
+        $this->postJson("/api/v1/listings/{$listing->id}/pickup-requests", [
+            'intent' => 'message',
+        ])->assertOk()
+            ->assertJsonPath('data.id', $requestId)
+            ->assertJsonPath('data.status', PickupRequest::PENDING);
+
+        $this->getJson("/api/v1/pickup-requests/{$requestId}")
+            ->assertOk()
+            ->assertJsonPath('data.id', $requestId)
+            ->assertJsonPath('data.status', PickupRequest::PENDING);
+
+        Sanctum::actingAs($stranger, ['mobile']);
+        $this->getJson("/api/v1/pickup-requests/{$requestId}")->assertForbidden();
+    }
     public function test_rejected_request_is_read_only_and_cannot_be_sent_again(): void
     {
         $seller = User::factory()->create(['status' => 'active']);
@@ -133,14 +178,18 @@ class PickupRequestFlowTest extends TestCase
         $this->postJson("/api/v1/listings/{$listing->id}/pickup-requests", [
             'intent' => 'pickup',
         ])->assertUnprocessable();
+        $this->getJson("/api/v1/listings/{$listing->id}/interaction-eligibility")
+            ->assertOk()
+            ->assertJsonPath('data.message.allowed', false)
+            ->assertJsonPath('data.pickup.allowed', false);
 
         $this->getJson('/api/v1/listings')
             ->assertOk()
             ->assertJsonPath('data.0.requestStatus', 'rejected');
     }
-    public function test_withdrawing_a_pickup_request_keeps_chat_open_and_allows_a_new_request(): void
-
+    public function test_withdrawing_a_pickup_request_closes_old_chat_and_allows_a_new_request(): void
     {
+        MarketplaceUsagePolicy::current()->update(['same_seller_contact_24h_limit' => 10]);
         $seller = User::factory()->create(['status' => 'active']);
         $buyer = User::factory()->create(['status' => 'active']);
         $listing = $this->listing($seller);
@@ -161,8 +210,9 @@ class PickupRequestFlowTest extends TestCase
 
         $this->postJson("/api/v1/pickup-requests/{$requestId}/messages", [
             'message' => 'Talebi geri çektim ama bir şey danışmak istiyorum.',
-        ])->assertCreated()->assertJsonPath('data.sender', 'me');
+        ])->assertUnprocessable();
 
+        $this->travel(31)->seconds();
         $this->postJson("/api/v1/listings/{$listing->id}/pickup-requests", [
             'intent' => 'pickup',
         ])->assertOk()
@@ -176,6 +226,7 @@ class PickupRequestFlowTest extends TestCase
 
     public function test_withdrawing_an_accepted_request_reactivates_the_listing(): void
     {
+        MarketplaceUsagePolicy::current()->update(['same_seller_contact_24h_limit' => 10]);
         $seller = User::factory()->create(['status' => 'active']);
         $buyer = User::factory()->create(['status' => 'active']);
         $listing = $this->listing($seller);
@@ -204,11 +255,17 @@ class PickupRequestFlowTest extends TestCase
         $this->assertSame(Listing::STATUS_ACTIVE, $listing->fresh()->status);
         $this->postJson("/api/v1/pickup-requests/{$requestId}/messages", [
             'message' => 'Başka bir gün için konuşabiliriz.',
-        ])->assertCreated();
+        ])->assertUnprocessable();
+        $this->travel(31)->seconds();
+        $this->postJson("/api/v1/listings/{$listing->id}/pickup-requests", [
+            'intent' => 'message',
+            'message' => 'Başka bir gün için konuşabiliriz.',
+        ])->assertOk()->assertJsonPath('data.status', PickupRequest::INQUIRY);
     }
 
     public function test_seller_can_cancel_an_accepted_reservation(): void
     {
+        MarketplaceUsagePolicy::current()->update(['same_seller_contact_24h_limit' => 10]);
         $seller = User::factory()->create(['status' => 'active']);
         $buyer = User::factory()->create(['status' => 'active']);
         $listing = $this->listing($seller);
@@ -233,9 +290,127 @@ class PickupRequestFlowTest extends TestCase
         Sanctum::actingAs($buyer, ['mobile']);
         $this->postJson("/api/v1/pickup-requests/{$requestId}/messages", [
             'message' => 'Başka bir teslim zamanı konuşabiliriz.',
-        ])->assertCreated();
+        ])->assertUnprocessable();
+        $this->travel(31)->seconds();
+        $this->postJson("/api/v1/listings/{$listing->id}/pickup-requests", [
+            'intent' => 'message',
+            'message' => 'Başka bir teslim zamanı konuşabiliriz.',
+        ])->assertOk()->assertJsonPath('data.status', PickupRequest::INQUIRY);
     }
 
+    public function test_accepting_one_buyer_closes_other_conversations_neutrally(): void
+    {
+        $seller = User::factory()->create(['status' => 'active']);
+        $winner = User::factory()->create(['status' => 'active']);
+        $otherBuyer = User::factory()->create(['status' => 'active']);
+        $listing = $this->listing($seller);
+
+        Sanctum::actingAs($winner, ['mobile']);
+        $winnerRequestId = $this->postJson("/api/v1/listings/{$listing->id}/pickup-requests", [
+            'intent' => 'pickup',
+        ])->assertCreated()->json('data.id');
+
+        Sanctum::actingAs($otherBuyer, ['mobile']);
+        $otherRequestId = $this->postJson("/api/v1/listings/{$listing->id}/pickup-requests", [
+            'intent' => 'pickup',
+        ])->assertCreated()->json('data.id');
+
+        Sanctum::actingAs($seller, ['mobile']);
+        $this->postJson("/api/v1/pickup-requests/{$winnerRequestId}/accept")
+            ->assertOk()
+            ->assertJsonPath('data.status', PickupRequest::ACCEPTED);
+
+        $otherRequest = PickupRequest::findOrFail($otherRequestId);
+        $this->assertSame(PickupRequest::CLOSED, $otherRequest->status);
+        $this->assertSame('listing_unavailable', $otherRequest->closed_reason);
+        $this->assertNotNull($otherRequest->closed_at);
+        $this->assertDatabaseHas('conversation_messages', [
+            'pickup_request_id' => $otherRequestId,
+            'type' => 'system',
+            'body' => 'İlan artık alım taleplerine kapalı. Bu ilan için görüşme sona erdi.',
+        ]);
+        $this->assertDatabaseHas('user_notifications', [
+            'user_id' => $otherBuyer->id,
+            'type' => 'listing_unavailable',
+            'title' => 'İlan durumu güncellendi',
+        ]);
+
+        Sanctum::actingAs($otherBuyer, ['mobile']);
+        $this->getJson('/api/v1/conversations')
+            ->assertOk()
+            ->assertJsonPath('data.0.status', PickupRequest::CLOSED)
+            ->assertJsonPath('data.0.listingAvailable', false)
+            ->assertJsonPath('data.0.listingSummary.id', $listing->id)
+            ->assertJsonPath('data.0.listingSummary.items.0.material', 'PET');
+        $this->postJson("/api/v1/pickup-requests/{$otherRequestId}/messages", ['message' => 'Hâlâ alabilir miyim?'])
+            ->assertUnprocessable();
+        $this->deleteJson("/api/v1/pickup-requests/{$otherRequestId}/conversation")
+            ->assertOk()
+            ->assertJsonPath('data.hidden', true);
+
+        $notificationCount = UserNotification::where('user_id', $otherBuyer->id)
+            ->where('type', 'listing_unavailable')
+            ->count();
+        Sanctum::actingAs($seller, ['mobile']);
+        $code = PickupRequest::findOrFail($winnerRequestId)->delivery_code;
+        $this->postJson("/api/v1/pickup-requests/{$winnerRequestId}/complete", ['code' => $code])->assertOk();
+        $this->assertSame($notificationCount, UserNotification::where('user_id', $otherBuyer->id)->where('type', 'listing_unavailable')->count());
+    }
+
+    public function test_deleting_listing_keeps_conversation_summary_and_makes_it_deletable(): void
+    {
+        $seller = User::factory()->create(['status' => 'active']);
+        $buyer = User::factory()->create(['status' => 'active']);
+        $listing = $this->listing($seller);
+
+        Sanctum::actingAs($buyer, ['mobile']);
+        $requestId = $this->postJson("/api/v1/listings/{$listing->id}/pickup-requests", [
+            'intent' => 'message',
+            'message' => 'Ürünler hâlâ mevcut mu?',
+        ])->assertCreated()->json('data.id');
+
+        Sanctum::actingAs($seller, ['mobile']);
+        $this->deleteJson("/api/v1/listings/{$listing->id}")->assertOk();
+
+        Sanctum::actingAs($buyer, ['mobile']);
+        $this->getJson('/api/v1/conversations')
+            ->assertOk()
+            ->assertJsonPath('data.0.id', $requestId)
+            ->assertJsonPath('data.0.status', PickupRequest::CLOSED)
+            ->assertJsonPath('data.0.listingAvailable', false)
+            ->assertJsonPath('data.0.listingSummary.district', 'Kadıköy, İstanbul');
+        $this->deleteJson("/api/v1/pickup-requests/{$requestId}/conversation")->assertOk();
+    }
+    public function test_expired_listing_command_closes_open_conversations(): void
+    {
+        $seller = User::factory()->create(['status' => 'active']);
+        $buyer = User::factory()->create(['status' => 'active']);
+        $listing = $this->listing($seller);
+        $pickupRequest = PickupRequest::create([
+            'listing_id' => $listing->id,
+            'buyer_id' => $buyer->id,
+            'seller_id' => $seller->id,
+            'status' => PickupRequest::INQUIRY,
+            'listing_snapshot' => [
+                'id' => $listing->id,
+                'sellerId' => $seller->id,
+                'seller' => $seller->name,
+                'district' => $listing->public_area,
+                'items' => [['material' => 'PET', 'type' => 'pet', 'count' => 20, 'unitPrice' => .75]],
+            ],
+        ]);
+        $pickupRequest->messages()->create(['sender_id' => $buyer->id, 'type' => 'user', 'body' => 'Ürünler mevcut mu?']);
+        $listing->update(['expires_at' => now()->subMinute()]);
+
+        Artisan::call('listings:close-expired-conversations');
+
+        $this->assertSame(PickupRequest::CLOSED, $pickupRequest->fresh()->status);
+        $this->assertSame('listing_expired', $pickupRequest->fresh()->closed_reason);
+        $this->assertDatabaseHas('user_notifications', [
+            'user_id' => $buyer->id,
+            'type' => 'listing_unavailable',
+        ]);
+    }
     public function test_review_window_closes_after_twenty_four_hours(): void
     {
         $seller = User::factory()->create(['status' => 'active']);

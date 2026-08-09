@@ -3,6 +3,7 @@ export type Coordinates = { latitude: number; longitude: number };
 export type ListingItem = { material: Material; count: number; unitPrice: number };
 export type RequestStatus = 'none' | 'pending' | 'reserved' | 'rejected' | 'cancelled';
 export type ListingStatus = 'active' | 'reserved' | 'completed' | 'cancelled';
+export type ListingOwnerState = 'published' | 'reserved' | 'completed' | 'removed' | 'expired';
 
 export type Listing = {
   id: number;
@@ -21,6 +22,7 @@ export type Listing = {
   time: string;
   note: string;
   status: ListingStatus;
+  ownerState?: ListingOwnerState;
   requestStatus: RequestStatus;
   distanceKm?: number | null;
   photos?: string[];

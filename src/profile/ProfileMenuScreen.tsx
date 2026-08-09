@@ -3,7 +3,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { C } from '../../styles';
 import UserAvatar from './UserAvatar';
 
-export default function ProfileMenuScreen({ fullName, avatarUrl, email, emailVerified, token, openPublicProfile, openEditProfile, openAddresses, openMyListings, openFavorites, openPurchaseHistory, openNotificationPreferences, openBlockedUsers, openTerms, openPrivacy, openDeleteAccount, onSignOut }: {
+export default function ProfileMenuScreen({ fullName, avatarUrl, email, emailVerified, token, openPublicProfile, openEditProfile, openUsageLimits, openAddresses, openMyListings, openFavorites, openPurchaseHistory, openNotificationPreferences, openBlockedUsers, openTerms, openPrivacy, openDeleteAccount, onSignOut }: {
   fullName: string;
   avatarUrl?: string | null;
   email: string;
@@ -11,6 +11,7 @@ export default function ProfileMenuScreen({ fullName, avatarUrl, email, emailVer
   token: string;
   openPublicProfile: () => void;
   openEditProfile: () => void;
+  openUsageLimits: () => void;
   openAddresses: () => void;
   openMyListings: () => void;
   openFavorites: () => void;
@@ -35,6 +36,7 @@ export default function ProfileMenuScreen({ fullName, avatarUrl, email, emailVer
 
       <Text style={x.sectionLabel}>HESAP VE İŞLEMLER</Text>
       <MenuRow label="Profili düzenle" onPress={openEditProfile} />
+      <MenuRow label="Limitlerim" onPress={openUsageLimits} />
       <MenuRow label="Kayıtlı adreslerim" onPress={openAddresses} />
       <MenuRow label="İlanlarım" onPress={openMyListings} />
       <MenuRow label="Favorilerim" onPress={openFavorites} />

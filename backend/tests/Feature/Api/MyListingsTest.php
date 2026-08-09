@@ -31,6 +31,37 @@ class MyListingsTest extends TestCase
             ->assertJsonMissing(['district' => 'Başkasının ilanı']);
     }
 
+    public function test_active_and_history_scopes_are_separated_with_real_counts(): void
+    {
+        $owner = User::factory()->create();
+        $published = $this->listing($owner, 'Yayındaki ilan');
+        $reserved = $this->listing($owner, 'Rezerve ilan');
+        $reserved->update(['status' => Listing::STATUS_RESERVED]);
+        $completed = $this->listing($owner, 'Tamamlanan ilan');
+        $completed->update(['status' => Listing::STATUS_COMPLETED]);
+        $expired = $this->listing($owner, 'Süresi dolan ilan');
+        $expired->update(['expires_at' => now()->subMinute()]);
+        $removed = $this->listing($owner, 'Kaldırılan ilan');
+        $removed->delete();
+        Sanctum::actingAs($owner, ['mobile']);
+
+        $this->getJson('/api/v1/my/listings?scope=active&per_page=10')
+            ->assertOk()
+            ->assertJsonCount(2, 'data')
+            ->assertJsonPath('summary.active', 2)
+            ->assertJsonPath('summary.history', 3)
+            ->assertJsonPath('data.0.id', $published->id)
+            ->assertJsonFragment(['id' => $reserved->id, 'ownerState' => 'reserved'])
+            ->assertJsonMissing(['id' => $completed->id]);
+
+        $this->getJson('/api/v1/my/listings?scope=history&per_page=10')
+            ->assertOk()
+            ->assertJsonCount(3, 'data')
+            ->assertJsonFragment(['id' => $completed->id, 'ownerState' => 'completed'])
+            ->assertJsonFragment(['id' => $expired->id, 'ownerState' => 'expired'])
+            ->assertJsonFragment(['id' => $removed->id, 'ownerState' => 'removed']);
+    }
+
     public function test_listing_with_open_pickup_request_cannot_be_removed(): void
     {
         $seller = User::factory()->create();

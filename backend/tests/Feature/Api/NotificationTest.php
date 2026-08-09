@@ -114,6 +114,53 @@ class NotificationTest extends TestCase
         ]);
     }
 
+    public function test_categories_are_isolated_and_activity_notifications_can_be_deleted(): void
+    {
+        $user = User::factory()->create(['status' => 'active']);
+        $activity = $user->userNotifications()->create([
+            'type' => 'new_message',
+            'title' => 'Yeni mesaj',
+            'body' => 'Sohbet bildirimi',
+        ]);
+        $user->userNotifications()->create([
+            'type' => 'listing_updated',
+            'title' => 'İlan güncellendi',
+            'body' => 'İlan hareketi',
+        ]);
+        $announcement = $user->userNotifications()->create([
+            'type' => 'admin_system',
+            'title' => 'Sistem duyurusu',
+            'body' => 'Yalnızca duyurularda görünmeli.',
+        ]);
+        Sanctum::actingAs($user, ['mobile']);
+
+        $this->getJson('/api/v1/notifications?category=messages')
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.category', 'messages')
+            ->assertJsonMissing(['id' => $announcement->id]);
+        $this->getJson('/api/v1/notifications?category=listings')
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.category', 'listings');
+        $this->getJson('/api/v1/notifications?category=announcements')
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.id', $announcement->id);
+
+        $this->deleteJson("/api/v1/notifications/{$activity->id}")
+            ->assertOk()
+            ->assertJsonPath('data.deleted', true);
+        $this->assertSoftDeleted('user_notifications', ['id' => $activity->id]);
+        $this->postJson("/api/v1/notifications/{$activity->id}/restore")
+            ->assertOk()
+            ->assertJsonPath('data.id', $activity->id);
+        $this->assertDatabaseHas('user_notifications', ['id' => $activity->id, 'deleted_at' => null]);
+
+        $this->deleteJson("/api/v1/notifications/{$announcement->id}")
+            ->assertOk();
+        $this->assertSoftDeleted('user_notifications', ['id' => $announcement->id]);
+    }
     public function test_notification_records_are_private(): void
     {
         $first = User::factory()->create();

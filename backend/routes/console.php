@@ -31,12 +31,20 @@ Schedule::command('announcements:dispatch-due')
     ->everyMinute()
     ->withoutOverlapping();
 
+Schedule::command('listings:close-expired-conversations')
+    ->everyFifteenMinutes()
+    ->withoutOverlapping();
+
 Schedule::command('listings:prune')
     ->dailyAt('03:30')
     ->withoutOverlapping();
 
 Schedule::command('messaging:prune')
     ->dailyAt('04:10')
+    ->withoutOverlapping();
+
+Schedule::command('notifications:prune')
+    ->dailyAt('04:15')
     ->withoutOverlapping();
 
 Schedule::command('queue:prune-batches --hours=168 --unfinished=168 --cancelled=168')

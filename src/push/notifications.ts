@@ -7,6 +7,37 @@ export type PushNotificationState = 'checking' | 'expo_go' | 'physical_device_re
 
 const projectId = () => Constants.easConfig?.projectId ?? Constants.expoConfig?.extra?.eas?.projectId;
 
+let foregroundConversationId: number | null = null;
+let foregroundHandlerConfigured = false;
+
+export function setForegroundConversation(conversationId: number | null): void {
+  foregroundConversationId = conversationId;
+}
+
+export async function configureForegroundNotificationHandling(): Promise<void> {
+  if (foregroundHandlerConfigured || Constants.executionEnvironment === ExecutionEnvironment.StoreClient) return;
+  try {
+    const Notifications = await import('expo-notifications');
+    Notifications.setNotificationHandler({
+      handleNotification: async notification => {
+        const conversationId = Number(notification.request.content.data?.conversationId);
+        const isOpenConversation = foregroundConversationId !== null
+          && Number.isFinite(conversationId)
+          && conversationId === foregroundConversationId;
+        return {
+          shouldPlaySound: !isOpenConversation,
+          shouldSetBadge: !isOpenConversation,
+          shouldShowBanner: !isOpenConversation,
+          shouldShowList: !isOpenConversation,
+        };
+      },
+    });
+    foregroundHandlerConfigured = true;
+  } catch {
+    // Bildirim mod?l? bu derlemede yoksa ana uygulama ak??? devam eder.
+  }
+}
+
 export async function getPushNotificationState(): Promise<PushNotificationState> {
   if (Constants.executionEnvironment === ExecutionEnvironment.StoreClient) return 'expo_go';
   if (!Device.isDevice) return 'physical_device_required';
@@ -26,9 +57,7 @@ export async function enablePushNotifications(token: string): Promise<{ ok: bool
     if (Constants.executionEnvironment === ExecutionEnvironment.StoreClient) return { ok: false, message: 'Uzaktan bildirimler Expo Go yerine development build ile açılabilir.' };
     if (!Device.isDevice) return { ok: false, message: 'Push bildirimleri fiziksel bir telefonda açılabilir.' };
     const Notifications = await import('expo-notifications');
-    Notifications.setNotificationHandler({
-      handleNotification: async () => ({ shouldPlaySound: true, shouldSetBadge: true, shouldShowBanner: true, shouldShowList: true }),
-    });
+    await configureForegroundNotificationHandling();
     if (Platform.OS === 'android') await Notifications.setNotificationChannelAsync('messages', { name: 'Mesajlar', importance: Notifications.AndroidImportance.HIGH });
     const current = await Notifications.getPermissionsAsync();
     const permission = current.status === 'granted' ? current : await Notifications.requestPermissionsAsync();

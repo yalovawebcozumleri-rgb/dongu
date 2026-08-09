@@ -13,14 +13,6 @@
           "locationWhenInUsePermission": "Yakındaki ilanları göstermek, adresini doğrulamak ve isteğinle mevcut konumunu kullanmak için konumuna erişmemize izin ver."
         }
       ],
-      [
-        "expo-image-picker",
-        {
-          "photosPermission": "İsteğe bağlı profil fotoğrafını seçebilmen için fotoğraf galerine erişmemize izin ver.",
-          "cameraPermission": false,
-          "microphonePermission": false
-        }
-      ],
       "expo-notifications",
       [
         "react-native-google-mobile-ads",

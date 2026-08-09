@@ -9,7 +9,7 @@ use RuntimeException;
 class ExpoPushService
 {
     /** @param array<int, PushToken> $tokens */
-    public function send(array $tokens, string $title, string $body, array $data, string $channelId): int
+    public function send(array $tokens, string $title, string $body, array $data, string $channelId, ?string $collapseId = null): int
     {
         $sent = 0;
         foreach (array_chunk($tokens, 100) as $chunk) {
@@ -21,7 +21,10 @@ class ExpoPushService
                 'sound' => 'default',
                 'channelId' => $channelId,
                 'priority' => 'high',
-            ], $chunk);
+            ] + ($collapseId ? [
+                'collapseId' => $collapseId,
+                'tag' => $collapseId,
+            ] : []), $chunk);
 
             $request = Http::acceptJson()->timeout(12)->retry(2, 400, throw: false);
             if ($accessToken = config('services.expo.access_token')) {

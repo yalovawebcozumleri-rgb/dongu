@@ -24,7 +24,7 @@ class PublicUserProfileTest extends TestCase
             'name' => 'Doğa Dostu', 'email' => 'private@example.com', 'phone' => '05551112233',
             'status' => 'active', 'rating' => 4.5, 'rating_count' => 1, 'completed_transactions' => 3,
         ]);
-        $reviewer = User::factory()->create(['status' => 'active', 'avatar_path' => 'avatars/reviewer/avatar-512.webp']);
+        $reviewer = User::factory()->create(['status' => 'active', 'avatar_key' => 'avatar_04']);
         CycleScoreSummary::create(['user_id' => $seller->id, 'period_key' => 'all', 'points' => 240, 'deliveries' => 3]);
         $achievement = Achievement::query()->first();
         DB::table('user_achievements')->insert(['user_id' => $seller->id, 'achievement_id' => $achievement->id, 'awarded_at' => now(), 'created_at' => now(), 'updated_at' => now()]);
@@ -45,9 +45,34 @@ class PublicUserProfileTest extends TestCase
             ->assertOk()->assertJsonPath('meta.total', 1)->assertJsonPath('data.0.rating', 5)
             ->assertJsonPath('data.0.comment', 'Teslimat sorunsuzdu.')
             ->assertJsonMissing(['email' => $reviewer->email])
-            ->assertJsonPath('data.0.reviewer.avatarUrl', url('/storage/avatars/reviewer/avatar-128.webp'));
+            ->assertJsonPath('data.0.reviewer.avatarUrl', 'preset://avatar_04');
     }
 
+    public function test_profile_listings_include_the_viewers_pickup_request_status(): void
+    {
+        $seller = User::factory()->create(['status' => 'active']);
+        $viewer = User::factory()->create(['status' => 'active']);
+        $otherBuyer = User::factory()->create(['status' => 'active']);
+        $listing = $this->listing($seller, Listing::STATUS_ACTIVE);
+        PickupRequest::create([
+            'listing_id' => $listing->id,
+            'buyer_id' => $otherBuyer->id,
+            'seller_id' => $seller->id,
+            'status' => PickupRequest::REJECTED,
+        ]);
+        PickupRequest::create([
+            'listing_id' => $listing->id,
+            'buyer_id' => $viewer->id,
+            'seller_id' => $seller->id,
+            'status' => PickupRequest::PENDING,
+        ]);
+        Sanctum::actingAs($viewer, ['mobile']);
+
+        $this->getJson("/api/v1/users/{$seller->id}/public-profile")
+            ->assertOk()
+            ->assertJsonPath('data.activeListings.0.id', $listing->id)
+            ->assertJsonPath('data.activeListings.0.requestStatus', 'pending');
+    }
     public function test_blocked_or_inactive_profiles_are_not_visible(): void
     {
         $viewer = User::factory()->create(['status' => 'active']);

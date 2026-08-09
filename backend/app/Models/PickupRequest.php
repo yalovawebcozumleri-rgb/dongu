@@ -14,9 +14,11 @@ class PickupRequest extends Model
     public const REJECTED = 'rejected';
     public const CANCELLED = 'cancelled';
     public const COMPLETED = 'completed';
+    public const CLOSED = 'closed';
 
     protected $fillable = [
-        'listing_id', 'buyer_id', 'seller_id', 'status', 'delivery_code',
+        'listing_id', 'buyer_id', 'seller_id', 'status', 'listing_snapshot',
+        'closed_reason', 'closed_at', 'delivery_code',
         'accepted_at', 'completed_at', 'cancelled_by_user_id', 'cancelled_at',
     ];
 
@@ -24,13 +26,15 @@ class PickupRequest extends Model
     {
         return [
             'delivery_code' => 'encrypted',
+            'listing_snapshot' => 'array',
+            'closed_at' => 'datetime',
             'accepted_at' => 'datetime',
             'completed_at' => 'datetime',
             'cancelled_at' => 'datetime',
         ];
     }
 
-    public function listing(): BelongsTo { return $this->belongsTo(Listing::class); }
+    public function listing(): BelongsTo { return $this->belongsTo(Listing::class)->withTrashed(); }
     public function buyer(): BelongsTo { return $this->belongsTo(User::class, 'buyer_id'); }
     public function seller(): BelongsTo { return $this->belongsTo(User::class, 'seller_id'); }
     public function cancelledBy(): BelongsTo { return $this->belongsTo(User::class, 'cancelled_by_user_id'); }

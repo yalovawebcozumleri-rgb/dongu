@@ -17,11 +17,14 @@ class ListingReportModerationService
 
     public const ACTIONS = [self::RECORD_ONLY, self::WARN_SELLER, self::REMOVE_LISTING];
 
+    public function __construct(private readonly ListingConversationClosureService $closures) {}
+
     public function resolve(ListingReport $report, User $admin, string $resolution, ?string $action, string $note): void
     {
         $restored = false;
+        $closedRequests = collect();
 
-        DB::transaction(function () use ($report, $admin, $resolution, $action, $note, &$restored) {
+        DB::transaction(function () use ($report, $admin, $resolution, $action, $note, &$restored, &$closedRequests) {
             $report = ListingReport::query()->with('listing')->lockForUpdate()->findOrFail($report->id);
             $restored = $this->revertPreviousRemoval($report, $admin);
 
@@ -39,6 +42,7 @@ class ListingReportModerationService
                         'reason' => $note,
                         'snapshot' => ['status' => $listing->status, 'seller_id' => $listing->user_id, 'public_area' => $listing->public_area, 'description' => $listing->description],
                     ]);
+                    $closedRequests = $this->closures->closeOpenWithinTransaction($listing, ListingConversationClosureService::LISTING_REMOVED);
                     $listing->delete();
                 }
             }
@@ -53,6 +57,7 @@ class ListingReportModerationService
             ]);
         });
 
+        $this->closures->announce($closedRequests, ListingConversationClosureService::LISTING_REMOVED);
         $this->notify($report->fresh()->load(['listing', 'reporter']), $resolution, $action, $note, $restored);
     }
 

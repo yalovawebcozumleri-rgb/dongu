@@ -39,6 +39,7 @@ class FavoriteTest extends TestCase
             ->assertJsonPath('data.0.id', $listing->id)
             ->assertJsonPath('meta.total', 1);
 
+
         $this->deleteJson("/api/v1/listings/{$listing->id}/favorite")
             ->assertOk()
             ->assertJsonPath('data.isFavorited', false);
@@ -46,12 +47,28 @@ class FavoriteTest extends TestCase
         $this->assertDatabaseCount('listing_favorites', 0);
     }
 
+    public function test_authenticated_feed_can_show_only_active_favorites(): void
+    {
+        $buyer = User::factory()->create();
+        $favorite = $this->listing(User::factory()->create());
+        $this->listing(User::factory()->create());
+        ListingFavorite::create(['user_id' => $buyer->id, 'listing_id' => $favorite->id]);
+        Sanctum::actingAs($buyer, ['mobile']);
+
+        $this->getJson('/api/v1/listings?sort=favorites')
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.id', $favorite->id)
+            ->assertJsonPath('data.0.isFavorited', true)
+            ->assertJsonPath('meta.total', 1);
+    }
     public function test_guest_cannot_manage_favorites_and_user_cannot_favorite_own_or_inactive_listing(): void
     {
         $seller = User::factory()->create();
         $listing = $this->listing($seller);
 
         $this->getJson('/api/v1/favorites')->assertUnauthorized();
+        $this->getJson('/api/v1/listings?sort=favorites')->assertUnauthorized();
         $this->postJson("/api/v1/listings/{$listing->id}/favorite")->assertUnauthorized();
 
         Sanctum::actingAs($seller, ['mobile']);

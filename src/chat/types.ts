@@ -1,6 +1,8 @@
 import { Listing } from '../../marketplace';
 
-export type ConversationStatus = 'inquiry' | 'pending' | 'accepted' | 'rejected' | 'cancelled' | 'completed';
+export type ConversationStatus = 'inquiry' | 'pending' | 'accepted' | 'rejected' | 'cancelled' | 'completed' | 'closed';
+
+export type ConversationListingSummary = Pick<Listing, 'id' | 'sellerId' | 'seller' | 'district' | 'items'>;
 
 export type Conversation = {
   id: number;
@@ -13,9 +15,17 @@ export type Conversation = {
     rating: number | null;
     ratingCount: number;
   };
-  listing: Listing;
+  listing: Listing | null;
+  listingSummary: ConversationListingSummary | null;
+  listingAvailable: boolean;
+  closureReason: 'listing_unavailable' | 'listing_removed' | 'listing_expired' | null;
+  closedAt: string | null;
   lastMessage: { body: string; time: string } | null;
   unreadCount: number;
+  conversationHidden: boolean;
+  hasMessages: boolean;
+  canOpenConversation: boolean;
+  canSendMessage: boolean;
   isBlocked: boolean;
   blockedByMe: boolean;
   deliveryCode: string | null;
@@ -28,6 +38,8 @@ export type Conversation = {
   reviewExpiresAt: string | null;
   cancelledByRole: 'buyer' | 'seller' | null;
   cancelledAt: string | null;
+  acceptedAt: string | null;
+  completedAt: string | null;
   updatedAt: string;
 };
 

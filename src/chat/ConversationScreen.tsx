@@ -2,7 +2,7 @@ import React, { Fragment, useCallback, useEffect, useRef, useState } from 'react
 import { ActivityIndicator, Keyboard, KeyboardAvoidingView, Linking, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import { C } from '../../styles';
-import { listingCount, listingPrice, money } from '../../marketplace';
+import { money } from '../../marketplace';
 import { ApiError, apiRequest } from '../lib/api';
 import { useNotice } from '../notice/NoticeProvider';
 import { Conversation, ConversationMessage, ConversationResponse, MessageCollectionResponse } from './types';
@@ -15,8 +15,17 @@ const statusText: Record<Conversation['status'], string> = {
   rejected: 'Alım talebi reddedildi',
   cancelled: 'Alım talebi geri çekildi',
   completed: 'Teslimat tamamlandı',
+  closed: 'Görüşme kapandı',
 };
 
+const userReportReasons = [
+  ['fake_profile', 'Sahte profil'],
+  ['harassment', 'Taciz veya zorbalık'],
+  ['fraud', 'Dolandırıcılık şüphesi'],
+  ['spam', 'Spam'],
+  ['inappropriate', 'Uygunsuz profil'],
+  ['other', 'Diğer'],
+] as const;
 export default function ConversationScreen({
   conversation,
   token,
@@ -26,6 +35,7 @@ export default function ConversationScreen({
   onBlockChanged,
   onHidden,
   openProfile,
+  openListing,
   refreshSignal,
   bottomInset,
 }: {
@@ -37,6 +47,7 @@ export default function ConversationScreen({
   onBlockChanged: () => Promise<void>;
   onHidden: () => void;
   openProfile: () => void;
+  openListing: () => void;
   refreshSignal: number;
   bottomInset: number;
 }) {
@@ -53,6 +64,14 @@ export default function ConversationScreen({
   const [loadingOlder, setLoadingOlder] = useState(false);
   const [actionMessage, setActionMessage] = useState<ConversationMessage | null>(null);
   const [reportingMessage, setReportingMessage] = useState<ConversationMessage | null>(null);
+  const [headerMenuOpen, setHeaderMenuOpen] = useState(false);
+  const [userReportOpen, setUserReportOpen] = useState(false);
+  const [userReportReason, setUserReportReason] = useState<string | null>(null);
+  const [userReportDetails, setUserReportDetails] = useState('');
+  const [userActionPending, setUserActionPending] = useState(false);
+  const [messageQuota, setMessageQuota] = useState<{ used: number; limit: number; remaining: number; nextAvailableAt: string | null } | null>(null);
+  const [messageLimitNotice, setMessageLimitNotice] = useState<string | null>(null);
+  const [messageRetryAt, setMessageRetryAt] = useState<string | null>(null);
   const scrollRef = useRef<ScrollView>(null);
 
   const markRead = useCallback(async (items: ConversationMessage[]) => {
@@ -62,13 +81,27 @@ export default function ConversationScreen({
     if (conversation.unreadCount > 0) onRead(conversation.id);
   }, [conversation.id, conversation.unreadCount, onRead, token]);
 
+  const loadMessageQuota = useCallback(async () => {
+    try {
+      const response = await apiRequest<{ data?: { messages?: { used: number; limit: number; remaining: number; nextAvailableAt?: string | null } } }>('/usage-policy', { token });
+      const messagesQuota = response.data?.messages;
+      if (messagesQuota) setMessageQuota({ ...messagesQuota, nextAvailableAt: messagesQuota.nextAvailableAt ?? null });
+    } catch {}
+  }, [token]);
+
   const loadMessages = useCallback(async (quiet = false) => {
     try {
       const response = await apiRequest<MessageCollectionResponse>(`/pickup-requests/${conversation.id}/messages?per_page=30`, { token });
-      setMessages(response.data);
-      setHasMore(response.meta.hasMore);
-      setNextCursor(response.meta.nextCursor);
-      await markRead(response.data);
+      const nextMessages = Array.isArray(response.data) ? response.data : [];
+      const nextMeta = response.meta ?? { hasMore: false, nextCursor: null };
+      setMessages(nextMessages);
+      const latestHumanMessage = [...nextMessages].reverse().find(item => item.sender !== 'system');
+      if (latestHumanMessage?.sender === 'other') {
+        setMessageLimitNotice(current => current?.toLocaleLowerCase('tr-TR').includes('yanıt') ? null : current);
+      }
+      setHasMore(Boolean(nextMeta.hasMore));
+      setNextCursor(nextMeta.nextCursor ?? null);
+      await markRead(nextMessages);
     } catch (error) {
       if (!quiet) showNotice({ tone: 'error', title: 'Mesajlar alınamadı', message: error instanceof ApiError ? error.message : 'Mesaj servisine ulaşılamadı.' });
     }
@@ -79,16 +112,39 @@ export default function ConversationScreen({
     setLoadingOlder(true);
     try {
       const response = await apiRequest<MessageCollectionResponse>(`/pickup-requests/${conversation.id}/messages?per_page=30&before_id=${nextCursor}`, { token });
-      setMessages(currentItems => [...response.data, ...currentItems]);
-      setHasMore(response.meta.hasMore);
-      setNextCursor(response.meta.nextCursor);
+      const olderMessages = Array.isArray(response.data) ? response.data : [];
+      const nextMeta = response.meta ?? { hasMore: false, nextCursor: null };
+      setMessages(currentItems => [...olderMessages, ...currentItems]);
+      setHasMore(Boolean(nextMeta.hasMore));
+      setNextCursor(nextMeta.nextCursor ?? null);
     } catch (error) {
       showNotice({ tone: 'error', title: 'Eski mesajlar alınamadı', message: error instanceof ApiError ? error.message : 'Sunucuya ulaşılamadı.' });
     } finally { setLoadingOlder(false); }
   };
 
-  useEffect(() => { void loadMessages(); }, [loadMessages]);
-  useEffect(() => { if (refreshSignal > 0) void loadMessages(true); }, [refreshSignal]);
+  useEffect(() => {
+    void loadMessages();
+    void loadMessageQuota();
+    const timer = setInterval(() => { void loadMessages(true); void loadMessageQuota(); }, 10000);
+    return () => clearInterval(timer);
+  }, [loadMessageQuota, loadMessages]);
+  useEffect(() => { if (refreshSignal > 0) void loadMessages(true); }, [refreshSignal, loadMessages]);
+  useEffect(() => {
+    if (!messageRetryAt) return;
+    const delay = new Date(messageRetryAt).getTime() - Date.now();
+    if (delay <= 0) {
+      setMessageRetryAt(null);
+      setMessageLimitNotice(null);
+      void loadMessageQuota();
+      return;
+    }
+    const timer = setTimeout(() => {
+      setMessageRetryAt(null);
+      setMessageLimitNotice(null);
+      void loadMessageQuota();
+    }, Math.min(delay + 500, 2147483647));
+    return () => clearTimeout(timer);
+  }, [loadMessageQuota, messageRetryAt]);
 
   useEffect(() => {
     const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
@@ -104,14 +160,24 @@ export default function ConversationScreen({
     try {
       const response = await apiRequest<{ data: ConversationMessage }>(`/pickup-requests/${conversation.id}/messages`, { method: 'POST', token, body: { message: text, client_id: clientId } });
       setMessages(current => current.map(item => item.clientId === clientId ? response.data : item));
-    } catch {
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 429) {
+        setMessageLimitNotice(error.message);
+        setMessageRetryAt(error.retryAt);
+        if (error.message.includes('24 saat')) {
+          setMessageQuota(current => current ? { ...current, remaining: 0, nextAvailableAt: error.retryAt } : { used: 0, limit: 0, remaining: 0, nextAvailableAt: error.retryAt });
+        }
+      }
       setMessages(current => current.map(item => item.clientId === clientId ? { ...item, deliveryState: 'failed' } : item));
     }
   };
 
   const send = async () => {
     const clean = draft.trim();
-    if (!clean || busy || conversationReadOnly) return;
+    if (!clean || busy || conversationReadOnly || messageLimitReached) {
+      if (messageLimitReached) showNotice({ tone: 'warning', title: 'Günlük mesaj limitin doldu', message: messageLimitPlaceholder });
+      return;
+    }
     const clientId = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, char => { const random = Math.floor(Math.random() * 16); return (char === 'x' ? random : (random & 0x3) | 0x8).toString(16); });
     const optimistic: ConversationMessage = { id: `local-${clientId}`, clientId, sender: 'me', text: clean, time: new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }), createdAt: new Date().toISOString(), readAt: null, deliveryState: 'sending' };
     setDraft('');
@@ -163,6 +229,38 @@ export default function ConversationScreen({
       showNotice({ tone: 'success', title: 'Mesaj bildirildi', message: 'Güvenlik ekibimiz bildirimi inceleyecek. Karşı tarafa bildirim gönderilmeyecek.' });
     } catch (error) {
       showNotice({ tone: 'error', title: 'Bildirim gönderilemedi', message: error instanceof ApiError ? error.message : 'Sunucuya ulaşılamadı.' });
+    }
+  };
+
+  const closeUserReport = () => {
+    if (userActionPending) return;
+    setUserReportOpen(false);
+    setUserReportReason(null);
+    setUserReportDetails('');
+  };
+
+  const openUserReport = () => {
+    setHeaderMenuOpen(false);
+    setUserReportOpen(true);
+  };
+
+  const submitUserReport = async () => {
+    if (!userReportReason || userActionPending) return;
+    setUserActionPending(true);
+    try {
+      const response = await apiRequest<{ message: string }>('/users/' + conversation.counterpart.id + '/report', {
+        method: 'POST',
+        token,
+        body: { reason: userReportReason, details: userReportDetails.trim() || null },
+      });
+      setUserReportOpen(false);
+      setUserReportReason(null);
+      setUserReportDetails('');
+      showNotice({ tone: 'success', title: 'Bildirimin alındı', message: response.message });
+    } catch (error) {
+      showNotice({ tone: 'error', title: 'Kullanıcı bildirilemedi', message: error instanceof ApiError ? error.message : 'Sunucuya ulaşılamadı.' });
+    } finally {
+      setUserActionPending(false);
     }
   };
 
@@ -305,6 +403,10 @@ export default function ConversationScreen({
   };
 
 
+  const listingSummary = conversation.listing ?? conversation.listingSummary;
+  const listingItemCount = listingSummary?.items.reduce((total, item) => total + item.count, 0) ?? 0;
+  const listingTotalPrice = listingSummary?.items.reduce((total, item) => total + item.count * item.unitPrice, 0) ?? 0;
+
   const currentStatusText = conversation.isBlocked
     ? conversation.blockedByMe ? 'Bu kullanıcıyı engelledin' : 'Bu kullanıcı seni engelledi'
     : conversation.status === 'cancelled'
@@ -319,7 +421,14 @@ export default function ConversationScreen({
     : conversation.status === 'accepted'
       ? ['Ne zaman gelebilirsiniz?', 'Konum sizin için uygun mu?', 'Teslim kodunu hazırlar mısınız?']
       : ['Ne zaman teslim alabilirsiniz?', 'Konum sizin için uygun mu?', 'Talebinizle ilgili bir şey soracağım.'];
-  const conversationReadOnly = conversation.status === 'completed' || conversation.status === 'rejected' || conversation.isBlocked;
+  const messageLimitReached = Boolean(messageQuota?.remaining === 0 || messageLimitNotice);
+  const ownMessageCount = messages.filter(message => message.sender === 'me' && message.deliveryState !== 'failed').length;
+  const showQuickReplies = ownMessageCount < 3;
+  const messageLimitTime = messageRetryAt || messageQuota?.nextAvailableAt || null;
+  const messageLimitPlaceholder = messageLimitReached
+    ? `${messageLimitNotice || 'Günlük mesaj hakkın doldu'}${messageLimitTime ? ` · ${new Date(messageLimitTime).toLocaleString('tr-TR', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })} tarihinde yenilenir` : ''}`
+    : 'Mesajını yaz...';
+  const conversationReadOnly = conversation.status === 'completed' || conversation.status === 'rejected' || conversation.status === 'cancelled' || conversation.status === 'closed' || conversation.isBlocked;
 
   return (
     <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={0} style={x.screen}>
@@ -332,23 +441,37 @@ export default function ConversationScreen({
             <Text style={x.status}>{currentStatusText}</Text>
           </View>
         </Pressable>
-        {(conversation.isBlocked || ['rejected', 'cancelled', 'completed'].includes(conversation.status)) && (
-          <Pressable disabled={busy} onPress={() => void hideConversation()} style={x.hideButton}><Text style={x.hideButtonText}>Listeden kaldır</Text></Pressable>
-        )}
-        {(!conversation.isBlocked || conversation.blockedByMe) && (
-          <Pressable disabled={busy} onPress={toggleBlock} style={x.blockButton}>
-            <Text style={x.blockButtonText}>{conversation.blockedByMe ? 'Engeli kaldır' : 'Engelle'}</Text>
-          </Pressable>
-        )}
+
+        <Pressable
+          accessibilityRole='button'
+          accessibilityLabel='Sohbet seçeneklerini aç'
+          disabled={busy || userActionPending}
+          onPress={() => setHeaderMenuOpen(true)}
+          style={x.headerMenuButton}
+        >
+          <Text style={x.headerMenuButtonText}>⋮</Text>
+        </Pressable>
       </View>
 
-      <View style={x.listing}>
+      <Pressable
+        accessibilityRole={conversation.listingAvailable && conversation.listing ? 'button' : undefined}
+        disabled={!conversation.listingAvailable || !conversation.listing}
+        onPress={openListing}
+        style={[x.listing, conversation.listingAvailable && conversation.listing && x.listingActive]}
+      >
         <View style={{ flex: 1 }}>
-          <Text style={x.listingTitle}>{listingCount(conversation.listing)} ambalaj · {conversation.listing.items.map(item => item.material).join(' + ')}</Text>
-          <Text style={x.listingSub}>{conversation.listing.district}</Text>
+          {listingSummary ? (
+            <>
+              <Text style={x.listingTitle}>{listingItemCount} ambalaj · {listingSummary.items.map(item => item.material).join(' + ')}</Text>
+              <Text style={x.listingSub}>{listingSummary.district}</Text>
+              <Text style={[x.listingAvailability, !conversation.listingAvailable && x.listingUnavailable]}>
+                {conversation.listingAvailable && conversation.listing ? 'İlanı görüntüle ›' : 'İlan artık mevcut değil'}
+              </Text>
+            </>
+          ) : <Text style={x.listingSub}>İlan özeti bulunmuyor</Text>}
         </View>
-        <Text style={x.price}>{money(listingPrice(conversation.listing))}</Text>
-      </View>
+        {listingSummary && <Text style={x.price}>{money(listingTotalPrice)}</Text>}
+      </Pressable>
 
       <ScrollView
         ref={scrollRef}
@@ -358,38 +481,7 @@ export default function ConversationScreen({
         keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
         onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: true })}
       >
-        {conversation.status === 'pending' && conversation.role === 'seller' && (
-        <View style={x.actionCard}>
-          <Text style={x.actionTitle}>Bu alım talebini değerlendir</Text>
-          <View style={x.actionRow}>
-            <Pressable disabled={busy} onPress={reject} style={x.outlineButton}><Text style={x.outlineText}>Reddet</Text></Pressable>
-            <Pressable disabled={busy} onPress={() => runAction('accept')} style={x.greenButton}><Text style={x.greenText}>Kabul et</Text></Pressable>
-          </View>
-        </View>
-      )}
 
-
-      {conversation.status === 'completed' && (
-        <View style={x.reviewCard}>
-          <Text style={x.completedTitle}>✓ Teslimat tamamlandı</Text>
-          <Text style={x.completedText}>Güvenlik için bu görüşme yeni mesajlara kapatıldı. Mesaj geçmişin korunmaya devam edecek.</Text>
-          {conversation.canReview ? (
-            <>
-              <Text style={x.reviewDeadline}>Değerlendirme için teslimattan sonra 24 saatin var.</Text>
-              <Text style={x.actionTitle}>{conversation.counterpart.name} kullanıcısını değerlendir</Text>
-              <View style={x.stars}>
-                {[1, 2, 3, 4, 5].map(value => (
-                  <Pressable key={value} onPress={() => setRating(value)}><Text style={[x.star, value <= rating && x.starActive]}>★</Text></Pressable>
-                ))}
-              </View>
-              <TextInput value={comment} onChangeText={setComment} multiline maxLength={500} placeholder="Yorumun (isteğe bağlı)" style={x.reviewInput} />
-              <Pressable disabled={busy} onPress={submitReview} style={x.greenButton}><Text style={x.greenText}>Değerlendirmeyi gönder</Text></Pressable>
-            </>
-          ) : (
-            <Text style={x.reviewState}>{conversation.reviewed ? 'Değerlendirmen alındı. Teşekkür ederiz.' : '24 saatlik değerlendirme süresi sona erdi.'}</Text>
-          )}
-        </View>
-      )}
 
 
         {hasMore && <Pressable disabled={loadingOlder} onPress={() => void loadOlder()} style={x.olderButton}>{loadingOlder ? <ActivityIndicator color={C.green} /> : <Text style={x.olderText}>Daha eski mesajları yükle</Text>}</Pressable>}
@@ -399,21 +491,38 @@ export default function ConversationScreen({
           return <Fragment key={message.id}>
             {day !== previousDay && <View style={x.dateSeparator}><Text style={x.dateText}>{day}</Text></View>}
             <View style={[x.bubbleRow, message.sender === 'me' && x.bubbleRowMe]}>
-              {message.sender === 'me' && message.deliveryState !== 'sending' && <Pressable onPress={() => openMessageActions(message)} style={x.messageMenuButton}><Text style={x.messageMenuButtonText}>•••</Text></Pressable>}
-              <Pressable disabled={message.sender === 'system' || message.deliveryState === 'sending'} onLongPress={() => openMessageActions(message)} onPress={() => openMessageActions(message)} style={[x.bubble, message.sender === 'me' && x.bubbleMe, message.sender === 'system' && x.bubbleSystem, message.deliveryState === 'failed' && x.bubbleFailed]}>
+              <Pressable
+                accessibilityRole={message.sender === 'system' ? undefined : 'button'}
+                accessibilityHint={message.deliveryState === 'failed' ? 'Mesajı yeniden göndermek için dokun' : 'Mesaj seçeneklerini açmak için basılı tut'}
+                disabled={message.sender === 'system' || message.deliveryState === 'sending'}
+                onLongPress={() => openMessageActions(message)}
+                onPress={message.deliveryState === 'failed' ? () => void retryMessage(message) : undefined}
+                style={[x.bubble, message.sender === 'me' && x.bubbleMe, message.sender === 'system' && x.bubbleSystem, message.deliveryState === 'failed' && x.bubbleFailed]}
+              >
                 <Text style={[x.bubbleText, message.sender === 'me' && x.bubbleTextMe]}>{message.text}</Text>
                 <Text style={[x.bubbleTime, message.sender === 'me' && x.bubbleTimeMe]}>{message.time}{message.deliveryState === 'sending' ? ' · Gönderiliyor' : message.deliveryState === 'failed' ? ' · Gönderilemedi, tekrar dene' : message.sender === 'me' && message.readAt ? ' · Okundu' : ''}</Text>
               </Pressable>
-              {message.sender === 'other' && <Pressable onPress={() => openMessageActions(message)} style={x.messageMenuButton}><Text style={x.messageMenuButtonText}>•••</Text></Pressable>}
             </View>
           </Fragment>;
         })}
-        {(conversation.isBlocked || conversation.status === 'rejected') && (
+        {(conversation.isBlocked || conversation.status === 'rejected' || conversation.status === 'cancelled' || conversation.status === 'closed') && (
           <View style={x.readOnlyCard}>
-            <Text style={x.readOnlyTitle}>{conversation.isBlocked ? 'İletişim engellendi' : 'Talep satıcı tarafından reddedildi'}</Text>
+            <Text style={x.readOnlyTitle}>{conversation.isBlocked
+              ? 'İletişim engellendi'
+              : conversation.status === 'closed'
+                ? 'Bu görüşme kapandı'
+                : conversation.status === 'cancelled'
+                  ? 'Bu işlem iptal edildi'
+                  : 'Talep satıcı tarafından reddedildi'}</Text>
             <Text style={x.readOnlyText}>{conversation.isBlocked
               ? 'Mesaj geçmişi korunuyor ancak bu kullanıcıyla yeni mesaj veya ilan etkileşimi kurulamıyor.'
-              : 'Bu görüşme salt okunur. Aynı ilan için yeniden alım talebi gönderilemez.'}</Text>
+              : conversation.status === 'closed'
+                ? conversation.closureReason === 'listing_unavailable'
+                  ? 'İlan artık alım taleplerine açık değil. Bu görüşme salt okunur olarak saklanıyor.'
+                  : 'İlan artık mevcut değil. Bu görüşme salt okunur olarak saklanıyor.'
+                : conversation.status === 'cancelled'
+                  ? 'İptal edilen görüşme salt okunur olarak saklanıyor. İlan hâlâ yayındaysa ilan üzerinden yeni bir görüşme başlatabilirsin.'
+                  : 'Bu görüşme salt okunur. Aynı ilan için yeniden alım talebi gönderilemez.'}</Text>
           </View>
         )}
         {((conversation.role === 'buyer' && ['pending', 'accepted'].includes(conversation.status)) || (conversation.role === 'seller' && conversation.status === 'accepted')) && (
@@ -461,20 +570,117 @@ export default function ConversationScreen({
             {!!conversation.deliveryNotes && <Text style={x.deliveryHelp}>{conversation.deliveryNotes}</Text>}
           </View>
         )}
+
+        {conversation.status === 'pending' && conversation.role === 'seller' && (
+        <View style={x.actionCard}>
+          <Text style={x.actionTitle}>Bu alım talebini değerlendir</Text>
+          <View style={x.actionRow}>
+            <Pressable disabled={busy} onPress={reject} style={x.outlineButton}><Text style={x.outlineText}>Reddet</Text></Pressable>
+            <Pressable disabled={busy} onPress={() => runAction('accept')} style={x.greenButton}><Text style={x.greenText}>Kabul et</Text></Pressable>
+          </View>
+        </View>
+      )}
+
+      {conversation.status === 'completed' && (
+        <View style={x.reviewCard}>
+          <Text style={x.completedTitle}>✓ Teslimat tamamlandı</Text>
+          <Text style={x.completedText}>Güvenlik için bu görüşme yeni mesajlara kapatıldı. Mesaj geçmişin korunmaya devam edecek.</Text>
+          {conversation.canReview ? (
+            <>
+              <Text style={x.reviewDeadline}>Değerlendirme için teslimattan sonra 24 saatin var.</Text>
+              <Text style={x.actionTitle}>{conversation.counterpart.name} kullanıcısını değerlendir</Text>
+              <View style={x.stars}>
+                {[1, 2, 3, 4, 5].map(value => (
+                  <Pressable key={value} onPress={() => setRating(value)}><Text style={[x.star, value <= rating && x.starActive]}>★</Text></Pressable>
+                ))}
+              </View>
+              <TextInput value={comment} onChangeText={setComment} multiline maxLength={500} placeholder="Yorumun (isteğe bağlı)" style={x.reviewInput} />
+              <Pressable disabled={busy} onPress={submitReview} style={x.greenButton}><Text style={x.greenText}>Değerlendirmeyi gönder</Text></Pressable>
+            </>
+          ) : (
+            <Text style={x.reviewState}>{conversation.reviewed ? 'Değerlendirmen alındı. Teşekkür ederiz.' : '24 saatlik değerlendirme süresi sona erdi.'}</Text>
+          )}
+        </View>
+      )}
       </ScrollView>
 
       <View style={[x.composer, conversationReadOnly && x.composerDisabled, { paddingBottom: keyboardVisible ? 8 : Math.max(bottomInset, 8) }]}>
-        {!conversationReadOnly && <ScrollView horizontal showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={x.quickReplies}>
+        {!conversationReadOnly && !messageLimitReached && showQuickReplies && <ScrollView horizontal showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={x.quickReplies}>
           {quickReplies.map(reply => <Pressable key={reply} onPress={() => setDraft(reply)} style={x.quickReply}><Text style={x.quickReplyText}>{reply}</Text></Pressable>)}
-        </ScrollView>}
+      </ScrollView>}
         <View style={x.composerRow}>
-          <TextInput editable={!conversationReadOnly} value={conversationReadOnly ? '' : draft} onChangeText={setDraft} multiline maxLength={1000} placeholder={conversation.isBlocked ? 'Bu kullanıcıyla mesajlaşamazsın' : conversation.status === 'completed' ? 'Teslimat tamamlandı; sohbet kapalı' : conversation.status === 'rejected' ? 'Talep reddedildi; sohbet kapalı' : 'Mesajını yaz...'} placeholderTextColor="#87948C" style={[x.input, conversationReadOnly && x.inputDisabled]} />
-          <Pressable disabled={conversationReadOnly || busy || !draft.trim()} onPress={() => void send()} style={[x.send, (conversationReadOnly || !draft.trim() || busy) && x.sendDisabled]}>
+          <TextInput editable={!conversationReadOnly && !messageLimitReached} value={conversationReadOnly || messageLimitReached ? '' : draft} onChangeText={setDraft} multiline maxLength={1000} placeholder={messageLimitReached ? messageLimitPlaceholder : conversation.isBlocked ? 'Bu kullanıcıyla mesajlaşamazsın' : conversation.status === 'completed' ? 'Teslimat tamamlandı; sohbet kapalı' : conversation.status === 'rejected' ? 'Talep reddedildi; sohbet kapalı' : conversation.status === 'cancelled' ? 'İşlem iptal edildi; sohbet salt okunur' : conversation.status === 'closed' ? 'İlan kapandı; sohbet salt okunur' : 'Mesajını yaz...'} placeholderTextColor="#87948C" style={[x.input, (conversationReadOnly || messageLimitReached) && x.inputDisabled]} />
+          <Pressable disabled={conversationReadOnly || messageLimitReached || busy || !draft.trim()} onPress={() => void send()} style={[x.send, (conversationReadOnly || messageLimitReached || !draft.trim() || busy) && x.sendDisabled]}>
             {busy ? <ActivityIndicator color={C.white} size="small" /> : <Text style={x.sendText}>➤</Text>}
           </Pressable>
         </View>
       </View>
 
+      <Modal transparent visible={headerMenuOpen} animationType='fade' onRequestClose={() => setHeaderMenuOpen(false)}>
+        <Pressable onPress={() => setHeaderMenuOpen(false)} style={x.reportBackdrop}>
+          <Pressable style={x.reportSheet}>
+            <Text style={x.reportTitle}>Sohbet seçenekleri</Text>
+            <Text style={x.reportHelp}>{conversation.counterpart.name} ile ilgili yapmak istediğin işlemi seç.</Text>
+            <Pressable onPress={() => { setHeaderMenuOpen(false); openProfile(); }} style={x.reportOption}><Text style={x.reportOptionText}>Profili görüntüle</Text></Pressable>
+            <Pressable onPress={openUserReport} style={x.reportOption}><Text style={x.reportOptionText}>Kullanıcıyı bildir</Text></Pressable>
+            {(!conversation.isBlocked || conversation.blockedByMe) && (
+              <Pressable
+                disabled={busy || userActionPending}
+                onPress={() => { setHeaderMenuOpen(false); void toggleBlock(); }}
+                style={x.reportOption}
+              >
+                <Text style={conversation.blockedByMe ? x.reportOptionText : x.reportDangerText}>{conversation.blockedByMe ? 'Engeli kaldır' : 'Kullanıcıyı engelle'}</Text>
+              </Pressable>
+            )}
+            <Pressable onPress={() => setHeaderMenuOpen(false)} style={x.reportCancel}><Text style={x.reportCancelText}>Vazgeç</Text></Pressable>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      <Modal transparent visible={userReportOpen} animationType='fade' onRequestClose={closeUserReport}>
+        <Pressable onPress={closeUserReport} style={x.reportBackdrop}>
+          <Pressable style={x.reportSheet}>
+            <Text style={x.reportTitle}>Bu kullanıcıyı neden bildiriyorsun?</Text>
+            <Text style={x.reportHelp}>Bir neden seç. Bildirim yalnızca güvenlik ekibi tarafından görülür ve onay vermeden gönderilmez.</Text>
+            <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} style={x.userReportScroll}>
+              <View style={x.userReasonList}>
+                {userReportReasons.map(([value, label]) => {
+                  const selected = userReportReason === value;
+                  return (
+                    <Pressable
+                      key={value}
+                      accessibilityRole='radio'
+                      accessibilityState={{ selected }}
+                      disabled={userActionPending}
+                      onPress={() => setUserReportReason(value)}
+                      style={[x.userReason, selected && x.userReasonSelected]}
+                    >
+                      <Text style={[x.userReasonText, selected && x.userReasonTextSelected]}>{label}</Text>
+                      {selected && <Text style={x.userReasonCheck}>✓</Text>}
+                    </Pressable>
+                  );
+                })}
+              </View>
+              <TextInput
+                value={userReportDetails}
+                onChangeText={setUserReportDetails}
+                editable={!userActionPending}
+                maxLength={500}
+                multiline
+                placeholder="Açıklama (isteğe bağlı)"
+                placeholderTextColor="#87948C"
+                style={x.userReportInput}
+              />
+            </ScrollView>
+            <View style={x.userReportActions}>
+              <Pressable disabled={userActionPending} onPress={closeUserReport} style={x.userReportCancel}><Text style={x.userReportCancelText}>Vazgeç</Text></Pressable>
+              <Pressable disabled={userActionPending || !userReportReason} onPress={() => void submitUserReport()} style={[x.userReportSubmit, (userActionPending || !userReportReason) && x.userReportSubmitDisabled]}>
+                {userActionPending ? <ActivityIndicator size='small' color={C.white} /> : <Text style={x.userReportSubmitText}>Bildirimi gönder</Text>}
+              </Pressable>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
       <Modal transparent visible={!!actionMessage} animationType='fade' onRequestClose={() => setActionMessage(null)}>
         <Pressable onPress={() => setActionMessage(null)} style={x.reportBackdrop}>
           <Pressable style={x.reportSheet}>
@@ -512,13 +718,16 @@ const x = StyleSheet.create({
   headerCopy: { flex: 1 },
   hideButton: { minHeight: 34, borderRadius: 11, backgroundColor: '#F1F3F1', justifyContent: 'center', paddingHorizontal: 8, marginRight: 6 },
   hideButtonText: { color: C.muted, fontSize: 11, fontWeight: '900' },
-  blockButton: { minHeight: 34, borderRadius: 11, borderWidth: 1, borderColor: '#D6A79E', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 9 },
-  blockButtonText: { color: '#913F32', fontSize: 11, fontWeight: '900' },
+  headerMenuButton: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', backgroundColor: '#F1F3F1', borderWidth: 1, borderColor: C.line },
+  headerMenuButtonText: { color: C.ink, fontSize: 25, lineHeight: 27, fontWeight: '900' },
   name: { color: C.ink, fontSize: 16, fontWeight: '900' },
   status: { color: C.green, fontSize: 12, marginTop: 2 },
   listing: { margin: 10, marginBottom: 4, padding: 11, borderRadius: 15, backgroundColor: C.white, borderWidth: 1, borderColor: C.line, flexDirection: 'row', alignItems: 'center' },
+  listingActive: { borderColor: '#9DC5A8' },
   listingTitle: { color: C.ink, fontSize: 12, fontWeight: '900' },
   listingSub: { color: C.muted, fontSize: 12, marginTop: 3 },
+  listingAvailability: { color: C.green, fontSize: 11, fontWeight: '900', marginTop: 5 },
+  listingUnavailable: { color: C.muted },
   price: { color: C.green, fontSize: 12, fontWeight: '900' },
   actionCard: { marginBottom: 12, padding: 13, borderRadius: 16, backgroundColor: '#FFF4D9', borderWidth: 1, borderColor: '#EFD89D' },
   actionTitle: { color: C.ink, fontSize: 12, fontWeight: '900', marginBottom: 10 },
@@ -553,10 +762,12 @@ const x = StyleSheet.create({
   reviewInput: { minHeight: 58, borderRadius: 13, backgroundColor: C.bg, borderWidth: 1, borderColor: C.line, padding: 10, textAlignVertical: 'top', marginBottom: 9 },
   messages: { flex: 1 },
   messageContent: { padding: 12, paddingBottom: 18, flexGrow: 1, justifyContent: 'flex-end' },
+  messageLimitCard: { marginHorizontal: 10, marginTop: 6, padding: 11, borderRadius: 14, backgroundColor: '#FFF4D9', borderWidth: 1, borderColor: '#EFD89D' },
+  messageLimitTitle: { color: C.ink, fontSize: 12, fontWeight: '900' },
+  messageLimitText: { color: C.muted, fontSize: 12, lineHeight: 18, marginTop: 3 },
   bubbleRow: { marginBottom: 9, flexDirection: 'row', alignItems: 'center', gap: 5 },
   bubbleRowMe: { justifyContent: 'flex-end' },
-  messageMenuButton: { width: 31, height: 31, borderRadius: 16, alignItems: 'center', justifyContent: 'center', backgroundColor: '#E7ECE8', borderWidth: 1, borderColor: C.line },
-  messageMenuButtonText: { color: C.muted, fontSize: 12, fontWeight: '900', letterSpacing: -1 },
+
   bubble: { maxWidth: '79%', borderRadius: 17, paddingHorizontal: 12, paddingVertical: 9, backgroundColor: C.white, borderWidth: 1, borderColor: C.line },
   bubbleMe: { backgroundColor: C.green, borderColor: C.green },
   bubbleSystem: { maxWidth: '100%', width: '100%', backgroundColor: C.soft, borderColor: '#C7DDCD' },
@@ -598,4 +809,18 @@ const x = StyleSheet.create({
   reportDangerText: { color: '#A23D32', fontSize: 13, fontWeight: '900' },
   reportCancel: { minHeight: 45, justifyContent: 'center', alignItems: 'center', marginTop: 8 },
   reportCancelText: { color: '#A23D32', fontSize: 12, fontWeight: '900' },
+  userReportScroll: { maxHeight: 420 },
+  userReasonList: { gap: 8, marginBottom: 14 },
+  userReason: { minHeight: 48, flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: '#D8DFDA', borderRadius: 13, paddingHorizontal: 13, backgroundColor: C.white },
+  userReasonSelected: { borderColor: C.green, backgroundColor: '#EDF7F0' },
+  userReasonText: { flex: 1, color: '#294C3C', fontSize: 13, fontWeight: '800' },
+  userReasonTextSelected: { color: C.green },
+  userReasonCheck: { color: C.green, fontSize: 17, fontWeight: '900' },
+  userReportInput: { minHeight: 78, borderWidth: 1, borderColor: '#D8DFDA', borderRadius: 14, padding: 12, textAlignVertical: 'top', backgroundColor: C.white, color: C.ink },
+  userReportActions: { flexDirection: 'row', gap: 10, marginTop: 16 },
+  userReportCancel: { minHeight: 48, flex: 1, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#D5DDD7', borderRadius: 14, backgroundColor: C.white },
+  userReportCancelText: { color: '#5F6F66', fontWeight: '900' },
+  userReportSubmit: { minHeight: 48, flex: 1.35, alignItems: 'center', justifyContent: 'center', borderRadius: 14, backgroundColor: C.green },
+  userReportSubmitDisabled: { opacity: 0.45 },
+  userReportSubmitText: { color: C.white, fontSize: 14, fontWeight: '900' },
 });

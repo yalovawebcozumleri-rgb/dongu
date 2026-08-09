@@ -3,6 +3,7 @@
 namespace Tests\Feature\Api;
 
 use App\Models\Listing;
+use App\Models\PickupRequest;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
@@ -50,6 +51,41 @@ class ListingRetentionTest extends TestCase
         $this->assertDatabaseMissing('listings', ['id' => $old->id]);
         $this->assertDatabaseHas('listings', ['id' => $recent->id]);
         Storage::disk('public')->assertMissing('listings/old.jpg');
+    }
+
+    public function test_pruning_listing_preserves_transaction_and_message_history(): void
+    {
+        $seller = User::factory()->create();
+        $buyer = User::factory()->create();
+        $listing = $this->listing(
+            $seller,
+            now()->subDays(config('marketplace.expired_listing_retention_days') + 1),
+        );
+        $pickupRequest = PickupRequest::create([
+            'listing_id' => $listing->id,
+            'buyer_id' => $buyer->id,
+            'seller_id' => $seller->id,
+            'status' => PickupRequest::COMPLETED,
+            'listing_snapshot' => [
+                'id' => $listing->id,
+                'sellerId' => $seller->id,
+                'seller' => $seller->name,
+                'district' => $listing->public_area,
+                'items' => [['material' => 'PET', 'type' => 'pet', 'count' => 10, 'unitPrice' => .50]],
+            ],
+            'completed_at' => now()->subMonth(),
+        ]);
+        $message = $pickupRequest->messages()->create([
+            'sender_id' => $buyer->id,
+            'type' => 'user',
+            'body' => 'Kalıcı işlem kaydı',
+        ]);
+
+        $this->artisan('listings:prune')->assertSuccessful();
+
+        $this->assertDatabaseMissing('listings', ['id' => $listing->id]);
+        $this->assertDatabaseHas('pickup_requests', ['id' => $pickupRequest->id, 'listing_id' => null]);
+        $this->assertDatabaseHas('conversation_messages', ['id' => $message->id]);
     }
 
     private function listing(User $user, $expiresAt): Listing

@@ -5,10 +5,15 @@ export const isApiConfigured = Boolean(configuredUrl || __DEV__);
 
 export class ApiError extends Error {
   public status: number;
+  public details: Record<string, unknown>;
+  public retryAt: string | null;
 
-  constructor(message: string, status: number) {
+  constructor(message: string, status: number, details: Record<string, unknown> = {}) {
     super(message);
     this.status = status;
+    this.details = details;
+    const quota = details.quota && typeof details.quota === 'object' ? details.quota as Record<string, unknown> : null;
+    this.retryAt = typeof quota?.retryAt === 'string' ? quota.retryAt : null;
   }
 }
 
@@ -61,7 +66,7 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
     const validationMessage = payload.errors
       ? Object.values(payload.errors as Record<string, string[]>).flat()[0]
       : null;
-    throw new ApiError(validationMessage || payload.message || 'İşlem tamamlanamadı.', response.status);
+    throw new ApiError(validationMessage || payload.message || 'İşlem tamamlanamadı.', response.status, payload as Record<string, unknown>);
   }
   return payload as T;
 }

@@ -10,7 +10,6 @@ use App\Models\Listing;
 use App\Models\Review;
 use App\Models\User;
 use App\Models\UserBlock;
-use App\Services\ProfileAvatarService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -33,9 +32,16 @@ class PublicUserProfileController extends Controller
             ->when($earnedCodes->isNotEmpty(), fn ($query) => $query->whereNotIn('code', $earnedCodes))
             ->orderBy('sort_order')
             ->first();
+        $listingRelations = ['seller:id,name,rating,rating_count,completed_transactions,avatar_path,avatar_key,updated_at', 'materials', 'photos'];
+        if ($viewer) {
+            $listingRelations['pickupRequests'] = fn ($query) => $query
+                ->where('buyer_id', $viewer->id)
+                ->latest('updated_at');
+        }
+
         $listings = Listing::query()->where('user_id', $user->id)->where('status', Listing::STATUS_ACTIVE)
             ->where(fn ($query) => $query->whereNull('expires_at')->orWhere('expires_at', '>', now()))
-            ->with(['seller:id,name,rating,rating_count,completed_transactions,avatar_path,updated_at', 'materials', 'photos'])
+            ->with($listingRelations)
             ->when($viewer, fn ($query) => $query->withExists([
                 'favorites as is_favorited' => fn ($favoriteQuery) => $favoriteQuery->where('user_id', $viewer->id),
             ]))
@@ -43,7 +49,7 @@ class PublicUserProfileController extends Controller
 
         return response()->json(['data' => [
             'id' => $user->id, 'name' => $user->name,
-            'avatarUrl' => $user->avatar_path ? app(ProfileAvatarService::class)->url($user->avatar_path).'?v='.($user->updated_at?->timestamp ?? 0) : null,
+            'avatarUrl' => $user->avatarReference(),
             'memberSince' => $user->created_at?->toDateString(),
             'isNewUser' => $user->created_at?->greaterThanOrEqualTo(now()->subDays(30)) ?? true,
             'isOwnProfile' => $viewer?->id === $user->id,
@@ -88,7 +94,7 @@ class PublicUserProfileController extends Controller
         $viewer = $request->user('sanctum');
         abort_if($viewer && UserBlock::existsBetween($viewer->id, $user->id), 404);
         $validated = $request->validate(['page' => ['sometimes', 'integer', 'min:1'], 'per_page' => ['sometimes', 'integer', 'min:1', 'max:20']]);
-        $reviews = Review::where('reviewee_id', $user->id)->with('reviewer:id,name,avatar_path')->latest()->paginate($validated['per_page'] ?? 10);
+        $reviews = Review::where('reviewee_id', $user->id)->with('reviewer:id,name,avatar_path,avatar_key')->latest()->paginate($validated['per_page'] ?? 10);
 
         return response()->json([
             'data' => $reviews->getCollection()->map(fn (Review $review) => [
@@ -96,7 +102,7 @@ class PublicUserProfileController extends Controller
                 'reviewer' => [
                     'id' => $review->reviewer->id,
                     'name' => $review->reviewer->name,
-                    'avatarUrl' => $review->reviewer->avatar_path ? app(ProfileAvatarService::class)->url($review->reviewer->avatar_path, true) : null,
+                    'avatarUrl' => $review->reviewer->avatarReference(),
                 ],
                 'createdAt' => $review->created_at?->toIso8601String(),
             ])->values(),

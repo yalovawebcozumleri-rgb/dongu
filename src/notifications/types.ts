@@ -1,6 +1,8 @@
 export type AppNotification = {
   id: number;
   type: string;
+  category: 'listings' | 'messages' | 'announcements';
+  messageCount: number;
   title: string;
   body: string;
   data: {
@@ -8,6 +10,7 @@ export type AppNotification = {
     conversationId?: number;
     listingId?: number;
     campaignId?: number;
+    messageCount?: number;
   };
   read: boolean;
   createdAt: string | null;

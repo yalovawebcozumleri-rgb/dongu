@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\CycleScoreSummary;
 use App\Models\User;
-use App\Services\ProfileAvatarService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -28,7 +27,7 @@ class LeaderboardController extends Controller
             ->where('users.status', 'active');
 
         $top = (clone $base)
-            ->select('cycle_score_summaries.*', 'users.name', 'users.ranking_name_visible', 'users.avatar_path')
+            ->select('cycle_score_summaries.*', 'users.name', 'users.ranking_name_visible', 'users.avatar_path', 'users.avatar_key')
             ->orderByDesc('cycle_score_summaries.points')
             ->orderByDesc('cycle_score_summaries.deliveries')
             ->orderBy('cycle_score_summaries.user_id')
@@ -37,7 +36,7 @@ class LeaderboardController extends Controller
 
         $ownSummary = $currentUser
             ? (clone $base)->where('cycle_score_summaries.user_id', $currentUser->id)
-                ->select('cycle_score_summaries.*', 'users.name', 'users.ranking_name_visible', 'users.avatar_path')->first()
+                ->select('cycle_score_summaries.*', 'users.name', 'users.ranking_name_visible', 'users.avatar_path', 'users.avatar_key')->first()
             : null;
         $ownRank = $ownSummary ? $this->rankFor($periodKey, $ownSummary) : null;
 
@@ -52,7 +51,7 @@ class LeaderboardController extends Controller
         $rows = $top->values()->map(fn ($row, $index) => $this->row($row, $index + 1, $currentUser, $badges));
         $own = $ownSummary ? $this->row($ownSummary, $ownRank, $currentUser, $badges) : [
             'rank' => null, 'userId' => $currentUser?->id, 'name' => $currentUser?->name,
-            'avatarUrl' => $currentUser?->avatar_path ? app(ProfileAvatarService::class)->url($currentUser->avatar_path, true) : null,
+            'avatarUrl' => $currentUser?->avatarReference(),
             'anonymous' => false, 'points' => 0, 'deliveries' => 0, 'badges' => [],
         ];
 
@@ -103,7 +102,7 @@ class LeaderboardController extends Controller
             'rank' => $rank,
             'userId' => $row->user_id,
             'name' => $anonymous ? 'Döngü üyesi' : $row->name,
-            'avatarUrl' => ! $anonymous && $row->avatar_path ? app(ProfileAvatarService::class)->url($row->avatar_path, true) : null,
+            'avatarUrl' => ! $anonymous ? User::avatarReferenceFromKey($row->avatar_key) : null,
             'anonymous' => $anonymous,
             'isOwn' => $isOwn,
             'points' => (int) $row->points,

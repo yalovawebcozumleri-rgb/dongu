@@ -48,7 +48,6 @@ Route::prefix('v1')->group(function () {
         Route::get('/auth/me', [AuthController::class, 'me']);
         Route::patch('/auth/profile', [AuthController::class, 'updateProfile'])->middleware('throttle:20,1');
         Route::post('/auth/profile/avatar', [ProfileAvatarController::class, 'store'])->middleware('throttle:10,10');
-        Route::delete('/auth/profile/avatar', [ProfileAvatarController::class, 'destroy'])->middleware('throttle:10,10');
         Route::get('/profile/impact', ProfileImpactController::class)->middleware('throttle:60,1');
         Route::get('/usage-policy', UsagePolicyController::class)->middleware('throttle:60,1');
         Route::post('/auth/logout', [AuthController::class, 'logout']);
@@ -61,6 +60,8 @@ Route::prefix('v1')->group(function () {
         Route::get('/notifications/unread-count', [NotificationController::class, 'unreadCount']);
         Route::patch('/notifications/read-all', [NotificationController::class, 'markAllRead']);
         Route::patch('/notifications/{notification}/read', [NotificationController::class, 'markRead']);
+        Route::post('/notifications/{notification}/restore', [NotificationController::class, 'restore']);
+        Route::delete('/notifications/{notification}', [NotificationController::class, 'destroyAny']);
         Route::get('/notification-preferences', [NotificationController::class, 'preferences']);
         Route::patch('/leaderboard/privacy', [LeaderboardController::class, 'updatePrivacy']);
         Route::patch('/notification-preferences', [NotificationController::class, 'updatePreferences']);
@@ -70,11 +71,13 @@ Route::prefix('v1')->group(function () {
         Route::post('/users/{user}/block', [UserBlockController::class, 'store'])->middleware('throttle:20,1');
         Route::delete('/users/{user}/block', [UserBlockController::class, 'destroy']);
         Route::post('/users/{user}/report', [UserReportController::class, 'store'])->middleware('throttle:10,60');
+        Route::get('/listings/{listing}/interaction-eligibility', [PickupRequestController::class, 'eligibility'])->middleware('throttle:60,1');
         Route::get('/conversations', [PickupRequestController::class, 'index']);
         Route::get('/my/pickup-requests', [PickupRequestController::class, 'purchaseHistory']);
         Route::post('/push-tokens', [PushTokenController::class, 'store'])->middleware('throttle:10,1');
         Route::delete('/push-tokens', [PushTokenController::class, 'destroy']);
         Route::post('/listings/{listing}/pickup-requests', [PickupRequestController::class, 'store'])->middleware('throttle:100,1');
+        Route::get('/pickup-requests/{pickupRequest}', [PickupRequestController::class, 'show']);
         Route::get('/pickup-requests/{pickupRequest}/messages', [PickupRequestController::class, 'messages']);
         Route::post('/pickup-requests/{pickupRequest}/read', [PickupRequestController::class, 'markRead']);
         Route::delete('/pickup-requests/{pickupRequest}/conversation', [PickupRequestController::class, 'hide']);

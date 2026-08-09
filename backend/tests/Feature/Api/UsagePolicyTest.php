@@ -2,6 +2,8 @@
 
 namespace Tests\Feature\Api;
 
+use App\Models\Listing;
+use App\Models\MarketplaceUsageEvent;
 use App\Models\MarketplaceUsagePolicy;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -37,6 +39,66 @@ class UsagePolicyTest extends TestCase
             ->assertJsonPath('data.pickups.limit', 2);
     }
 
+    public function test_listing_interaction_eligibility_explains_exhausted_rights_and_retry_time(): void
+    {
+        $seller = User::factory()->create(['status' => 'active']);
+        $buyer = User::factory()->create(['status' => 'active', 'created_at' => now()]);
+        $listing = Listing::create([
+            'user_id' => $seller->id,
+            'status' => Listing::STATUS_ACTIVE,
+            'public_area' => 'Yalova Merkez',
+            'approximate_latitude' => 40.655,
+            'approximate_longitude' => 29.276,
+            'description' => 'Etkileşim uygunluğu testi için ilan.',
+            'published_at' => now(),
+            'expires_at' => now()->addDays(30),
+        ]);
+        $listing->materials()->create(['type' => 'pet', 'quantity' => 10, 'unit_price' => 0.8]);
+        MarketplaceUsagePolicy::current()->update(['new_account_contact_limit' => 1]);
+        MarketplaceUsageEvent::create([
+            'user_id' => $buyer->id,
+            'event_type' => MarketplaceUsageEvent::CONTACT_STARTED,
+            'target_user_id' => User::factory()->create()->id,
+            'created_at' => now()->subMinute(),
+        ]);
+        Sanctum::actingAs($buyer, ['mobile']);
+
+        $this->getJson("/api/v1/listings/{$listing->id}/interaction-eligibility")
+            ->assertOk()
+            ->assertJsonPath('data.message.allowed', false)
+            ->assertJsonPath('data.pickup.allowed', false)
+            ->assertJsonPath('data.message.reason', 'Yeni hesap dönemindeki toplam görüşme hakkın doldu.')
+            ->assertJsonPath('data.account.isNewAccount', true)
+            ->assertJson(fn ($json) => $json->whereType('data.message.retryAt', 'string')->etc());
+    }
+    public function test_admin_managed_new_account_period_is_applied_immediately(): void
+    {
+        $user = User::factory()->create([
+            'status' => 'active',
+            'created_at' => now()->subHours(10),
+        ]);
+        Sanctum::actingAs($user, ['mobile']);
+
+        MarketplaceUsagePolicy::current()->update([
+            'new_account_hours' => 12,
+            'new_account_pickup_limit' => 2,
+            'pickup_24h_limit' => 9,
+        ]);
+
+        $this->getJson('/api/v1/usage-policy')
+            ->assertOk()
+            ->assertJsonPath('data.isNewAccount', true)
+            ->assertJsonPath('data.pickups.limit', 2)
+            ->assertJson(fn ($json) => $json->whereType('data.newAccountEndsAt', 'string')->etc());
+
+        MarketplaceUsagePolicy::current()->update(['new_account_hours' => 6]);
+
+        $this->getJson('/api/v1/usage-policy')
+            ->assertOk()
+            ->assertJsonPath('data.isNewAccount', false)
+            ->assertJsonPath('data.newAccountEndsAt', null)
+            ->assertJsonPath('data.pickups.limit', 9);
+    }
     public function test_usage_policy_is_private(): void
     {
         $this->getJson('/api/v1/usage-policy')->assertUnauthorized();
@@ -49,7 +111,7 @@ class UsagePolicyTest extends TestCase
         MarketplaceUsagePolicy::current()->update(['new_account_listing_limit' => 1]);
 
         $payload = [
-            'materials' => [['type' => 'pet', 'quantity' => 10, 'unit_price' => 0.8]],
+            'materials' => [['type' => 'pet', 'quantity' => 20, 'unit_price' => 0.8]],
             'description' => 'Teslim alınmaya hazır temiz PET şişeler.',
             'packaging_condition_confirmed' => true,
             'public_area' => 'Yalova Merkez',
@@ -61,6 +123,6 @@ class UsagePolicyTest extends TestCase
         $this->postJson('/api/v1/listings', $payload)->assertCreated();
         $this->postJson('/api/v1/listings', $payload)
             ->assertTooManyRequests()
-            ->assertJsonPath('message', 'Son 24 saatteki ilan oluşturma hakkın doldu.');
+            ->assertJsonPath('message', 'Yeni hesap dönemindeki ilan oluşturma hakkın doldu.');
     }
 }

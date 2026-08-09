@@ -56,7 +56,7 @@ function ProfileSkeleton({ back }: { back: () => void }) {
   </View>;
 }
 
-export default function PublicUserProfileScreen({ userId, token, currentUserId, center, favoritePendingIds, toggleFavorite, bottomInset, contextListing, back, openListing, messageSeller, editOwnProfile, requireAuth, onBlockChanged, onBlocked }: {
+export default function PublicUserProfileScreen({ userId, token, currentUserId, center, favoritePendingIds, toggleFavorite, bottomInset, back, openListing, editOwnProfile, requireAuth, onBlockChanged, onBlocked }: {
   userId: number;
   token?: string | null;
   currentUserId: string;
@@ -64,10 +64,8 @@ export default function PublicUserProfileScreen({ userId, token, currentUserId, 
   favoritePendingIds: Set<number>;
   toggleFavorite: (listing: Listing) => Promise<boolean>;
   bottomInset: number;
-  contextListing?: Listing | null;
   back: () => void;
   openListing: (listing: Listing) => void;
-  messageSeller?: () => void;
   editOwnProfile: () => void;
   requireAuth?: () => void;
   onBlockChanged: () => Promise<void>;
@@ -208,12 +206,11 @@ export default function PublicUserProfileScreen({ userId, token, currentUserId, 
   if (!profile) return <View style={x.screen}><View style={x.topBar}><Pressable accessibilityRole="button" accessibilityLabel="Geri dön" onPress={back} style={x.back}><Text style={x.backText}>‹</Text></Pressable><Text style={x.topTitle}>Kullanıcı profili</Text><View style={x.topSpacer} /></View><View style={x.center}><Text style={x.emptyTitle}>Profil kullanılamıyor</Text><Pressable onPress={back} style={x.retry}><Text style={x.retryText}>Geri dön</Text></Pressable></View></View>;
 
   const memberYear = profile.memberSince ? new Date(profile.memberSince).getFullYear() : null;
-  const showMessage = !!contextListing && contextListing.sellerId === profile.id && !profile.isOwnProfile && contextListing.status === 'active';
   const ratingValue = profile.rating.count > 0 && profile.rating.average !== null ? profile.rating.average.toFixed(1).replace('.', ',') : 'Yeni';
   return (
     <View style={x.screen}>
       <View style={x.topBar}><Pressable accessibilityRole="button" accessibilityLabel="Geri dön" onPress={back} style={x.back}><Text style={x.backText}>‹</Text></Pressable><Text style={x.topTitle}>Kullanıcı profili</Text><View style={x.topSpacer} /></View>
-      <ScrollView contentContainerStyle={[x.content, { paddingBottom: showMessage ? 112 + bottomInset : 32 + bottomInset }]} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={[x.content, { paddingBottom: 32 + bottomInset }]} showsVerticalScrollIndicator={false}>
         <View style={x.hero}>
           <View style={x.heroGlowOne} /><View style={x.heroGlowTwo} />
           <View style={x.heroIdentity}>
@@ -313,7 +310,6 @@ export default function PublicUserProfileScreen({ userId, token, currentUserId, 
         )}
       </ScrollView>
 
-      {showMessage && <View style={[x.bottomAction, { paddingBottom: Math.max(bottomInset, 12) }]}><Pressable onPress={messageSeller} style={x.messageButton}><Text style={x.messageButtonText}>Satıcıya yaz</Text></Pressable></View>}
       <Modal transparent visible={reportOpen} animationType="fade" onRequestClose={closeReport}>
         <SafeAreaProvider style={x.modalProvider}>
           <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={x.modalBackdrop}>

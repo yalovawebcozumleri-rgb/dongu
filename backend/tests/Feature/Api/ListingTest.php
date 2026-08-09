@@ -51,6 +51,44 @@ class ListingTest extends TestCase
             ->assertJsonValidationErrors('materials.0.quantity');
     }
 
+    public function test_total_material_quantity_must_be_at_least_twenty(): void
+    {
+        Sanctum::actingAs(User::factory()->create(['status' => 'active']), ['mobile']);
+        $payload = $this->payload();
+        $payload['materials'] = [
+            ['type' => 'pet', 'quantity' => 10, 'unit_price' => 0.25],
+            ['type' => 'glass', 'quantity' => 9, 'unit_price' => 0.30],
+        ];
+
+        $this->postJson('/api/v1/listings', $payload)
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('materials')
+            ->assertJsonPath('errors.materials.0', 'İlan yayınlayabilmek için toplam ambalaj adedi en az 20 olmalıdır. Şu anda 19 adet girdin.');
+    }
+
+    public function test_combined_material_quantity_of_twenty_is_accepted(): void
+    {
+        Sanctum::actingAs(User::factory()->create(['status' => 'active']), ['mobile']);
+        $payload = $this->payload();
+        $payload['materials'] = [
+            ['type' => 'pet', 'quantity' => 8, 'unit_price' => 0.25],
+            ['type' => 'glass', 'quantity' => 12, 'unit_price' => 0.30],
+        ];
+
+        $this->postJson('/api/v1/listings', $payload)->assertCreated();
+    }
+
+    public function test_unit_price_must_use_five_kurus_steps(): void
+    {
+        Sanctum::actingAs(User::factory()->create(['status' => 'active']), ['mobile']);
+        $payload = $this->payload();
+        $payload['materials'][0]['unit_price'] = 0.28;
+
+        $this->postJson('/api/v1/listings', $payload)
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('materials.0.unit_price');
+    }
+
     public function test_unit_price_cannot_exceed_one_lira(): void
     {
         Sanctum::actingAs(User::factory()->create(['status' => 'active']), ['mobile']);

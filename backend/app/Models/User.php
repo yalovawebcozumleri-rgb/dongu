@@ -17,8 +17,13 @@ class User extends Authenticatable
     public const ROLE_ADMIN = 'admin';
     public const ROLE_SUPPORTER = 'supporter';
 
+    public const AVATAR_KEYS = [
+        'avatar_01', 'avatar_02', 'avatar_03', 'avatar_04', 'avatar_05',
+        'avatar_06', 'avatar_07', 'avatar_08', 'avatar_09', 'avatar_10',
+    ];
+
     protected $fillable = [
-        'name', 'email', 'password', 'phone', 'avatar_path', 'status', 'role',
+        'name', 'email', 'password', 'phone', 'avatar_path', 'avatar_key', 'status', 'role',
         'profile_completed_at', 'terms_accepted_at', 'terms_version', 'privacy_notice_acknowledged_at', 'privacy_notice_version', 'rating', 'rating_count',
         'completed_transactions', 'ranking_name_visible',
     ];
@@ -107,5 +112,14 @@ class User extends Authenticatable
     public function isSupporter(): bool
     {
         return $this->role === self::ROLE_SUPPORTER;
+    }
+    public function avatarReference(): ?string
+    {
+        return self::avatarReferenceFromKey($this->avatar_key);
+    }
+
+    public static function avatarReferenceFromKey(?string $key): ?string
+    {
+        return in_array($key, self::AVATAR_KEYS, true) ? 'preset://'.$key : null;
     }
 }

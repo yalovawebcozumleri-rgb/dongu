@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Api;
 
+use App\Jobs\SendConversationMessagePush;
 use App\Jobs\SendUserNotificationPush;
 use App\Models\NotificationPreference;
 use App\Models\PushToken;
@@ -32,6 +33,22 @@ class PushNotificationTest extends TestCase
         Queue::assertPushed(SendUserNotificationPush::class, 1);
     }
 
+    public function test_each_message_queues_push_while_notification_center_keeps_one_conversation_row(): void
+    {
+        Queue::fake();
+        config(['services.expo.push_enabled' => true]);
+        $user = User::factory()->create();
+        $service = app(UserNotificationService::class);
+
+        $first = $service->create($user->id, 'new_message', 'Yeni mesaj', 'Birinci mesaj', ['route' => 'chat', 'conversationId' => 41], 'message:1', 'conversation:41');
+        $second = $service->create($user->id, 'new_message', 'Yeni mesaj', 'İkinci mesaj', ['route' => 'chat', 'conversationId' => 41], 'message:2', 'conversation:41');
+
+        $this->assertSame($first->id, $second->id);
+        $this->assertSame('İkinci mesaj', $second->fresh()->body);
+        $this->assertDatabaseCount('user_notifications', 1);
+        Queue::assertPushed(SendConversationMessagePush::class, 2);
+        Queue::assertNotPushed(SendUserNotificationPush::class);
+    }
     public function test_message_pushes_are_grouped_and_sent_through_expo(): void
     {
         $user = User::factory()->create();

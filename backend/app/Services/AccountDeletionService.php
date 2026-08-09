@@ -74,6 +74,7 @@ class AccountDeletionService
                 'password' => null,
                 'phone' => null,
                 'avatar_path' => null,
+                'avatar_key' => null,
                 'status' => 'deleted',
                 'profile_completed_at' => null,
                 'ranking_name_visible' => false,

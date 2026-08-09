@@ -4,8 +4,6 @@ namespace Tests\Feature\Api;
 
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Http\UploadedFile;
-use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
@@ -13,45 +11,34 @@ class ProfileAvatarTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_user_can_upload_replace_and_remove_public_avatar_variants(): void
+    public function test_user_can_select_and_replace_a_preset_avatar(): void
     {
-        Storage::fake('public');
         $user = User::factory()->create(['status' => 'active']);
         Sanctum::actingAs($user, ['mobile']);
 
-        $first = $this->post('/api/v1/auth/profile/avatar', [
-            'avatar' => UploadedFile::fake()->image('profil.jpg', 900, 700)->size(700),
-        ], ['Accept' => 'application/json'])->assertOk()
+        $this->postJson('/api/v1/auth/profile/avatar', ['avatar_key' => 'avatar_03'])
+            ->assertOk()
             ->assertJsonPath('data.user.id', $user->id)
-            ->assertJsonPath('data.user.avatar_url', fn ($value) => is_string($value) && str_contains($value, '-512.webp'))
-            ->assertJsonPath('data.user.avatar_thumbnail_url', fn ($value) => is_string($value) && str_contains($value, '-128.webp'));
+            ->assertJsonPath('data.user.avatar_url', 'preset://avatar_03')
+            ->assertJsonPath('data.user.avatar_thumbnail_url', 'preset://avatar_03');
 
-        $firstMain = $user->fresh()->avatar_path;
-        $firstThumb = str_replace('-512.webp', '-128.webp', $firstMain);
-        Storage::disk('public')->assertExists([$firstMain, $firstThumb]);
+        $this->assertSame('avatar_03', $user->fresh()->avatar_key);
 
-        $this->post('/api/v1/auth/profile/avatar', [
-            'avatar' => UploadedFile::fake()->image('yeni.png', 600, 800)->size(600),
-        ], ['Accept' => 'application/json'])->assertOk();
-        Storage::disk('public')->assertMissing([$firstMain, $firstThumb]);
+        $this->postJson('/api/v1/auth/profile/avatar', ['avatar_key' => 'avatar_09'])
+            ->assertOk()
+            ->assertJsonPath('data.user.avatar_url', 'preset://avatar_09');
 
-        $current = $user->fresh()->avatar_path;
-        Storage::disk('public')->assertExists([$current, str_replace('-512.webp', '-128.webp', $current)]);
-        $this->deleteJson('/api/v1/auth/profile/avatar')->assertOk()->assertJsonPath('data.user.avatar_url', null);
-        $this->assertNull($user->fresh()->avatar_path);
-        Storage::disk('public')->assertMissing($current);
+        $this->assertSame('avatar_09', $user->fresh()->avatar_key);
     }
 
-    public function test_avatar_requires_authentication_image_and_five_megabyte_limit(): void
+    public function test_avatar_requires_authentication_and_an_allowed_preset_key(): void
     {
-        Storage::fake('public');
-        $this->post('/api/v1/auth/profile/avatar', [], ['Accept' => 'application/json'])->assertUnauthorized();
+        $this->postJson('/api/v1/auth/profile/avatar', ['avatar_key' => 'avatar_01'])->assertUnauthorized();
+
         Sanctum::actingAs(User::factory()->create(['status' => 'active']), ['mobile']);
-        $this->post('/api/v1/auth/profile/avatar', [
-            'avatar' => UploadedFile::fake()->create('dosya.txt', 10, 'text/plain'),
-        ], ['Accept' => 'application/json'])->assertUnprocessable()->assertJsonValidationErrors('avatar');
-        $this->post('/api/v1/auth/profile/avatar', [
-            'avatar' => UploadedFile::fake()->image('buyuk.jpg')->size(5200),
-        ], ['Accept' => 'application/json'])->assertUnprocessable()->assertJsonValidationErrors('avatar');
+        $this->postJson('/api/v1/auth/profile/avatar', [])->assertUnprocessable()->assertJsonValidationErrors('avatar_key');
+        $this->postJson('/api/v1/auth/profile/avatar', ['avatar_key' => 'avatar_99'])->assertUnprocessable()->assertJsonValidationErrors('avatar_key');
+        $this->postJson('/api/v1/auth/profile/avatar', ['avatar' => 'photo.jpg'])->assertUnprocessable()->assertJsonValidationErrors('avatar_key');
+        $this->deleteJson('/api/v1/auth/profile/avatar')->assertMethodNotAllowed();
     }
 }

@@ -33,6 +33,8 @@ type Props = {
   initialCoordinates?: Coordinates | null;
   onClose: () => void;
   onSelect?: (address: DeliveryAddress) => void;
+  onDeleted?: (addressId: number) => void;
+  selectedAddressId?: number | null;
   embedded?: boolean;
 };
 
@@ -47,6 +49,7 @@ type Draft = {
   fullAddress: string;
   deliveryNotes: string;
   isDefault: boolean;
+  activeListingsCount: number;
 };
 
 const emptyDraft: Draft = {
@@ -59,6 +62,7 @@ const emptyDraft: Draft = {
   fullAddress: '',
   deliveryNotes: '',
   isDefault: false,
+  activeListingsCount: 0,
 };
 
 const asSaved = (address: Omit<DeliveryAddress, 'saved'>): DeliveryAddress => ({
@@ -106,6 +110,8 @@ export default function AddressBookModal({
   mode,
   onClose,
   onSelect,
+  onDeleted,
+  selectedAddressId,
   embedded = false,
 }: Props) {
   const insets = useSafeAreaInsets();
@@ -118,7 +124,6 @@ export default function AddressBookModal({
   const [editorOpen, setEditorOpen] = useState(false);
   const [draft, setDraft] = useState<Draft>(emptyDraft);
   const [coordinates, setCoordinates] = useState<Coordinates | null>(null);
-  const [persist, setPersist] = useState(true);
   const [saving, setSaving] = useState(false);
   const [geocoding, setGeocoding] = useState(false);
   const [locating, setLocating] = useState(false);
@@ -210,7 +215,6 @@ export default function AddressBookModal({
     setDraft(emptyDraft);
     setCoordinates(null);
     setDistricts([]);
-    setPersist(true);
     setEditorOpen(true);
   };
 
@@ -239,9 +243,9 @@ export default function AddressBookModal({
       fullAddress: address.fullAddress,
       deliveryNotes: address.deliveryNotes || '',
       isDefault: Boolean(address.isDefault),
+      activeListingsCount: address.activeListingsCount || 0,
     });
     setCoordinates({ latitude: address.latitude, longitude: address.longitude });
-    setPersist(true);
     setEditorOpen(true);
   };
 
@@ -358,11 +362,6 @@ export default function AddressBookModal({
         saved: false,
       };
 
-      if (mode === 'select' && !persist && !draft.id) {
-        onSelect?.(selection);
-        onClose();
-        return;
-      }
 
       const response = await apiRequest<AddressResponse>(
         draft.id ? '/addresses/' + draft.id : '/addresses',
@@ -401,7 +400,9 @@ export default function AddressBookModal({
       tone: 'warning',
       eyebrow: 'ADRES İŞLEMİ',
       title: 'Adresi silmek istiyor musun?',
-      message: address.label + ' adresi kayıtlı adreslerinden kalıcı olarak kaldırılacak.',
+      message: address.activeListingsCount
+        ? address.label + ' kayıtlı adreslerinden silinecek. Bu adresle oluşturduğun ' + address.activeListingsCount + ' yayındaki ilanın teslimat bilgileri değişmeden korunacak.'
+        : address.label + ' kayıtlı adreslerinden silinecek. Daha önce bu adresle oluşturduğun ilanların teslimat bilgileri değişmeden korunur.',
       primaryLabel: 'Adresi sil',
       secondaryLabel: 'Vazgeç',
     });
@@ -409,6 +410,7 @@ export default function AddressBookModal({
 
     try {
       await apiRequest('/addresses/' + address.id, { method: 'DELETE', token });
+      if (address.id) onDeleted?.(address.id);
       await loadAddresses();
       showNotice({ tone: 'success', title: 'Adres silindi', message: address.label + ' adresi kayıtlı adreslerinden kaldırıldı.' });
     } catch (error) {
@@ -462,7 +464,7 @@ export default function AddressBookModal({
   const actionLabel = draft.id ? 'Değişiklikleri kaydet' : 'Teslimat adresi oluştur';
   const regionPicker = (
     <Modal visible={picker !== null} transparent animationType="fade" onRequestClose={() => setPicker(null)}>
-      <View style={a.pickerBackdrop}>
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={a.pickerBackdrop}>
         <Pressable style={StyleSheet.absoluteFill} onPress={() => setPicker(null)} />
         <View style={[a.pickerSheet, { paddingBottom: Math.max(insets.bottom, 16) }]}>
           <View style={a.pickerHandle} />
@@ -502,12 +504,12 @@ export default function AddressBookModal({
             )}
           </ScrollView>
         </View>
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 
   const content = (
-      <KeyboardAvoidingView style={a.screen} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <KeyboardAvoidingView style={a.screen} behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={0}>
         <View style={[a.header, !embedded && a.modalHeader]}>
           <Pressable onPress={editorOpen ? () => setEditorOpen(false) : onClose} style={a.back}>
             <Text style={a.backText}>‹</Text>
@@ -521,6 +523,7 @@ export default function AddressBookModal({
         {editorOpen ? (
           <ScrollView contentContainerStyle={[a.content, { paddingBottom: contentBottom }]} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
             <Text style={a.help}>Teslimatın yapılacağı adresi eksiksiz yaz. Tam adres yalnızca işlem eşleştiğinde ilgili kullanıcıyla paylaşılır.</Text>
+            {!!draft.id && <View style={a.snapshotInfo}><Text style={a.snapshotInfoTitle}>Yayındaki ilanların değişmez</Text><Text style={a.snapshotInfoText}>{draft.activeListingsCount ? 'Bu adres ' + draft.activeListingsCount + ' yayındaki ilanda kullanılıyor. ' : ''}Burada yaptığın değişiklik yalnızca bundan sonra oluşturacağın ilanlarda kullanılır. Mevcut ilanların teslimat konumu korunur.</Text></View>}
 
             <Text style={a.label}>Adres adı</Text>
             <TextInput value={draft.label} onChangeText={label => setDraft(current => ({ ...current, label }))} placeholder="Ev, İş yeri, Depo" style={a.input} />
@@ -583,12 +586,6 @@ export default function AddressBookModal({
               <Text style={a.toggleText}>Varsayılan adresim yap</Text>
             </Pressable>
 
-            {mode === 'select' && !draft.id && (
-              <Pressable onPress={() => setPersist(value => !value)} style={a.toggleRow}>
-                <View style={[a.check, persist && a.checkActive]}><Text style={a.checkText}>{persist ? '✓' : ''}</Text></View>
-                <Text style={a.toggleText}>Sonraki ilanlarım için kaydet</Text>
-              </Pressable>
-            )}
 
             <Pressable disabled={saving || geocoding} onPress={() => void save()} style={[a.primary, (saving || geocoding) && a.disabled]}>
               {saving ? <ActivityIndicator color="#FFFFFF" /> : <Text style={a.primaryText}>{actionLabel}</Text>}
@@ -601,13 +598,13 @@ export default function AddressBookModal({
               <ActivityIndicator color={C.green} style={a.loader} />
             ) : addresses.length ? (
               addresses.map(address => (
-                <View key={address.id} style={a.card}>
+                <View key={address.id} style={[a.card, selectedAddressId === address.id && a.cardSelected]}>
                   <Pressable disabled={mode !== 'select'} onPress={() => choose(address)} style={a.cardMain}>
                     <View style={a.pin}><Text style={a.pinText}>⌖</Text></View>
                     <View style={a.cardCopy}>
                       <View style={a.titleRow}>
                         <Text style={a.cardTitle}>{address.label}</Text>
-                        {address.isDefault && <Text style={a.defaultBadge}>VARSAYILAN</Text>}
+                        {address.isDefault && <Text style={a.defaultBadge}>VARSAYILAN</Text>}{selectedAddressId === address.id && <Text style={a.selectedBadge}>SEÇİLİ</Text>}
                       </View>
                       <Text style={a.area}>{address.publicArea}</Text>
                       <Text style={a.address} numberOfLines={2}>{address.fullAddress}</Text>
@@ -651,6 +648,9 @@ const a = StyleSheet.create({
   title: { color: C.ink, fontSize: 22, fontWeight: '900', marginTop: 2 },
   content: { padding: 20 },
   help: { color: C.muted, fontSize: 12, lineHeight: 18, marginBottom: 15 },
+  snapshotInfo: { padding: 14, borderRadius: 15, borderWidth: 1, borderColor: '#C8DDCE', backgroundColor: C.soft, marginBottom: 4 },
+  snapshotInfoTitle: { color: C.green, fontSize: 12, fontWeight: '900' },
+  snapshotInfoText: { color: C.muted, fontSize: 11, lineHeight: 17, marginTop: 4 },
   loader: { marginVertical: 40 },
   locationCard: { borderRadius: 18, borderWidth: 1, borderColor: C.line, backgroundColor: C.white, padding: 14, flexDirection: 'row', alignItems: 'center' },
   locationIcon: { width: 44, height: 44, borderRadius: 14, backgroundColor: C.soft, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
@@ -681,12 +681,14 @@ const a = StyleSheet.create({
   primaryText: { color: C.white, fontSize: 13, fontWeight: '900' },
   disabled: { opacity: .6 },
   card: { backgroundColor: C.white, borderRadius: 18, borderWidth: 1, borderColor: C.line, marginBottom: 12, overflow: 'hidden' },
+  cardSelected: { borderColor: C.green, borderWidth: 2 },
   cardMain: { padding: 14, flexDirection: 'row', alignItems: 'center' },
   pin: { width: 42, height: 42, borderRadius: 14, backgroundColor: C.soft, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
   pinText: { color: C.green, fontSize: 22, fontWeight: '900' },
   cardCopy: { flex: 1 },
   titleRow: { flexDirection: 'row', alignItems: 'center', gap: 7 },
   cardTitle: { color: C.ink, fontSize: 15, fontWeight: '900' },
+  selectedBadge: { color: C.white, fontSize: 10, fontWeight: '900', backgroundColor: C.green, paddingHorizontal: 6, paddingVertical: 4, borderRadius: 7 },
   defaultBadge: { color: C.green, fontSize: 10, fontWeight: '900', backgroundColor: C.soft, paddingHorizontal: 6, paddingVertical: 4, borderRadius: 7 },
   area: { color: C.green, fontSize: 12, fontWeight: '800', marginTop: 3 },
   address: { color: C.muted, fontSize: 12, lineHeight: 18, marginTop: 3 },

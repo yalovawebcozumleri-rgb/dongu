@@ -12,6 +12,7 @@ use App\Models\UserBlock;
 use App\Models\User;
 use App\Models\MarketplaceUsageEvent;
 use App\Models\Province;
+use App\Services\ListingConversationClosureService;
 use App\Services\MarketplaceUsagePolicyService;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
@@ -30,7 +31,7 @@ class ListingController extends Controller
             'radius' => ['nullable', 'numeric', 'min:1', 'max:50'],
             'province' => ['nullable', 'string', 'max:80'],
             'material' => ['nullable', 'string', 'in:pet,glass,aluminum'],
-            'sort' => ['nullable', 'string', 'in:distance,newest,quantity_desc,price_asc,gain_desc'],
+            'sort' => ['nullable', 'string', 'in:distance,newest,quantity_desc,price_asc,gain_desc,favorites'],
             'per_page' => ['nullable', 'integer', 'min:1', 'max:50'],
         ]);
 
@@ -71,6 +72,11 @@ class ListingController extends Controller
             $query->whereHas('materials', fn ($query) => $query->where('type', $filters['material']));
         }
 
+        if (($filters['sort'] ?? null) === 'favorites') {
+            abort_unless($user, 401, 'Favorilerini görmek için giriş yapmalısın.');
+            $query->whereHas('favorites', fn ($query) => $query->where('user_id', $user->id));
+        }
+
         $hasLocation = isset($filters['latitude'], $filters['longitude']);
         if ($hasLocation) {
             $latitude = (float) $filters['latitude'];
@@ -107,6 +113,9 @@ class ListingController extends Controller
                     ->selectRaw('COALESCE(SUM(quantity * unit_price), 0)')
                     ->whereColumn('listing_id', 'listings.id')])
                 ->orderBy('sort_total_price'),
+            'favorites' => $hasLocation
+                ? $query->orderBy('distance_km')
+                : $query->orderByDesc('published_at'),
             'gain_desc' => $query
                 ->addSelect(['sort_gain' => ListingMaterial::query()
                     ->selectRaw('COALESCE(SUM(quantity * (1 - unit_price)), 0)')
@@ -136,13 +145,50 @@ class ListingController extends Controller
 
     public function mine(Request $request): AnonymousResourceCollection
     {
-        $filters = $request->validate(['per_page' => ['nullable', 'integer', 'min:1', 'max:50']]);
-        $listings = $request->user()->listings()
-            ->with(['seller', 'materials', 'photos'])
-            ->latest()
-            ->paginate($filters['per_page'] ?? 20);
+        $filters = $request->validate([
+            'scope' => ['nullable', 'string', 'in:active,history'],
+            'per_page' => ['nullable', 'integer', 'min:1', 'max:50'],
+        ]);
+        $scope = $filters['scope'] ?? 'active';
+        $userId = $request->user()->id;
+        $activeConstraint = fn ($query) => $query
+            ->whereNull('deleted_at')
+            ->where(function ($query) {
+                $query->where('status', Listing::STATUS_RESERVED)
+                    ->orWhere(fn ($query) => $query
+                        ->where('status', Listing::STATUS_ACTIVE)
+                        ->where(fn ($query) => $query->whereNull('expires_at')->orWhere('expires_at', '>', now())));
+            });
+        $historyConstraint = fn ($query) => $query
+            ->where(function ($query) {
+                $query->whereNotNull('deleted_at')
+                    ->orWhereIn('status', [Listing::STATUS_COMPLETED, Listing::STATUS_CANCELLED])
+                    ->orWhere(fn ($query) => $query
+                        ->where('status', Listing::STATUS_ACTIVE)
+                        ->whereNotNull('expires_at')
+                        ->where('expires_at', '<=', now()));
+            });
 
-        return ListingResource::collection($listings);
+        $query = Listing::withTrashed()
+            ->where('user_id', $userId)
+            ->with(['seller', 'materials', 'photos'])
+            ->when($scope === 'active', $activeConstraint)
+            ->when($scope === 'history', $historyConstraint);
+
+        if ($scope === 'active') {
+            $query->orderByRaw('CASE WHEN status = ? THEN 0 ELSE 1 END', [Listing::STATUS_ACTIVE])
+                ->orderByDesc('published_at');
+        } else {
+            $query->latest('updated_at');
+        }
+
+        $listings = $query->paginate($filters['per_page'] ?? 20);
+        $summaryBase = Listing::withTrashed()->where('user_id', $userId);
+
+        return ListingResource::collection($listings)->additional(['summary' => [
+            'active' => (clone $summaryBase)->where($activeConstraint)->count(),
+            'history' => (clone $summaryBase)->where($historyConstraint)->count(),
+        ]]);
     }
 
     public function store(StoreListingRequest $request, MarketplaceUsagePolicyService $usagePolicy): ListingResource
@@ -165,6 +211,7 @@ class ListingController extends Controller
 
                 $listing = $user->listings()->create([
                     'status' => Listing::STATUS_ACTIVE,
+                    'source_address_id' => $savedAddress?->id,
                     'public_area' => $publicArea,
                     'province_id' => $savedAddress?->province_id,
                     'district_id' => $savedAddress?->district_id,
@@ -221,12 +268,18 @@ class ListingController extends Controller
         return new ListingResource($listing->load(['seller', 'materials', 'photos']));
     }
 
-    public function destroy(Request $request, Listing $listing)
+    public function destroy(Request $request, Listing $listing, ListingConversationClosureService $closures)
     {
         abort_unless($listing->user_id === $request->user()->id || $request->user()->isAdmin(), 403);
         abort_if($listing->pickupRequests()->whereIn('status', [PickupRequest::PENDING, PickupRequest::ACCEPTED])->exists(), 422, 'Açık alım talebi veya rezervasyonu bulunan ilan kaldırılamaz.');
         $paths = $listing->photos()->pluck('path')->all();
-        $listing->delete();
+        $closedRequests = DB::transaction(function () use ($listing, $closures) {
+            $closedRequests = $closures->closeOpenWithinTransaction($listing, ListingConversationClosureService::LISTING_REMOVED);
+            $listing->delete();
+
+            return $closedRequests;
+        });
+        $closures->announce($closedRequests, ListingConversationClosureService::LISTING_REMOVED);
         Storage::disk('public')->delete($paths);
 
         return response()->json(['message' => 'İlan kaldırıldı.']);

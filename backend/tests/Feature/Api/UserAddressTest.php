@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Api;
 
+use App\Models\Listing;
 use App\Models\ListingPrivateLocation;
 use App\Models\User;
 use App\Models\UserAddress;
@@ -74,7 +75,7 @@ class UserAddressTest extends TestCase
 
         $response = $this->postJson('/api/v1/listings', [
             'materials' => [
-                ['type' => 'pet', 'quantity' => 1, 'unit_price' => 0.75],
+                ['type' => 'pet', 'quantity' => 20, 'unit_price' => 0.75],
             ],
             'description' => 'Ambalaj temiz ve teslimata hazır durumda.',
             'packaging_condition_confirmed' => true,
@@ -85,16 +86,34 @@ class UserAddressTest extends TestCase
             ->assertJsonPath('data.district', 'Yalova Merkez')
             ->assertJsonMissingPath('data.exact_address');
 
+        $listing = Listing::firstOrFail();
         $privateLocation = ListingPrivateLocation::firstOrFail();
+        $this->assertSame($address->id, $listing->source_address_id);
         $this->assertSame('Rüstempaşa Mahallesi, Depo Sokak No: 5', $privateLocation->address);
         $this->assertSame('Arka kapıdan teslim alın.', $privateLocation->delivery_notes);
 
-        $address->update(['full_address' => 'Daha sonra değiştirilen adres']);
+        $this->getJson('/api/v1/addresses')
+            ->assertOk()
+            ->assertJsonPath('data.0.activeListingsCount', 1);
+
+        $this->patchJson('/api/v1/addresses/'.$address->id, [
+            'label' => 'Yeni Depo',
+            'public_area' => 'Yalova Merkez',
+            'full_address' => 'Daha sonra değiştirilen teslimat adresi',
+            'latitude' => 40.7000000,
+            'longitude' => 29.3000000,
+            'delivery_notes' => 'Yeni tarif.',
+            'is_default' => true,
+        ])->assertOk()->assertJsonPath('data.activeListingsCount', 1);
 
         $this->assertSame(
             'Rüstempaşa Mahallesi, Depo Sokak No: 5',
             $privateLocation->fresh()->address,
         );
+
+        $this->deleteJson('/api/v1/addresses/'.$address->id)->assertOk();
+        $this->assertNull($listing->fresh()->source_address_id);
+        $this->assertSame('Rüstempaşa Mahallesi, Depo Sokak No: 5', $privateLocation->fresh()->address);
     }
 
     private function addressPayload(): array

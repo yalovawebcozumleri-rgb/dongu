@@ -66,13 +66,13 @@ class LeaderboardTest extends TestCase
 
     public function test_monthly_period_and_name_privacy_are_real(): void
     {
-        $private = User::factory()->create(['status' => 'active', 'avatar_path' => 'avatars/private/avatar-512.webp']);
+        $private = User::factory()->create(['status' => 'active', 'avatar_key' => 'avatar_08']);
         CycleScoreSummary::create(['user_id' => $private->id, 'period_key' => now()->format('Y-m'), 'points' => 120, 'deliveries' => 2]);
         Sanctum::actingAs($private, ['mobile']);
         $this->patchJson('/api/v1/leaderboard/privacy', ['nameVisible' => false])->assertOk()->assertJsonPath('data.nameVisible', false);
         $this->getJson('/api/v1/leaderboard?period=monthly')->assertOk()
             ->assertJsonPath('data.0.anonymous', false)
-            ->assertJsonPath('data.0.avatarUrl', url('/storage/avatars/private/avatar-128.webp'));
+            ->assertJsonPath('data.0.avatarUrl', 'preset://avatar_08');
 
         $viewer = User::factory()->create(['status' => 'active']);
         Sanctum::actingAs($viewer, ['mobile']);

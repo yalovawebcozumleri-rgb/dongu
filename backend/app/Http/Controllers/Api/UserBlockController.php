@@ -8,7 +8,6 @@ use App\Models\Listing;
 use App\Models\PickupRequest;
 use App\Models\User;
 use App\Models\UserBlock;
-use App\Services\ProfileAvatarService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -19,13 +18,13 @@ class UserBlockController extends Controller
     {
         $items = UserBlock::query()
             ->where('blocker_id', $request->user()->id)
-            ->with('blocked:id,name,avatar_path')
+            ->with('blocked:id,name,avatar_path,avatar_key')
             ->latest()
             ->get()
             ->map(fn (UserBlock $block) => [
                 'id' => $block->blocked->id,
                 'name' => $block->blocked->name,
-                'avatarUrl' => $block->blocked->avatar_path ? app(ProfileAvatarService::class)->url($block->blocked->avatar_path, true) : null,
+                'avatarUrl' => $block->blocked->avatarReference(),
                 'blockedAt' => $block->created_at?->toIso8601String(),
             ]);
 
@@ -88,7 +87,7 @@ class UserBlockController extends Controller
         return response()->json(['data' => [
             'id' => $user->id,
             'name' => $user->name,
-            'avatarUrl' => $user->avatar_path ? app(ProfileAvatarService::class)->url($user->avatar_path, true) : null,
+            'avatarUrl' => $user->avatarReference(),
             'blocked' => true,
             'blockedAt' => $block->created_at?->toIso8601String(),
         ]], $block->wasRecentlyCreated ? 201 : 200);

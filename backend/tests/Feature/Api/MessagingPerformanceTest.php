@@ -57,10 +57,24 @@ class MessagingPerformanceTest extends TestCase
         $this->assertDatabaseHas(MessageReport::class, ['conversation_message_id' => $incomingId, 'reporter_id' => $seller->id]);
         $this->postJson("/api/v1/pickup-requests/{$conversationId}/read", ['last_message_id' => $incomingId])->assertOk();
         $this->assertNotNull($request->messages()->findOrFail($incomingId)->read_at);
+        $this->postJson("/api/v1/pickup-requests/{$conversationId}/messages", [
+            'message' => 'Sat?c? yan?t?',
+            'client_id' => 'de1fd778-c0a1-4cb0-9797-fd79c10b7d7b',
+        ])->assertCreated();
 
         Sanctum::actingAs($buyer, ['mobile']);
         $this->postJson("/api/v1/pickup-requests/{$conversationId}/cancel")->assertOk();
         $this->deleteJson("/api/v1/pickup-requests/{$conversationId}/conversation")->assertOk();
+        $this->postJson("/api/v1/pickup-requests/{$conversationId}/messages", ['message' => 'Gizlenen sohbeti geri açma'])
+            ->assertUnprocessable();
+        $this->assertDatabaseHas('conversation_user_states', [
+            'pickup_request_id' => $conversationId,
+            'user_id' => $buyer->id,
+        ]);
+        $this->assertSoftDeleted('user_notifications', [
+            'user_id' => $buyer->id,
+            'group_key' => "conversation:{$conversationId}",
+        ]);
         $this->getJson('/api/v1/conversations')->assertOk()->assertJsonCount(0, 'data');
 
         Sanctum::actingAs($seller, ['mobile']);

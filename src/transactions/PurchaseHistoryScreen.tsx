@@ -1,22 +1,23 @@
 import React, { memo, useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, FlatList, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
-import { listingCount, listingPrice, money } from '../../marketplace';
+import { money } from '../../marketplace';
 import { C } from '../../styles';
 import { Conversation } from '../chat/types';
 import UserAvatar from '../profile/UserAvatar';
 import { ApiError, apiRequest } from '../lib/api';
 import { useNotice } from '../notice/NoticeProvider';
+import TransactionDetailScreen from './TransactionDetailScreen';
 
 type Scope = 'active' | 'history';
 type Response = {
-  data: Conversation[];
-  meta: { current_page: number; last_page: number; total: number };
-  summary: { active: number; history: number };
+  data: Conversation[] | null;
+  meta: { current_page: number; last_page: number; total: number } | null;
+  summary: { active: number; history: number } | null;
 };
 
 const statusLabels: Record<Conversation['status'], string> = {
   inquiry: 'Görüşme', pending: 'Satıcı yanıtı bekleniyor', accepted: 'Teslimat için rezerve',
-  rejected: 'Talep reddedildi', cancelled: 'Talep geri çekildi', completed: 'Teslimat tamamlandı',
+  rejected: 'Talep reddedildi', cancelled: 'Talep geri çekildi', completed: 'Teslimat tamamlandı', closed: 'Görüşme kapandı',
 };
 
 export default function PurchaseHistoryScreen({ token, back, openConversation }: {
@@ -26,6 +27,7 @@ export default function PurchaseHistoryScreen({ token, back, openConversation }:
 }) {
   const { showNotice } = useNotice();
   const [scope, setScope] = useState<Scope>('active');
+  const [selected, setSelected] = useState<Conversation | null>(null);
   const [items, setItems] = useState<Conversation[]>([]);
   const [summary, setSummary] = useState({ active: 0, history: 0 });
   const [loading, setLoading] = useState(true);
@@ -44,12 +46,13 @@ export default function PurchaseHistoryScreen({ token, back, openConversation }:
     try {
       const response = await apiRequest<Response>(`/my/pickup-requests?scope=${scope}&page=${nextPage}&per_page=20`, { token });
       if (currentRequest !== requestId.current) return;
+      const receivedItems = Array.isArray(response.data) ? response.data.filter(Boolean) : [];
       setItems(current => mode === 'more'
-        ? [...current, ...response.data.filter(item => !current.some(known => known.id === item.id))]
-        : response.data);
-      setSummary(response.summary);
-      setPage(response.meta.current_page);
-      setLastPage(response.meta.last_page);
+        ? [...current, ...receivedItems.filter(item => !current.some(known => known.id === item.id))]
+        : receivedItems);
+      setSummary({ active: response.summary?.active ?? 0, history: response.summary?.history ?? 0 });
+      setPage(response.meta?.current_page ?? nextPage);
+      setLastPage(response.meta?.last_page ?? nextPage);
       setError('');
     } catch (loadError) {
       if (currentRequest !== requestId.current) return;
@@ -70,6 +73,21 @@ export default function PurchaseHistoryScreen({ token, back, openConversation }:
 
   useEffect(() => { setItems([]); void load(); }, [load]);
 
+  if (selected) {
+    return (
+      <TransactionDetailScreen
+        item={selected}
+        token={token}
+        back={() => setSelected(null)}
+        openMessages={openConversation}
+        onUpdated={updated => {
+          setSelected(updated);
+          setItems(current => current.map(item => item.id === updated.id ? updated : item));
+        }}
+      />
+    );
+  }
+
   return (
     <View style={x.screen}>
       <View style={x.header}>
@@ -83,7 +101,7 @@ export default function PurchaseHistoryScreen({ token, back, openConversation }:
       <FlatList
         data={items}
         keyExtractor={item => String(item.id)}
-        renderItem={({ item }) => <TransactionCard item={item} open={() => openConversation(item)} />}
+        renderItem={({ item }) => <TransactionCard item={item} scope={scope} open={() => scope === 'active' ? openConversation(item) : setSelected(item)} />}
         contentContainerStyle={items.length ? x.list : x.emptyList}
         refreshing={refreshing}
         onRefresh={() => void load(1, 'refresh')}
@@ -110,9 +128,13 @@ function ScopeTab({ label, count, selected, onPress }: { label: string; count: n
   return <Pressable accessibilityRole="tab" accessibilityState={{ selected }} onPress={onPress} style={[x.tab, selected && x.tabActive]}><Text style={[x.tabText, selected && x.tabTextActive]}>{label} ({count})</Text></Pressable>;
 }
 
-const TransactionCard = memo(function TransactionCard({ item, open }: { item: Conversation; open: () => void }) {
+const TransactionCard = memo(function TransactionCard({ item, scope, open }: { item: Conversation; scope: Scope; open: () => void }) {
   const date = new Intl.DateTimeFormat('tr-TR', { day: '2-digit', month: 'short', year: 'numeric' }).format(new Date(item.updatedAt));
   const completed = item.status === 'completed';
+  const listing = item.listing ?? item.listingSummary;
+  const materials = Array.isArray(listing?.items) ? listing.items : [];
+  const itemCount = materials.reduce((total, material) => total + material.count, 0);
+  const totalPrice = materials.reduce((total, material) => total + material.count * material.unitPrice, 0);
   const statusLabel = item.status === 'cancelled' && item.cancelledByRole === 'seller'
     ? 'Satıcı rezervasyonu iptal etti'
     : statusLabels[item.status];
@@ -120,10 +142,12 @@ const TransactionCard = memo(function TransactionCard({ item, open }: { item: Co
     <View style={x.card}>
       <View style={x.cardTop}><View style={[x.status, completed && x.statusCompleted]}><Text style={[x.statusText, completed && x.statusTextCompleted]}>{statusLabel}</Text></View><Text style={x.date}>{date}</Text></View>
       <View style={x.personRow}><UserAvatar uri={item.counterpart.avatarUrl} name={item.counterpart.name} size={42} /><View style={x.personCopy}><Text style={x.personLabel}>SATICI</Text><Text style={x.personName}>{item.counterpart.name}</Text></View>{item.unreadCount > 0 && <View style={x.unread}><Text style={x.unreadText}>{item.unreadCount}</Text></View>}</View>
-      <Text style={x.listingTitle}>{listingCount(item.listing)} adet ambalaj</Text><Text style={x.materials}>{item.listing.items.map(material => `${material.material} ${material.count}`).join(' · ')}</Text>
-      <View style={x.summary}><View><Text style={x.summaryLabel}>İlan bedeli</Text><Text style={x.summaryValue}>{money(listingPrice(item.listing))}</Text></View><View style={x.areaCopy}><Text style={x.summaryLabel}>Bölge</Text><Text style={x.area} numberOfLines={2}>{item.listing.district}</Text></View></View>
+      <Text style={x.listingTitle}>{itemCount} adet ambalaj</Text><Text style={x.materials}>{listing?.items.map(material => `${material.material} ${material.count}`).join(' · ') || 'İlan özeti bulunmuyor'}</Text>
+      <View style={x.summary}><View><Text style={x.summaryLabel}>İlan bedeli</Text><Text style={x.summaryValue}>{money(totalPrice)}</Text></View><View style={x.areaCopy}><Text style={x.summaryLabel}>Bölge</Text><Text style={x.area} numberOfLines={2}>{listing?.district || '—'}</Text></View></View>
       {item.canReview && <View style={x.reviewNotice}><Text style={x.reviewNoticeText}>Değerlendirme için 24 saatlik süren devam ediyor.</Text></View>}
-      <Pressable accessibilityRole="button" accessibilityHint="İlgili sohbeti ve işlem ayrıntılarını açar" onPress={open} style={x.openButton}><Text style={x.openButtonText}>{completed ? item.canReview ? 'Değerlendir' : 'İşlemi incele' : 'Sohbete git'}  ›</Text></Pressable>
+      <Pressable accessibilityRole="button" accessibilityHint={scope === 'active' ? 'İlgili canlı sohbeti açar' : 'İşlem kaydını ve varsa mesaj geçmişini açar'} onPress={open} style={x.openButton}>
+        <Text style={x.openButtonText}>{scope === 'active' ? 'Sohbete git' : item.canReview ? 'Değerlendir' : 'İşlem detayını gör'}  ›</Text>
+      </Pressable>
     </View>
   );
 });

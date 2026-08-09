@@ -30,6 +30,7 @@ import ConversationList from './src/chat/ConversationList';
 import ConversationScreen from './src/chat/ConversationScreen';
 import { subscribeToConversations } from './src/chat/realtime';
 import ProfileMenuScreen from './src/profile/ProfileMenuScreen';
+import UsageLimitsScreen from './src/profile/UsageLimitsScreen';
 import AccountDeletionScreen from './src/profile/AccountDeletionScreen';
 import UserAvatar from './src/profile/UserAvatar';
 import LegalDocumentScreen from './src/legal/LegalDocumentScreen';
@@ -45,9 +46,10 @@ import MonetizedAdSlot from './src/advertising/MonetizedAdSlot';
 import RewardedListingBoostButton from './src/advertising/RewardedListingBoostButton';
 import { usePickupInterstitial } from './src/advertising/usePickupInterstitial';
 import { useAdvertisements } from './src/advertising/useAdvertisements';
-import NotificationCenter from './src/notifications/NotificationCenter';
+import NotificationCenter from './src/notifications/NotificationCenterFinal';
 import { AppNotification } from './src/notifications/types';
 import { observeNotificationResponses } from './src/push/notificationObserver';
+import { configureForegroundNotificationHandling, setForegroundConversation } from './src/push/notifications';
 import LeaderboardScreen from './src/ranking/LeaderboardScreen';
 import SupportersScreen, { SupporterRegion, SupportersDock } from './src/supporters/SupportersScreen';
 import { Conversation, ConversationCollectionResponse, ConversationResponse } from './src/chat/types';
@@ -66,18 +68,20 @@ import {
 } from './marketplace';
 
 type Tab = 'home' | 'ranking' | 'messages' | 'profile';
-type Route = Tab | 'supporters' | 'detail' | 'chat' | 'favorites' | 'my-listings' | 'purchase-history' | 'notifications' | 'public-profile' | 'addresses' | 'profile-edit' | 'notification-preferences' | 'blocked-users' | 'legal-terms' | 'legal-privacy' | 'account-deletion';
+type Route = Tab | 'supporters' | 'detail' | 'chat' | 'favorites' | 'my-listings' | 'purchase-history' | 'notifications' | 'public-profile' | 'addresses' | 'profile-edit' | 'usage-limits' | 'notification-preferences' | 'blocked-users' | 'legal-terms' | 'legal-privacy' | 'account-deletion';
 type FormLine = { enabled: boolean; count: string; price: string };
 type NewListing = Pick<Listing, 'items' | 'note'> & { conditionConfirmed: boolean };
 type AddressCollectionResponse = { data: Omit<DeliveryAddress, 'saved'>[] };
 type ListingCategory = 'Tümü' | Material;
-type ListingSort = 'distance' | 'newest' | 'quantity_desc' | 'price_asc' | 'gain_desc';
+type ListingSort = 'distance' | 'newest' | 'quantity_desc' | 'price_asc' | 'gain_desc' | 'favorites';
 type ListingLoadMode = 'replace' | 'refresh' | 'more';
 type ListingCollectionResponse = {
   data: Listing[];
   meta: { current_page: number; last_page: number; per_page: number; total: number };
 };
 type ListingResponse = { data: Listing };
+type InteractionOption = { allowed: boolean; action: 'start' | 'open' | 'blocked'; reason: string | null; retryAt: string | null; conversationId?: number };
+type InteractionEligibility = { message: InteractionOption; pickup: InteractionOption; account?: { isNewAccount: boolean; newAccountHours: number; newAccountEndsAt: string | null } };
 type FeedItem =
   | { kind: 'listing'; listing: Listing }
   | { kind: 'ad-slot'; slotIndex: number };
@@ -86,6 +90,11 @@ const initialForm: Record<Material, FormLine> = {
   PET: { enabled: false, count: '', price: '' },
   Cam: { enabled: false, count: '', price: '' },
   Alüminyum: { enabled: false, count: '', price: '' },
+};
+const isFiveKurusPrice = (price: number) => {
+  const kurus = price * 100;
+  const roundedKurus = Math.round(kurus);
+  return Math.abs(kurus - roundedKurus) < 0.00001 && roundedKurus % 5 === 0;
 };
 const quickMessages = [
   'İlan hâlâ geçerli mi?',
@@ -104,6 +113,7 @@ const SORT_OPTIONS: { value: ListingSort; label: string }[] = [
   { value: 'quantity_desc', label: 'En yüksek adet' },
   { value: 'price_asc', label: 'En düşük fiyat' },
   { value: 'gain_desc', label: 'En yüksek fark' },
+  { value: 'favorites', label: 'Favorilerim' },
 ];
 
 function Home({
@@ -165,22 +175,27 @@ function Home({
   const advertisementCollection = useAdvertisements('home_feed', token);
   const advertisementPolicy = advertisementCollection?.meta;
   const activeSortLabel = SORT_OPTIONS.find(option => option.value === sort)?.label || 'En yakın';
+  const availableSortOptions = token ? SORT_OPTIONS : SORT_OPTIONS.filter(option => option.value !== 'favorites');
+  const visibleListings = useMemo(
+    () => sort === 'favorites' ? listings.filter(listing => listing.isFavorited) : listings,
+    [listings, sort],
+  );
   const feedData = useMemo<FeedItem[]>(() => {
     const result: FeedItem[] = [];
     let slotCount = 0;
     const firstAfter = advertisementPolicy?.firstAfter || 3;
     const repeatEvery = advertisementPolicy?.repeatEvery || 8;
     const minItems = advertisementPolicy?.minItems || 3;
-    listings.forEach((listing, index) => {
+    visibleListings.forEach((listing, index) => {
       result.push({ kind: 'listing', listing });
       const itemNumber = index + 1;
-      const shouldInsert = listings.length >= minItems
+      const shouldInsert = visibleListings.length >= minItems
         && itemNumber >= firstAfter
         && (itemNumber === firstAfter || (repeatEvery > 0 && (itemNumber - firstAfter) % repeatEvery === 0));
       if (shouldInsert) result.push({ kind: 'ad-slot', slotIndex: ++slotCount });
     });
     return result;
-  }, [advertisementPolicy, listings]);
+  }, [advertisementPolicy, visibleListings]);
 
   const header = (
     <View>
@@ -252,7 +267,7 @@ function Home({
         <View style={s.sortPanel}>
           <Text style={s.sortPanelTitle}>İLANLARI SIRALA</Text>
           <View style={s.sortOptions}>
-            {SORT_OPTIONS.map(option => (
+            {availableSortOptions.map(option => (
               <Pressable
                 key={option.value}
                 onPress={() => {
@@ -287,18 +302,22 @@ function Home({
     <View style={ls.emptyState}>
       <View style={ls.emptyIcon}><Text style={ls.emptyIconText}>⌖</Text></View>
       <Text style={ls.emptyTitle}>
-        {locationReady
-          ? category === 'Tümü' ? 'Bu mesafede henüz ilan yok' : `${category} için ilan bulunamadı`
-          : 'Yakındaki ilanları görmek için konumunu kullan'}
+        {sort === 'favorites'
+          ? 'Favori ilan bulunamadı'
+          : locationReady
+            ? category === 'Tümü' ? 'Bu mesafede henüz ilan yok' : `${category} için ilan bulunamadı`
+            : 'Yakındaki ilanları görmek için konumunu kullan'}
       </Text>
       <Text style={ls.emptyText}>
-        {locationReady
-          ? category === 'Tümü' ? 'İlk gerçek ilan yayınlandığında burada görünecek.' : 'Malzeme filtresini değiştirebilir veya arama mesafesini artırabilirsin.'
-          : 'Konumun yalnızca seçtiğin kilometre içindeki ilanları bulmak için kullanılır.'}
+        {sort === 'favorites'
+          ? 'Kalp simgesine dokunarak beğendiğin aktif ilanları burada toplayabilirsin.'
+          : locationReady
+            ? category === 'Tümü' ? 'İlk gerçek ilan yayınlandığında burada görünecek.' : 'Malzeme filtresini değiştirebilir veya arama mesafesini artırabilirsin.'
+            : 'Konumun yalnızca seçtiğin kilometre içindeki ilanları bulmak için kullanılır.'}
       </Text>
-      <Pressable onPress={locationReady && category !== 'Tümü' ? () => setCategory('Tümü') : openLocation} style={ls.emptyButton}>
+      <Pressable onPress={sort === 'favorites' ? () => setSort('distance') : locationReady && category !== 'Tümü' ? () => setCategory('Tümü') : openLocation} style={ls.emptyButton}>
         <Text style={ls.emptyButtonText}>
-          {locationReady ? category === 'Tümü' ? 'Arama mesafesini değiştir' : 'Tüm malzemeleri göster' : 'Konumumu kullan'}
+          {sort === 'favorites' ? 'Tüm ilanları göster' : locationReady ? category === 'Tümü' ? 'Arama mesafesini değiştir' : 'Tüm malzemeleri göster' : 'Konumumu kullan'}
         </Text>
       </Pressable>
     </View>
@@ -352,8 +371,8 @@ function ListingDetail({
   listing: Listing;
   center: Coordinates | null;
   back: () => void;
-  messageSeller: () => void;
-  requestPickup: () => void;
+  messageSeller: (conversationId?: number) => Promise<void>;
+  requestPickup: (conversationId?: number) => Promise<void>;
   bottomInset: number;
   isOwn: boolean;
   token?: string | null;
@@ -365,16 +384,97 @@ function ListingDetail({
   const [reportDetails, setReportDetails] = useState('');
   const [reportReason, setReportReason] = useState<string | null>(null);
   const [reporting, setReporting] = useState(false);
+  const [interactionEligibility, setInteractionEligibility] = useState<InteractionEligibility | null>(null);
+  const [eligibilityLoading, setEligibilityLoading] = useState(false);
+  const [eligibilityError, setEligibilityError] = useState(false);
+  const [actionBusy, setActionBusy] = useState<'message' | 'pickup' | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    if (!token || isOwn) {
+      setInteractionEligibility(null);
+      setEligibilityLoading(false);
+      setEligibilityError(false);
+      return () => { active = false; };
+    }
+    setEligibilityLoading(true);
+    setEligibilityError(false);
+    void apiRequest<{ data: InteractionEligibility }>(`/listings/${listing.id}/interaction-eligibility`, { token })
+      .then(response => { if (active) setInteractionEligibility(response.data); })
+      .catch(() => { if (active) { setInteractionEligibility(null); setEligibilityError(true); } })
+      .finally(() => { if (active) setEligibilityLoading(false); });
+    return () => { active = false; };
+  }, [isOwn, listing.id, token]);
+  const formatRetryAt = (value: string | null) => value
+    ? new Date(value).toLocaleString('tr-TR', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })
+    : null;
+  const explainUnavailable = (option: InteractionOption | undefined, title: string) => {
+    if (!option || option.allowed) return false;
+    const retryLabel = formatRetryAt(option.retryAt);
+    showNotice({
+      tone: 'warning',
+      title,
+      message: `${option.reason || 'Bu işlem şu anda kullanılamıyor.'}${retryLabel ? ` Yeniden kullanılabileceği zaman: ${retryLabel}.` : ''}`,
+    });
+    return true;
+  };
+  const messageUnavailable = interactionEligibility?.message.action === 'blocked';
+  const hasOpenRequest = listing.requestStatus === 'pending' || listing.requestStatus === 'reserved';
+  const requestRejected = listing.requestStatus === 'rejected';
+  const pickupUnavailable = !hasOpenRequest && (requestRejected || interactionEligibility?.pickup.action === 'blocked');
+  const interactionHint = messageUnavailable
+    ? interactionEligibility?.message.reason
+    : pickupUnavailable
+      ? interactionEligibility?.pickup.reason
+      : null;
+  const quotaBlocked = (option: InteractionOption | undefined) => Boolean(option?.retryAt || option?.reason?.toLocaleLowerCase('tr-TR').match(/hak|limit|sınır/));
+  const messageActionLabel = interactionEligibility?.message.action === 'open'
+    ? 'Sohbeti aç'
+    : messageUnavailable
+      ? quotaBlocked(interactionEligibility?.message) ? 'Mesaj hakkın doldu' : 'Mesaj kullanılamıyor'
+      : 'Satıcıya yaz';
+  const pickupActionLabel = pickupUnavailable
+    ? quotaBlocked(interactionEligibility?.pickup) ? 'Talep hakkın doldu' : 'Talep kullanılamıyor'
+    : listing.requestStatus === 'pending'
+      ? 'Talep gönderildi'
+      : listing.requestStatus === 'reserved'
+        ? 'Senin için rezerve edildi'
+        : listing.requestStatus === 'rejected'
+          ? 'Satıcı talebi reddetti'
+          : 'Almak istiyorum';
   const count = listingCount(listing);
   const total = listingPrice(listing);
   const requestActive = listing.requestStatus === 'pending' || listing.requestStatus === 'reserved' || listing.requestStatus === 'rejected';
-  const requestButtonLabel = listing.requestStatus === 'pending'
-    ? 'Talep gönderildi'
-    : listing.requestStatus === 'reserved'
-      ? 'Senin için rezerve edildi'
-      : listing.requestStatus === 'rejected'
-        ? 'Satıcı talebi reddetti'
-        : 'Almak istiyorum';
+  const handleMessagePress = async () => {
+    if (messageUnavailable) {
+      explainUnavailable(interactionEligibility?.message, 'Mesaj hakkını kullanamıyorsun');
+      return;
+    }
+    if (actionBusy) return;
+    setActionBusy('message');
+    try {
+      await messageSeller(interactionEligibility?.message.conversationId);
+    } finally {
+      setActionBusy(null);
+    }
+  };
+  const handlePickupPress = async () => {
+    if (requestRejected) {
+      showNotice({ tone: 'warning', title: 'Talep yeniden gönderilemez', message: interactionEligibility?.pickup.reason || 'Satıcı bu ilan için alım talebini kabul etmedi.' });
+      return;
+    }
+    if (!hasOpenRequest && pickupUnavailable) {
+      explainUnavailable(interactionEligibility?.pickup, 'Alım talebi oluşturamıyorsun');
+      return;
+    }
+    if (actionBusy) return;
+    setActionBusy('pickup');
+    try {
+      await requestPickup(interactionEligibility?.pickup.conversationId);
+    } finally {
+      setActionBusy(null);
+    }
+  };
   const requestStatusLabel = listing.requestStatus === 'pending'
     ? 'TALEP GÖNDERİLDİ'
     : listing.requestStatus === 'reserved'
@@ -474,18 +574,23 @@ function ListingDetail({
         {!isOwn && <Pressable accessibilityRole="button" onPress={() => token ? setReportOpen(true) : requireAuth?.()} style={ds.reportButton}><Text style={ds.reportText}>İlanı bildir</Text><Text style={ds.reportHelp}>Yanıltıcı, uygunsuz veya şüpheli ilanları güvenlik ekibine gönder</Text></Pressable>}
       </ScrollView>
       <View style={[ds.detailActions, { paddingBottom: Math.max(bottomInset, 12) }]}>
-        {isOwn ? (
-          <View style={[ds.secondaryAction, { flex: 1 }]}><Text style={ds.secondaryActionText}>Bu ilan sana ait · Talepleri Mesajlar bölümünden yönetebilirsin</Text></View>
-        ) : (
-          <>
-            <Pressable onPress={messageSeller} style={ds.secondaryAction}>
-              <Text style={ds.secondaryActionText}>Satıcıya yaz</Text>
-            </Pressable>
-            <Pressable onPress={requestPickup} disabled={requestActive} style={[ds.primaryAction, requestActive && ds.requestSent]}>
-              <Text style={ds.primaryActionText}>{requestButtonLabel}</Text>
-            </Pressable>
-          </>
-        )}
+        <View style={ds.detailActionRow}>
+          {isOwn ? (
+            <View style={[ds.secondaryAction, { flex: 1 }]}><Text style={ds.secondaryActionText}>Bu ilan sana ait · Talepleri Mesajlar bölümünden yönetebilirsin</Text></View>
+          ) : (
+            <>
+              <Pressable onPress={() => void handleMessagePress()} disabled={actionBusy !== null} style={[ds.secondaryAction, messageUnavailable && ds.actionUnavailable]}>
+                {actionBusy === 'message' ? <ActivityIndicator color={C.green} /> : <Text style={[ds.secondaryActionText, messageUnavailable && ds.actionUnavailableText]}>{messageActionLabel}</Text>}
+              </Pressable>
+              <Pressable onPress={() => void handlePickupPress()} disabled={actionBusy !== null} style={[ds.primaryAction, requestActive && ds.requestSent, pickupUnavailable && ds.actionUnavailable]}>
+                {actionBusy === 'pickup' ? <ActivityIndicator color={C.white} /> : <Text style={[ds.primaryActionText, pickupUnavailable && ds.actionUnavailableText]}>{pickupActionLabel}</Text>}
+              </Pressable>
+            </>
+          )}
+        </View>
+        {!isOwn && eligibilityLoading && <Text style={ds.interactionHint}>Kullanım hakların kontrol ediliyor…</Text>}
+        {!isOwn && !eligibilityLoading && eligibilityError && <Text style={ds.interactionHint}>Hak bilgisi alınamadı; işlem sırasında yeniden kontrol edilecek.</Text>}
+        {!isOwn && !eligibilityLoading && interactionHint && <Text style={ds.interactionHint}>{interactionHint}{formatRetryAt(messageUnavailable ? interactionEligibility?.message.retryAt ?? null : interactionEligibility?.pickup.retryAt ?? null) ? ` · ${formatRetryAt(messageUnavailable ? interactionEligibility?.message.retryAt ?? null : interactionEligibility?.pickup.retryAt ?? null)} tarihinde yenilenir` : ''}</Text>}
       </View>
       <Modal transparent visible={reportOpen} animationType="fade" onRequestClose={closeReport}>
         <SafeAreaProvider style={ds.reportProvider}>
@@ -695,8 +800,16 @@ function CreateModal({
       showNotice({ tone: 'warning', title: 'Adetleri kontrol et', message: 'En az bir malzeme türü seç ve seçtiğin her tür için en az 1 adet gir.' });
       return;
     }
-    if (selectedItems.some(item => item.unitPrice <= 0 || item.unitPrice > 1)) {
-      showNotice({ tone: 'warning', title: 'Fiyatları kontrol et', message: 'Her adet fiyatı 0 TL’den büyük ve en fazla 1 TL olmalı.' });
+    if (quantity < 20) {
+      showNotice({ tone: 'warning', title: 'Toplam adet yetersiz', message: 'İlan yayınlayabilmek için toplam ambalaj adedi en az 20 olmalıdır. Şu anda ' + quantity + ' adet girdin.' });
+      return;
+    }
+    if (selectedItems.some(item => item.unitPrice < 0.05 || item.unitPrice > 1)) {
+      showNotice({ tone: 'warning', title: 'Fiyatları kontrol et', message: 'Her adet fiyatı en az 0,05 TL ve en fazla 1,00 TL olmalıdır.' });
+      return;
+    }
+    if (selectedItems.some(item => !isFiveKurusPrice(item.unitPrice))) {
+      showNotice({ tone: 'warning', title: 'Fiyat adımını kontrol et', message: 'Adet fiyatlarını 5 kuruşluk artışlarla belirlemelisin. Örneğin 0,25 TL veya 0,30 TL girebilirsin.' });
       return;
     }
     const cleanNote = note.trim();
@@ -747,10 +860,17 @@ function CreateModal({
               <Text style={s.menuArrow}>›</Text>
             </Pressable>
             <Text style={s.formHint}>Aynı ilana bir veya birden fazla ambalaj türü ekleyebilirsin.</Text>
+            {selectedItems.length > 0 && quantity < 20 && (
+              <View style={s.quantityRuleWarning}>
+                <Text style={s.quantityRuleWarningText}>İlan için toplam en az 20 adet gerekli. Şu anda {quantity} adet girdin.</Text>
+              </View>
+            )}
             {MATERIALS.map(material => {
               const line = lines[material];
               const enteredPrice = Number(line.price.replace(',', '.')) || 0;
-              const priceTooHigh = enteredPrice > 1;
+              const hasEnteredPrice = line.price.trim() !== '';
+              const priceOutOfRange = hasEnteredPrice && (enteredPrice < 0.05 || enteredPrice > 1);
+              const priceStepInvalid = hasEnteredPrice && !priceOutOfRange && !isFiveKurusPrice(enteredPrice);
               const countTooLow = line.count !== '' && Number(line.count) < 1;
               return (
                 <View key={material} style={[s.materialFormCard, line.enabled && s.materialFormCardActive]}>
@@ -774,11 +894,12 @@ function CreateModal({
                       </View>
                       <View style={s.formHalf}>
                         <Text style={s.inputLabel}>Adet fiyatı</Text>
-                        <View style={[s.inputSuffix, priceTooHigh && { borderColor: '#C53D3D', borderWidth: 1.5 }]}>
+                        <View style={[s.inputSuffix, (priceOutOfRange || priceStepInvalid) && s.invalidInput]}>
                           <TextInput value={line.price} onChangeText={value => updateLine(material, { price: value })} keyboardType="decimal-pad" style={s.suffixInput} />
                           <Text style={s.suffix}>TL</Text>
                         </View>
-                        {priceTooHigh && <Text style={{ color: '#C53D3D', fontSize: 11, fontWeight: '700', marginTop: 5 }}>En fazla 1,00 TL girebilirsin.</Text>}
+                        {priceOutOfRange && <Text style={s.validationText}>0,05 TL ile 1,00 TL arasında bir fiyat gir.</Text>}
+                        {priceStepInvalid && <Text style={s.validationText}>5 kuruşluk adımları kullan: 0,25 TL veya 0,30 TL gibi.</Text>}
                       </View>
                     </View>
                   )}
@@ -911,10 +1032,9 @@ function AppContent({ fullName, userEmail = '', userEmailVerified = false, userI
   const insets = useSafeAreaInsets();
   const [route, setRoute] = useState<Route>('home');
   const [chatBackRoute, setChatBackRoute] = useState<'detail' | 'messages' | 'purchase-history' | 'notifications'>('detail');
-  const [detailBackRoute, setDetailBackRoute] = useState<'home' | 'favorites' | 'my-listings' | 'notifications' | 'public-profile'>('home');
+  const [detailBackRoute, setDetailBackRoute] = useState<'home' | 'favorites' | 'my-listings' | 'notifications' | 'public-profile' | 'chat'>('home');
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [publicProfileUserId, setPublicProfileUserId] = useState<number | null>(null);
-  const [publicProfileListing, setPublicProfileListing] = useState<Listing | null>(null);
   const [publicProfileBackRoute, setPublicProfileBackRoute] = useState<'detail' | 'chat' | 'home' | 'profile'>('home');
   const [category, setCategory] = useState<ListingCategory>('Tümü');
   const [sort, setSort] = useState<ListingSort>('distance');
@@ -925,6 +1045,7 @@ function AppContent({ fullName, userEmail = '', userEmailVerified = false, userI
   const [notificationRefreshSignal, setNotificationRefreshSignal] = useState(0);
   const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
   const [activeConversationId, setActiveConversationId] = useState<number | null>(null);
+  const [transientConversation, setTransientConversation] = useState<Conversation | null>(null);
   const [listingLoading, setListingLoading] = useState(false);
   const [listingRefreshing, setListingRefreshing] = useState(false);
   const [listingLoadingMore, setListingLoadingMore] = useState(false);
@@ -1078,6 +1199,9 @@ function AppContent({ fullName, userEmail = '', userEmailVerified = false, userI
         method: nextValue ? 'POST' : 'DELETE',
         token,
       });
+      if (!nextValue && sort === 'favorites') {
+        setListingTotal(current => Math.max(0, current - 1));
+      }
       return true;
     } catch (error) {
       setListingFavorite(listing.id, !nextValue);
@@ -1094,7 +1218,7 @@ function AppContent({ fullName, userEmail = '', userEmailVerified = false, userI
         return next;
       });
     }
-  }, [favoritePendingIds, isGuest, onRequireAuth, setListingFavorite, showNotice, token, userId]);
+  }, [favoritePendingIds, isGuest, onRequireAuth, setListingFavorite, showNotice, sort, token, userId]);
 
   useEffect(() => {
     const appState = AppState.addEventListener('change', state => {
@@ -1122,7 +1246,7 @@ function AppContent({ fullName, userEmail = '', userEmailVerified = false, userI
     }
     try {
       const response = await apiRequest<ConversationCollectionResponse>('/conversations', { token });
-      setConversations(response.data);
+      setConversations(Array.isArray(response.data) ? response.data.filter(Boolean) : []);
     } catch (error) {
       if (!quiet) showNotice({ tone: 'error', title: 'Görüşmeler alınamadı', message: error instanceof ApiError ? error.message : 'Mesaj servisine ulaşılamadı.' });
     }
@@ -1152,6 +1276,15 @@ function AppContent({ fullName, userEmail = '', userEmailVerified = false, userI
   }, [loadConversations, loadNotificationCount, token, userId]);
 
   useEffect(() => {
+    void configureForegroundNotificationHandling();
+  }, []);
+
+  useEffect(() => {
+    setForegroundConversation(route === 'chat' ? activeConversationId : null);
+    return () => setForegroundConversation(null);
+  }, [activeConversationId, route]);
+
+  useEffect(() => {
     if (Platform.OS !== 'android') return;
     const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
       if (route === 'chat') {
@@ -1167,7 +1300,7 @@ function AppContent({ fullName, userEmail = '', userEmailVerified = false, userI
         setRoute(publicProfileBackRoute);
         return true;
       }
-      if (route === 'favorites' || route === 'my-listings' || route === 'purchase-history' || route === 'addresses' || route === 'profile-edit' || route === 'notification-preferences' || route === 'blocked-users' || route === 'legal-terms' || route === 'legal-privacy') {
+      if (route === 'favorites' || route === 'my-listings' || route === 'purchase-history' || route === 'addresses' || route === 'profile-edit' || route === 'usage-limits' || route === 'notification-preferences' || route === 'blocked-users' || route === 'legal-terms' || route === 'legal-privacy') {
         setRoute('profile');
         return true;
       }
@@ -1190,7 +1323,8 @@ function AppContent({ fullName, userEmail = '', userEmailVerified = false, userI
   }, [chatBackRoute, detailBackRoute, loadConversations, publicProfileBackRoute, route]);
 
   const selected = listings.find(item => item.id === selectedId);
-  const activeConversation = conversations.find(item => item.id === activeConversationId) || null;
+  const activeConversation = conversations.find(item => item.id === activeConversationId)
+    || (transientConversation?.id === activeConversationId ? transientConversation : null);
   const unreadMessageCount = conversations.reduce((sum, item) => sum + item.unreadCount, 0);
   const radiusListings = listings.filter(item => String(item.sellerId) !== String(userId || ''));
   const openDetail = (id: number) => {
@@ -1226,8 +1360,9 @@ function AppContent({ fullName, userEmail = '', userEmailVerified = false, userI
     if (conversationId) {
       try {
         const response = await apiRequest<ConversationCollectionResponse>('/conversations', { token });
-        setConversations(response.data);
-        const conversation = response.data.find(item => item.id === conversationId);
+        const nextConversations = Array.isArray(response.data) ? response.data.filter(Boolean) : [];
+        setConversations(nextConversations);
+        const conversation = nextConversations.find(item => item.id === conversationId);
         if (conversation) {
           setActiveConversationId(conversation.id);
           setChatBackRoute('notifications');
@@ -1262,6 +1397,8 @@ function AppContent({ fullName, userEmail = '', userEmailVerified = false, userI
       void openAppNotification({
         id: Number(data.notificationId) || 0,
         type: 'push',
+        category: Number.isFinite(conversationId) && conversationId > 0 ? 'messages' : 'listings',
+        messageCount: 1,
         title: '',
         body: '',
         data: {
@@ -1275,19 +1412,33 @@ function AppContent({ fullName, userEmail = '', userEmailVerified = false, userI
     });
   }, [openAppNotification, token]);
   const openConversation = (conversation: Conversation, from: 'detail' | 'messages') => {
+    setTransientConversation(null);
     setActiveConversationId(conversation.id);
     setChatBackRoute(from);
     setRoute('chat');
   };
   const openPurchaseHistoryConversation = (conversation: Conversation) => {
-    setConversations(current => [conversation, ...current.filter(item => item.id !== conversation.id)]);
+    setTransientConversation(conversation);
     setActiveConversationId(conversation.id);
     setChatBackRoute('purchase-history');
     setRoute('chat');
   };
   const markConversationRead = useCallback((conversationId: number) => {
     setConversations(current => current.map(item => item.id === conversationId ? { ...item, unreadCount: 0 } : item));
+    setTransientConversation(current => current?.id === conversationId ? { ...current, unreadCount: 0 } : current);
   }, []);
+  const hideConversationFromList = useCallback(async (conversation: Conversation): Promise<boolean> => {
+    try {
+      await apiRequest(`/pickup-requests/${conversation.id}/conversation`, { method: 'DELETE', token });
+      setConversations(current => current.filter(item => item.id !== conversation.id));
+      showNotice({ tone: 'success', title: 'Sohbet silindi', message: 'Sohbet yalnızca senin mesaj listenden kaldırıldı.' });
+      return true;
+    } catch (error) {
+      showNotice({ tone: 'error', title: 'Sohbet silinemedi', message: error instanceof ApiError ? error.message : 'Sunucuya ulaşılamadı.' });
+      return false;
+    }
+  }, [showNotice, token]);
+
   const updateConversation = (conversation: Conversation) => {
     const requestStatus = conversation.status === 'accepted'
       ? 'reserved'
@@ -1298,19 +1449,41 @@ function AppContent({ fullName, userEmail = '', userEmailVerified = false, userI
           : conversation.status === 'cancelled'
             ? 'cancelled'
             : 'none';
-    setConversations(current => [conversation, ...current.filter(item => item.id !== conversation.id)]);
-    setListings(current => current.map(item => item.id === conversation.listing.id
-      ? { ...item, status: conversation.listing.status, requestStatus }
-      : item));
+    if (chatBackRoute === 'purchase-history' && transientConversation?.id === conversation.id) {
+      setTransientConversation(conversation);
+    } else {
+      setConversations(current => [conversation, ...current.filter(item => item.id !== conversation.id)]);
+    }
+    if (conversation.listing) {
+      setListings(current => current.map(item => item.id === conversation.listing!.id
+        ? { ...item, status: conversation.listing!.status, requestStatus }
+        : item));
+    }
   };
-  const startConversation = async (listing: Listing, intent: 'message' | 'pickup') => {
+  const startConversation = async (listing: Listing, intent: 'message' | 'pickup', preferredConversationId?: number) => {
     if (isGuest || !token) {
       onRequireAuth?.();
       return;
     }
-    const existing = conversations.find(item => item.listing.id === listing.id && item.role === 'buyer');
+    if (preferredConversationId) {
+      const known = conversations.find(item => item.id === preferredConversationId);
+      if (known) {
+        openConversation(known, 'detail');
+        return;
+      }
+      try {
+        const response = await apiRequest<ConversationResponse>(`/pickup-requests/${preferredConversationId}`, { token });
+        updateConversation(response.data);
+        openConversation(response.data, 'detail');
+        return;
+      } catch (error) {
+        showNotice({ tone: 'error', title: 'Görüşme açılamadı', message: error instanceof ApiError ? error.message : 'Görüşme bilgisine ulaşılamadı.' });
+        return;
+      }
+    }
+    const existing = conversations.find(item => (item.listing?.id ?? item.listingSummary?.id) === listing.id && item.role === 'buyer');
     const hasActivePickup = existing && ['pending', 'accepted', 'rejected', 'completed'].includes(existing.status);
-    if (existing && (intent === 'message' || hasActivePickup)) {
+    if (existing && existing.status !== 'closed' && (intent === 'message' || hasActivePickup)) {
       openConversation(existing, 'detail');
       return;
     }
@@ -1327,10 +1500,9 @@ function AppContent({ fullName, userEmail = '', userEmailVerified = false, userI
       showNotice({ tone: 'error', title: intent === 'pickup' ? 'Alım talebi gönderilemedi' : 'Görüşme başlatılamadı', message: error instanceof ApiError ? error.message : 'Mesaj servisine ulaşılamadı.' });
     }
   };
-  const requestPickup = (listing: Listing) => void startConversation(listing, 'pickup');
+  const requestPickup = (listing: Listing, conversationId?: number) => startConversation(listing, 'pickup', conversationId);
   const openPublicProfile = (listing: Listing) => {
     setPublicProfileUserId(listing.sellerId);
-    setPublicProfileListing(listing);
     setPublicProfileBackRoute('detail');
     setRoute('public-profile');
   };
@@ -1397,7 +1569,10 @@ function AppContent({ fullName, userEmail = '', userEmailVerified = false, userI
       showNotice({ tone: 'warning', title: 'Adres ve oturum gerekli', message: 'İlan yayınlamak için hesabınla giriş yapmalı ve teslimat adresini seçmelisin.' });
       return false;
     }
-
+    if (!selectedAddress.saved || !selectedAddress.id) {
+      showNotice({ tone: 'warning', title: 'Teslimat adresini yeniden seç', message: 'İlanın doğru il ve ilçede gösterilebilmesi için kayıtlı teslimat adreslerinden birini seçmelisin.' });
+      return false;
+    }
 
     try {
       const response = await apiRequest<ListingResponse>('/listings', {
@@ -1411,15 +1586,8 @@ function AppContent({ fullName, userEmail = '', userEmailVerified = false, userI
           })),
           description: listing.note,
           packaging_condition_confirmed: listing.conditionConfirmed,
-          ...(selectedAddress.saved && selectedAddress.id
-            ? { address_id: selectedAddress.id }
-            : {
-                public_area: selectedAddress.publicArea,
-                latitude: selectedAddress.latitude,
-                longitude: selectedAddress.longitude,
-                exact_address: selectedAddress.fullAddress,
-                delivery_notes: selectedAddress.deliveryNotes || null,
-              }),
+          address_id: selectedAddress.id,
+
         },
       });
       setListings(current => [response.data, ...current.filter(item => item.id !== response.data.id)]);
@@ -1438,8 +1606,8 @@ function AppContent({ fullName, userEmail = '', userEmailVerified = false, userI
       ? 'profile'
       : 'home';
   const activeTab: Tab = route === 'detail'
-    ? (['favorites', 'my-listings'].includes(detailBackRoute) ? 'profile' : detailBackRoute === 'public-profile' ? publicProfileTab : 'home')
-    : route === 'favorites' || route === 'my-listings' || route === 'purchase-history' || route === 'addresses' || route === 'profile-edit' || route === 'notification-preferences' || route === 'blocked-users' || route === 'legal-terms' || route === 'legal-privacy' || route === 'account-deletion'
+    ? (['favorites', 'my-listings'].includes(detailBackRoute) ? 'profile' : detailBackRoute === 'public-profile' ? publicProfileTab : detailBackRoute === 'chat' ? 'messages' : 'home')
+    : route === 'favorites' || route === 'my-listings' || route === 'purchase-history' || route === 'addresses' || route === 'profile-edit' || route === 'usage-limits' || route === 'notification-preferences' || route === 'blocked-users' || route === 'legal-terms' || route === 'legal-privacy' || route === 'account-deletion'
       ? 'profile'
       : route === 'notifications'
         ? 'home'
@@ -1493,7 +1661,7 @@ function AppContent({ fullName, userEmail = '', userEmailVerified = false, userI
         )}
         {route === 'ranking' && <LeaderboardScreen token={token} userId={userId} requireAuth={onRequireAuth} />}
         {route === 'supporters' && <SupportersScreen locationLabel={locationLabel} region={supporterRegion} back={() => setRoute('home')} />}
-        {route === 'messages' && <ConversationList conversations={conversations} open={conversation => openConversation(conversation, 'messages')} />}
+        {route === 'messages' && <ConversationList conversations={conversations} open={conversation => openConversation(conversation, 'messages')} onHide={hideConversationFromList} />}
         {route === 'profile' && (token ?
           <ProfileMenuScreen
             fullName={fullName}
@@ -1501,8 +1669,9 @@ function AppContent({ fullName, userEmail = '', userEmailVerified = false, userI
             email={userEmail}
             emailVerified={userEmailVerified}
             token={token}
-            openPublicProfile={() => { setPublicProfileUserId(Number(userId)); setPublicProfileListing(null); setPublicProfileBackRoute('profile'); setRoute('public-profile'); }}
+            openPublicProfile={() => { setPublicProfileUserId(Number(userId)); setPublicProfileBackRoute('profile'); setRoute('public-profile'); }}
             openEditProfile={() => setRoute('profile-edit')}
+            openUsageLimits={() => setRoute('usage-limits')}
             openAddresses={() => setRoute('addresses')}
             openFavorites={() => setRoute('favorites')}
             openMyListings={() => setRoute('my-listings')}
@@ -1516,6 +1685,7 @@ function AppContent({ fullName, userEmail = '', userEmailVerified = false, userI
           />
           : <Profile fullName={fullName} onSignOut={onSignOut} openAddresses={() => onRequireAuth?.()} />
         )}
+        {route === 'usage-limits' && !!token && <UsageLimitsScreen token={token} back={() => setRoute('profile')} />}
         {route === 'profile-edit' && !!token && (
           <ProfileInfoModal visible embedded token={token} initialName={fullName} initialEmail={userEmail} close={() => setRoute('profile')} saveName={onProfileUpdated || (async () => ({ error: 'Profil güncelleme servisi hazır değil.' }))} onAvatarChanged={onProfileRefresh} />
         )}
@@ -1576,8 +1746,8 @@ function AppContent({ fullName, userEmail = '', userEmailVerified = false, userI
             listing={selected}
             center={locationReady ? center : null}
             back={() => setRoute(detailBackRoute)}
-            messageSeller={() => void startConversation(selected, 'message')}
-            requestPickup={() => requestPickup(selected)}
+            messageSeller={conversationId => startConversation(selected, 'message', conversationId)}
+            requestPickup={conversationId => requestPickup(selected, conversationId)}
             isOwn={String(selected.sellerId) === userId}
             bottomInset={0}
             token={token}
@@ -1594,14 +1764,12 @@ function AppContent({ fullName, userEmail = '', userEmailVerified = false, userI
             favoritePendingIds={favoritePendingIds}
             toggleFavorite={toggleFavorite}
             bottomInset={0}
-            contextListing={publicProfileListing}
             back={() => setRoute(publicProfileBackRoute)}
             openListing={openPublicProfileListing}
-            messageSeller={publicProfileListing ? () => void startConversation(publicProfileListing, 'message') : undefined}
             editOwnProfile={() => setRoute('profile-edit')}
             requireAuth={onRequireAuth}
             onBlockChanged={refreshAfterBlockChange}
-            onBlocked={() => { setPublicProfileListing(null); setRoute('home'); }}
+            onBlocked={() => { setRoute('home'); }}
           />
         )}
         {route === 'chat' && !!activeConversation && !!token && (
@@ -1615,8 +1783,15 @@ function AppContent({ fullName, userEmail = '', userEmailVerified = false, userI
             onUpdated={updateConversation}
             onRead={markConversationRead}
             onBlockChanged={refreshAfterBlockChange}
-            onHidden={() => { setConversations(current => current.filter(item => item.id !== activeConversation.id)); setActiveConversationId(null); setRoute(chatBackRoute === 'purchase-history' ? 'purchase-history' : 'messages'); }}
-            openProfile={() => { setPublicProfileUserId(activeConversation.counterpart.id); setPublicProfileListing(null); setPublicProfileBackRoute('chat'); setRoute('public-profile'); }}
+            onHidden={() => { setConversations(current => current.filter(item => item.id !== activeConversation.id)); setTransientConversation(null); setActiveConversationId(null); setRoute(chatBackRoute === 'purchase-history' ? 'purchase-history' : 'messages'); }}
+            openProfile={() => { setPublicProfileUserId(activeConversation.counterpart.id); setPublicProfileBackRoute('chat'); setRoute('public-profile'); }}
+            openListing={() => {
+              if (!activeConversation.listingAvailable || !activeConversation.listing) return;
+              setListings(current => [activeConversation.listing!, ...current.filter(item => item.id !== activeConversation.listing!.id)]);
+              setSelectedId(activeConversation.listing.id);
+              setDetailBackRoute('chat');
+              setRoute('detail');
+            }}
             refreshSignal={realtimeVersion}
             bottomInset={insets.bottom}
           />
@@ -1692,6 +1867,8 @@ function AppContent({ fullName, userEmail = '', userEmailVerified = false, userI
           mode="select"
           initialCoordinates={locationReady ? center : null}
           onClose={() => setAddressMode(null)}
+          selectedAddressId={selectedAddress?.id}
+          onDeleted={addressId => setSelectedAddress(current => current?.id === addressId ? null : current)}
           onSelect={address => setSelectedAddress(address)}
         />
       )}

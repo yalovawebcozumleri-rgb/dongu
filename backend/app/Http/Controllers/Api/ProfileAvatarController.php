@@ -7,37 +7,36 @@ use App\Models\User;
 use App\Services\ProfileAvatarService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class ProfileAvatarController extends Controller
 {
     public function store(Request $request, ProfileAvatarService $avatars): JsonResponse
     {
         $validated = $request->validate([
-            'avatar' => ['required', 'file', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120', 'dimensions:min_width=64,min_height=64,max_width=4096,max_height=4096'],
+            'avatar_key' => ['required', 'string', Rule::in(User::AVATAR_KEYS)],
         ], [
-            'avatar.required' => 'Bir profil fotoğrafı seçmelisin.',
-            'avatar.image' => 'Seçtiğin dosya geçerli bir fotoğraf değil.',
-            'avatar.mimes' => 'Profil fotoğrafı JPEG, PNG veya WebP olmalıdır.',
-            'avatar.max' => 'Profil fotoğrafı en fazla 5 MB olabilir.',
-            'avatar.dimensions' => 'Profil fotoğrafı en az 64×64, en fazla 4096×4096 piksel olmalıdır.',
+            'avatar_key.required' => 'Bir avatar seçmelisin.',
+            'avatar_key.in' => 'Seçtiğin avatar geçerli değil.',
         ]);
 
-        try {
-            $user = $avatars->store($request->user(), $validated['avatar']);
-        } catch (\RuntimeException $error) {
-            throw \Illuminate\Validation\ValidationException::withMessages(['avatar' => $error->getMessage()]);
+        $user = $request->user();
+        if ($user->avatar_path) {
+            $user = $avatars->remove($user);
         }
-        return response()->json(['message' => 'Profil fotoğrafın güncellendi.', 'data' => ['user' => $this->user($user, $avatars)]]);
+
+        $user->forceFill(['avatar_key' => $validated['avatar_key']])->save();
+
+        return response()->json([
+            'message' => 'Avatarın güncellendi.',
+            'data' => ['user' => $this->user($user->fresh())],
+        ]);
     }
 
-    public function destroy(Request $request, ProfileAvatarService $avatars): JsonResponse
+    private function user(User $user): array
     {
-        $user = $avatars->remove($request->user());
-        return response()->json(['message' => 'Profil fotoğrafın kaldırıldı.', 'data' => ['user' => $this->user($user, $avatars)]]);
-    }
+        $avatar = $user->avatarReference();
 
-    private function user(User $user, ProfileAvatarService $avatars): array
-    {
         return [
             'id' => $user->id,
             'name' => $user->name,
@@ -46,8 +45,8 @@ class ProfileAvatarController extends Controller
             'email_verified' => $user->email_verified_at !== null,
             'created_at' => $user->created_at?->toIso8601String(),
             'profile_complete' => $user->profile_completed_at !== null,
-            'avatar_url' => $user->avatar_path ? $avatars->url($user->avatar_path).'?v='.($user->updated_at?->timestamp ?? 0) : null,
-            'avatar_thumbnail_url' => $user->avatar_path ? $avatars->url($user->avatar_path, true).'?v='.($user->updated_at?->timestamp ?? 0) : null,
+            'avatar_url' => $avatar,
+            'avatar_thumbnail_url' => $avatar,
         ];
     }
 }

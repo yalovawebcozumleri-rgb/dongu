@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class UserAddress extends Model
 {
@@ -27,6 +28,11 @@ class UserAddress extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function sourceListings(): HasMany
+    {
+        return $this->hasMany(Listing::class, 'source_address_id');
     }
 
     public function province(): BelongsTo

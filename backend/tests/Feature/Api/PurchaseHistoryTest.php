@@ -25,6 +25,7 @@ class PurchaseHistoryTest extends TestCase
         $this->request($buyer, $seller, PickupRequest::CANCELLED);
         $this->request($buyer, $seller, PickupRequest::INQUIRY);
         $this->request(User::factory()->create(), $seller, PickupRequest::PENDING);
+        $completed->messages()->create(['sender_id' => $buyer->id, 'type' => 'user', 'body' => 'Tamamlanan işlem mesajı']);
         ConversationUserState::create(['pickup_request_id' => $completed->id, 'user_id' => $buyer->id, 'hidden_at' => now()]);
         Sanctum::actingAs($buyer, ['mobile']);
 
@@ -35,7 +36,15 @@ class PurchaseHistoryTest extends TestCase
 
         $this->getJson('/api/v1/my/pickup-requests?scope=history&per_page=10')
             ->assertOk()->assertJsonCount(3, 'data')
-            ->assertJsonFragment(['id' => $completed->id, 'status' => PickupRequest::COMPLETED]);
+            ->assertJsonFragment([
+                'id' => $completed->id,
+                'status' => PickupRequest::COMPLETED,
+                'conversationHidden' => true,
+                'hasMessages' => true,
+                'canOpenConversation' => false,
+                'canSendMessage' => false,
+            ])
+            ->assertJsonPath('data.0.exactAddress', null);
     }
 
     public function test_purchase_history_requires_authentication(): void

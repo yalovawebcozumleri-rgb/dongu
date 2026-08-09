@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Events\NotificationChanged;
+use App\Jobs\SendConversationMessagePush;
 use App\Jobs\SendUserNotificationPush;
 use App\Models\UserNotification;
 
@@ -27,16 +28,48 @@ class UserNotificationService
             'group_key' => $groupKey,
         ];
 
-        $notification = $dedupeKey
-            ? UserNotification::firstOrCreate(['dedupe_key' => $dedupeKey], $attributes)
-            : UserNotification::create($attributes);
+        $updatedExistingMessage = false;
+        if ($type === 'new_message' && $groupKey) {
+            $existingMessage = UserNotification::withTrashed()
+                ->where('user_id', $userId)
+                ->where('type', 'new_message')
+                ->where('group_key', $groupKey)
+                ->latest('id')
+                ->first();
+            if ($existingMessage) {
+                $previousData = $existingMessage->data ?? [];
+                $messageCount = $existingMessage->trashed() || $existingMessage->read_at !== null
+                    ? 1
+                    : max(1, (int) ($previousData['messageCount'] ?? 1)) + 1;
+                $attributes['data'] = array_merge($data, ['messageCount' => $messageCount]);
+                if ($existingMessage->trashed()) {
+                    $existingMessage->restore();
+                }
+                $existingMessage->forceFill($attributes + [
+                    'read_at' => null,
+                    'created_at' => now(),
+                ])->save();
+                $notification = $existingMessage;
+                $updatedExistingMessage = true;
+            }
+        }
+        if (! isset($notification)) {
+            if ($type === 'new_message') {
+                $attributes['data'] = array_merge($data, ['messageCount' => 1]);
+            }
+            $notification = $dedupeKey
+                ? UserNotification::firstOrCreate(['dedupe_key' => $dedupeKey], $attributes)
+                : UserNotification::create($attributes);
+        }
 
-        if ($notification->wasRecentlyCreated) {
+        if ($notification->wasRecentlyCreated || $updatedExistingMessage) {
             $this->broadcastCount($userId);
             if ($allowPush && config('services.expo.push_enabled')) {
-                SendUserNotificationPush::dispatch($notification->id)
-                    ->delay($type === 'message_received' ? now()->addSeconds(8) : now())
-                    ->afterCommit();
+                if ($type === 'new_message') {
+                    SendConversationMessagePush::dispatch($userId, $title, $body, $data)->afterCommit();
+                } else {
+                    SendUserNotificationPush::dispatch($notification->id)->afterCommit();
+                }
             }
         }
 
@@ -49,5 +82,16 @@ class UserNotificationService
             $userId,
             UserNotification::query()->where('user_id', $userId)->whereNull('read_at')->count(),
         );
+    }
+
+    public function clearConversationNotifications(int $userId, int $conversationId): void
+    {
+        UserNotification::query()
+            ->where('user_id', $userId)
+            ->whereIn('type', ['new_message', 'new_conversation'])
+            ->where('group_key', 'conversation:'.$conversationId)
+            ->delete();
+
+        $this->broadcastCount($userId);
     }
 }

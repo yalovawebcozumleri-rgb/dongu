@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Models\LoginCode;
 use App\Models\PushToken;
+use App\Models\UserNotification;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 
@@ -21,6 +22,7 @@ class PruneMessagingData extends Command
             'Eski giriş kodu' => LoginCode::query()->where('expires_at', '<', now()->subDays(config('marketplace.login_code_retention_days'))),
             'Eski parola sıfırlama kaydı' => DB::table('password_reset_tokens')->where('created_at', '<', now()->subDays(1)),
             'Eski yönetim oturumu' => DB::table('sessions')->where('last_activity', '<', now()->subDays(config('marketplace.admin_session_retention_days'))->timestamp),
+            'Eski kullanıcı bildirimi' => UserNotification::query()->where('created_at', '<', now()->subDays(config('marketplace.notification_retention_days'))),
         ];
 
         $total = 0;

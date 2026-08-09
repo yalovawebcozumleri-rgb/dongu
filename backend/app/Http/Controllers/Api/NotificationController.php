@@ -16,11 +16,20 @@ class NotificationController extends Controller
     {
         $filters = $request->validate([
             'unread' => ['nullable', 'boolean'],
+            'category' => ['nullable', 'in:listings,messages,announcements,activity'],
             'per_page' => ['nullable', 'integer', 'min:1', 'max:50'],
         ]);
-        $query = $request->user()->userNotifications()->latest('id');
+        $query = $request->user()->userNotifications()->latest('created_at')->latest('id');
         if ($request->boolean('unread')) $query->whereNull('read_at');
+        if ($category = $filters['category'] ?? null) {
+            if ($category === 'activity') {
+                $query->whereNotIn('type', ['admin_system', 'admin_marketing']);
+            } else {
+                $query->inCategory($category);
+            }
+        }
         $page = $query->paginate($filters['per_page'] ?? 20);
+        $categoryUnreadCounts = $this->categoryUnreadCounts($request);
 
         return response()->json([
             'data' => UserNotificationResource::collection($page->getCollection())->resolve($request),
@@ -29,6 +38,7 @@ class NotificationController extends Controller
                 'last_page' => $page->lastPage(),
                 'total' => $page->total(),
                 'unreadCount' => $request->user()->userNotifications()->whereNull('read_at')->count(),
+                'categoryUnreadCounts' => $categoryUnreadCounts,
             ],
         ]);
     }
@@ -55,6 +65,39 @@ class NotificationController extends Controller
         $service->broadcastCount($request->user()->id);
 
         return response()->json(['data' => ['read' => true, 'unreadCount' => 0]]);
+    }
+
+    public function destroy(Request $request, UserNotification $notification, UserNotificationService $service): JsonResponse
+    {
+        abort_unless($notification->user_id === $request->user()->id, 404);
+        abort_if(in_array($notification->type, ['admin_system', 'admin_marketing'], true), 422, 'Duyurular kullanıcı tarafından silinemez.');
+
+        $notification->delete();
+        $service->broadcastCount($request->user()->id);
+
+        return response()->json(['data' => ['deleted' => true]]);
+    }
+    public function destroyAny(Request $request, UserNotification $notification, UserNotificationService $service): JsonResponse
+    {
+        abort_unless($notification->user_id === $request->user()->id, 404);
+        $notification->delete();
+        $service->broadcastCount($request->user()->id);
+
+        return response()->json(['data' => ['deleted' => true]]);
+    }
+
+    public function restore(Request $request, int $notification, UserNotificationService $service): JsonResponse
+    {
+        $record = UserNotification::withTrashed()->findOrFail($notification);
+        abort_unless($record->user_id === $request->user()->id, 404);
+        if ($record->trashed()) {
+            $record->restore();
+        }
+        $service->broadcastCount($request->user()->id);
+
+        return response()->json([
+            'data' => (new UserNotificationResource($record->fresh()))->resolve($request),
+        ]);
     }
 
     public function preferences(Request $request): JsonResponse
@@ -90,6 +133,18 @@ class NotificationController extends Controller
         ]);
 
         return response()->json(['data' => $this->preferenceData($preferences)]);
+    }
+
+    private function categoryUnreadCounts(Request $request): array
+    {
+        $query = $request->user()->userNotifications()->whereNull('read_at');
+
+        return [
+            'all' => (clone $query)->count(),
+            UserNotification::CATEGORY_LISTINGS => (clone $query)->inCategory(UserNotification::CATEGORY_LISTINGS)->count(),
+            UserNotification::CATEGORY_MESSAGES => (clone $query)->inCategory(UserNotification::CATEGORY_MESSAGES)->count(),
+            UserNotification::CATEGORY_ANNOUNCEMENTS => (clone $query)->inCategory(UserNotification::CATEGORY_ANNOUNCEMENTS)->count(),
+        ];
     }
 
     private function preferenceData(NotificationPreference $preferences): array

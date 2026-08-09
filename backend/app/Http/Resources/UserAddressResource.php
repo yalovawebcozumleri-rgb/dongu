@@ -23,6 +23,7 @@ class UserAddressResource extends JsonResource
             'longitude' => (float) $this->longitude,
             'deliveryNotes' => $this->delivery_notes,
             'isDefault' => $this->is_default,
+            'activeListingsCount' => (int) ($this->active_listings_count ?? 0),
         ];
     }
 }

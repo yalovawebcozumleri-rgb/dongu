@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreUserAddressRequest;
 use App\Http\Resources\UserAddressResource;
 use App\Models\District;
+use App\Models\Listing;
 use App\Models\UserAddress;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
@@ -16,7 +17,7 @@ class UserAddressController extends Controller
     public function index(Request $request): AnonymousResourceCollection
     {
         return UserAddressResource::collection(
-            $request->user()->addresses()->with(['province:id,name', 'district:id,province_id,name'])->orderByDesc('is_default')->latest()->get()
+            $request->user()->addresses()->with(['province:id,name', 'district:id,province_id,name'])->withCount($this->activeListingCount())->orderByDesc('is_default')->latest()->get()
         );
     }
 
@@ -39,7 +40,7 @@ class UserAddressController extends Controller
             ]);
         });
 
-        return new UserAddressResource($address->load(['province:id,name', 'district:id,province_id,name']));
+        return new UserAddressResource($address->load(['province:id,name', 'district:id,province_id,name'])->loadCount($this->activeListingCount()));
     }
 
     public function update(StoreUserAddressRequest $request, UserAddress $address): UserAddressResource
@@ -57,7 +58,7 @@ class UserAddressController extends Controller
             $address->update($validated);
         });
 
-        return new UserAddressResource($address->refresh()->load(['province:id,name', 'district:id,province_id,name']));
+        return new UserAddressResource($address->refresh()->load(['province:id,name', 'district:id,province_id,name'])->loadCount($this->activeListingCount()));
     }
 
     public function destroy(Request $request, UserAddress $address)
@@ -74,6 +75,13 @@ class UserAddressController extends Controller
         });
 
         return response()->json(['message' => 'Adres silindi.']);
+    }
+
+    private function activeListingCount(): array
+    {
+        return ['sourceListings as active_listings_count' => fn ($query) => $query
+            ->whereIn('status', [Listing::STATUS_ACTIVE, Listing::STATUS_RESERVED])
+            ->where(fn ($active) => $active->whereNull('expires_at')->orWhere('expires_at', '>', now()))];
     }
 
     private function publicArea(array $validated): string

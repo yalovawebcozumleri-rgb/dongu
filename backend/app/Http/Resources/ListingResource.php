@@ -4,7 +4,6 @@ namespace App\Http\Resources;
 
 use App\Models\ListingMaterial;
 use App\Models\PickupRequest;
-use App\Services\ProfileAvatarService;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -28,6 +27,14 @@ class ListingResource extends JsonResource
             PickupRequest::CANCELLED => 'cancelled',
             default => 'none',
         };
+        $ownerState = $this->trashed()
+            ? 'removed'
+            : match ($this->status) {
+                \App\Models\Listing::STATUS_RESERVED => 'reserved',
+                \App\Models\Listing::STATUS_COMPLETED => 'completed',
+                \App\Models\Listing::STATUS_CANCELLED => 'removed',
+                default => $this->expires_at?->isPast() ? 'expired' : 'published',
+            };
 
         return [
             'id' => $this->id,
@@ -43,7 +50,7 @@ class ListingResource extends JsonResource
             'provinceId' => $this->province_id,
             'seller' => $this->seller->name,
             'sellerId' => $this->seller->id,
-            'sellerAvatarUrl' => $this->seller->avatar_path ? app(ProfileAvatarService::class)->url($this->seller->avatar_path, true).'?v='.($this->seller->updated_at?->timestamp ?? 0) : null,
+            'sellerAvatarUrl' => $this->seller->avatarReference(),
             'sellerTransactions' => $this->seller->completed_transactions,
             'rating' => $this->seller->rating !== null ? (float) $this->seller->rating : null,
             'ratingCount' => (int) $this->seller->rating_count,
@@ -51,6 +58,7 @@ class ListingResource extends JsonResource
             'time' => ($this->published_at ?? $this->created_at)?->locale('tr')->diffForHumans(),
             'note' => $this->description,
             'status' => $this->status,
+            'ownerState' => $ownerState,
             'requestStatus' => $requestStatus,
             'distanceKm' => isset($this->distance_km) ? round((float) $this->distance_km, 2) : null,
             'photos' => $this->photos->map(fn ($photo) => asset('storage/'.$photo->path))->values(),

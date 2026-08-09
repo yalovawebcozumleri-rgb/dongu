@@ -11,4 +11,5 @@ return [
     'stale_push_token_days' => (int) env('STALE_PUSH_TOKEN_DAYS', 120),
     'login_code_retention_days' => (int) env('LOGIN_CODE_RETENTION_DAYS', 7),
     'admin_session_retention_days' => (int) env('ADMIN_SESSION_RETENTION_DAYS', 30),
+    'notification_retention_days' => (int) env('NOTIFICATION_RETENTION_DAYS', 30),
 ];

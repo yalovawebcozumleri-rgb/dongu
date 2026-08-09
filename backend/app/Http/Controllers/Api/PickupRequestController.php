@@ -16,6 +16,7 @@ use App\Models\Review;
 use App\Models\User;
 use App\Models\UserBlock;
 use App\Services\CyclePointService;
+use App\Services\ListingConversationClosureService;
 use App\Services\MarketplaceUsagePolicyService;
 use App\Services\ModerationSanctionService;
 use App\Services\UserNotificationService;
@@ -38,8 +39,8 @@ class PickupRequestController extends Controller
                 ->where('user_id', $user->id)
                 ->whereNotNull('hidden_at'))
             ->with([
-                'buyer:id,name,rating,rating_count,avatar_path,updated_at',
-                'seller:id,name,rating,rating_count,avatar_path,updated_at',
+                'buyer:id,name,rating,rating_count,avatar_path,avatar_key,updated_at',
+                'seller:id,name,rating,rating_count,avatar_path,avatar_key,updated_at',
                 'listing.seller',
                 'listing.materials',
                 'listing.photos',
@@ -68,7 +69,7 @@ class PickupRequestController extends Controller
         ]);
         $user = $request->user();
         $activeStatuses = [PickupRequest::PENDING, PickupRequest::ACCEPTED];
-        $historyStatuses = [PickupRequest::REJECTED, PickupRequest::CANCELLED, PickupRequest::COMPLETED];
+        $historyStatuses = [PickupRequest::REJECTED, PickupRequest::CANCELLED, PickupRequest::COMPLETED, PickupRequest::CLOSED];
         $scope = $filters['scope'] ?? 'active';
 
         $query = PickupRequest::query()
@@ -77,13 +78,17 @@ class PickupRequestController extends Controller
             ->when($scope === 'active', fn ($query) => $query->whereIn('status', $activeStatuses))
             ->when($scope === 'history', fn ($query) => $query->whereIn('status', $historyStatuses))
             ->with([
-                'buyer:id,name,rating,rating_count,avatar_path,updated_at',
-                'seller:id,name,rating,rating_count,avatar_path,updated_at',
+                'buyer:id,name,rating,rating_count,avatar_path,avatar_key,updated_at',
+                'seller:id,name,rating,rating_count,avatar_path,avatar_key,updated_at',
                 'listing.seller', 'listing.materials', 'listing.photos', 'listing.privateLocation',
                 'latestMessage', 'reviews:id,pickup_request_id,reviewer_id',
+                'userStates' => fn ($query) => $query->where('user_id', $user->id),
             ])
-            ->withCount(['messages as unread_count' => fn ($query) => $query
-                ->whereNull('read_at')->whereNotNull('sender_id')->where('sender_id', '!=', $user->id)])
+            ->withCount([
+                'messages as unread_count' => fn ($query) => $query
+                    ->whereNull('read_at')->whereNotNull('sender_id')->where('sender_id', '!=', $user->id),
+                'messages as user_messages_count' => fn ($query) => $query->where('type', 'user'),
+            ])
             ->latest('updated_at');
 
         $page = $query->paginate($filters['per_page'] ?? 20);
@@ -95,6 +100,10 @@ class PickupRequestController extends Controller
         ]]);
     }
 
+    public function eligibility(Request $request, Listing $listing, MarketplaceUsagePolicyService $usagePolicy): JsonResponse
+    {
+        return response()->json(['data' => [...$usagePolicy->interactionEligibility($request->user(), $listing), 'account' => $usagePolicy->accountPeriod($request->user())]]);
+    }
     public function store(Request $request, Listing $listing, MarketplaceUsagePolicyService $usagePolicy, ModerationSanctionService $sanctions): PickupRequestResource
     {
         $validated = $request->validate([
@@ -111,9 +120,10 @@ class PickupRequestController extends Controller
         abort_unless($listing->status === Listing::STATUS_ACTIVE && (! $listing->expires_at || $listing->expires_at->isFuture()), 422, 'Bu ilan artık alım talebi kabul etmiyor.');
 
         $notificationKind = null;
-        $pickupRequest = DB::transaction(function () use ($buyer, $listing, $validated, &$notificationKind, $usagePolicy) {
+        $initialMessageId = null;
+        $pickupRequest = DB::transaction(function () use ($buyer, $listing, $validated, &$notificationKind, &$initialMessageId, $usagePolicy) {
             $lockedBuyer = User::query()->lockForUpdate()->findOrFail($buyer->id);
-            $lockedListing = Listing::query()->with('seller')->lockForUpdate()->findOrFail($listing->id);
+            $lockedListing = Listing::query()->with(['seller', 'materials'])->lockForUpdate()->findOrFail($listing->id);
             abort_unless($lockedListing->status === Listing::STATUS_ACTIVE && (! $lockedListing->expires_at || $lockedListing->expires_at->isFuture()), 422, 'Bu ilan artık alım talebi kabul etmiyor.');
             $pickupRequest = PickupRequest::lockForUpdate()
                 ->firstOrNew(['listing_id' => $lockedListing->id, 'buyer_id' => $lockedBuyer->id]);
@@ -121,7 +131,7 @@ class PickupRequestController extends Controller
             if ($pickupRequest->exists && $pickupRequest->status === PickupRequest::REJECTED) {
                 abort(422, 'Satıcı bu ilan için alım talebini reddetti. Aynı ilan için yeniden talep gönderemezsin.');
             }
-            if ($pickupRequest->exists && in_array($pickupRequest->status, [PickupRequest::ACCEPTED, PickupRequest::COMPLETED], true)) {
+            if ($pickupRequest->exists && in_array($pickupRequest->status, [PickupRequest::PENDING, PickupRequest::ACCEPTED, PickupRequest::COMPLETED], true)) {
                 return $pickupRequest;
             }
 
@@ -131,8 +141,10 @@ class PickupRequestController extends Controller
             $canCreatePickupEvent = $wasNew || in_array($previousStatus, [
                 PickupRequest::INQUIRY,
                 PickupRequest::CANCELLED,
+                PickupRequest::CLOSED,
             ], true);
-            if ($wasNew) {
+            $startsFresh = $wasNew || in_array($previousStatus, [PickupRequest::CLOSED, PickupRequest::CANCELLED], true);
+            if ($startsFresh) {
                 $usagePolicy->assertContactAllowed($lockedBuyer, $lockedListing->seller, $validated['intent'] === 'message');
                 $usagePolicy->record($lockedBuyer, MarketplaceUsageEvent::CONTACT_STARTED, $lockedListing->seller, $lockedListing);
                 if ($validated['intent'] === 'message') $usagePolicy->record($lockedBuyer, MarketplaceUsageEvent::MESSAGE_CONVERSATION_STARTED, $lockedListing->seller, $lockedListing);
@@ -144,6 +156,9 @@ class PickupRequestController extends Controller
             $pickupRequest->fill([
                 'seller_id' => $lockedListing->user_id,
                 'status' => $nextStatus,
+                'listing_snapshot' => $this->listingSnapshot($lockedListing),
+                'closed_reason' => null,
+                'closed_at' => null,
                 'delivery_code' => null,
                 'accepted_at' => null,
                 'completed_at' => null,
@@ -154,22 +169,20 @@ class PickupRequestController extends Controller
 
             $message = trim((string) ($validated['message'] ?? ''));
             if ($message !== '') {
-                $usagePolicy->assertMessageAllowed($lockedBuyer, $pickupRequest);
-                $pickupRequest->messages()->create(['sender_id' => $buyer->id, 'type' => 'user', 'body' => $message]);
+                $usagePolicy->assertMessageAllowed($lockedBuyer, $pickupRequest, $startsFresh);
+                $initialMessageId = $pickupRequest->messages()->create(['sender_id' => $buyer->id, 'type' => 'user', 'body' => $message])->id;
             } elseif ($validated['intent'] === 'pickup' && $canCreatePickupEvent) {
-                $usagePolicy->assertMessageAllowed($lockedBuyer, $pickupRequest);
-                $pickupRequest->messages()->create([
+                $usagePolicy->assertMessageAllowed($lockedBuyer, $pickupRequest, $startsFresh);
+                $initialMessageId = $pickupRequest->messages()->create([
                     'sender_id' => $buyer->id,
                     'type' => 'user',
                     'body' => 'Bu ilanı almak istiyorum. Uygun olduğunda talebimi onaylayabilir misin?',
-                ]);
+                ])->id;
             }
 
             if ($validated['intent'] === 'pickup' && $canCreatePickupEvent) {
                 $this->systemMessage($pickupRequest, 'Alım talebi satıcıya gönderildi.');
                 $notificationKind = 'pickup_request';
-            } elseif ($wasNew && $validated['intent'] === 'message') {
-                $notificationKind = 'new_conversation';
             }
 
             return $pickupRequest->touch() ? $pickupRequest : $pickupRequest;
@@ -189,6 +202,17 @@ class PickupRequestController extends Controller
             );
         }
 
+        if ($initialMessageId && $notificationKind !== 'pickup_request') {
+            $this->notify(
+                $pickupRequest->seller_id,
+                'new_message',
+                'Yeni mesaj',
+                $buyer->name.': '.Str::limit((string) ($validated['message'] ?? ''), 90),
+                $pickupRequest,
+                'message:'.$initialMessageId,
+                'conversation:'.$pickupRequest->id,
+            );
+        }
         $dailyOrdinal = $notificationKind === 'pickup_request'
             ? MarketplaceUsageEvent::where('user_id', $buyer->id)
                 ->where('event_type', MarketplaceUsageEvent::PICKUP_REQUESTED)
@@ -204,6 +228,12 @@ class PickupRequestController extends Controller
         ]);
     }
 
+    public function show(Request $request, PickupRequest $pickupRequest): PickupRequestResource
+    {
+        $this->ensureParticipant($request, $pickupRequest);
+
+        return new PickupRequestResource($this->loadConversation($pickupRequest, $request->user()));
+    }
     public function messages(Request $request, PickupRequest $pickupRequest): JsonResponse
     {
         $this->ensureParticipant($request, $pickupRequest);
@@ -254,6 +284,8 @@ class PickupRequestController extends Controller
         $this->ensureNotBlocked($pickupRequest);
         abort_if($pickupRequest->status === PickupRequest::COMPLETED, 422, 'Teslimat tamamlandığı için bu görüşme yeni mesajlara kapatıldı.');
         abort_if($pickupRequest->status === PickupRequest::REJECTED, 422, 'Satıcı talebi reddettiği için bu görüşme yeni mesajlara kapatıldı.');
+        abort_if($pickupRequest->status === PickupRequest::CANCELLED, 422, 'İptal edilen işlem için bu görüşme kapatıldı. İlan hâlâ yayındaysa ilan üzerinden yeni bir görüşme başlatabilirsin.');
+        abort_if($pickupRequest->status === PickupRequest::CLOSED, 422, 'İlan artık alım taleplerine açık olmadığı için bu görüşme yeni mesajlara kapatıldı.');
 
         $validated = $request->validate([
             'message' => ['required', 'string', 'max:1000'],
@@ -274,7 +306,6 @@ class PickupRequestController extends Controller
         abort_unless($message->pickup_request_id === $pickupRequest->id, 422, 'Mesaj kimliği başka bir görüşmede kullanılmış.');
         if ($message->wasRecentlyCreated) {
             $pickupRequest->touch();
-            ConversationUserState::query()->where('pickup_request_id', $pickupRequest->id)->update(['hidden_at' => null]);
             $recipientId = $pickupRequest->buyer_id === $request->user()->id ? $pickupRequest->seller_id : $pickupRequest->buyer_id;
             ConversationChanged::dispatch($recipientId, $pickupRequest->id, 'message');
             $this->notify(
@@ -291,16 +322,19 @@ class PickupRequestController extends Controller
         return new ConversationMessageResource($message);
     }
 
-    public function hide(Request $request, PickupRequest $pickupRequest): JsonResponse
+    public function hide(Request $request, PickupRequest $pickupRequest, UserNotificationService $notifications): JsonResponse
     {
         $this->ensureParticipant($request, $pickupRequest);
         $isBlocked = UserBlock::existsBetween($pickupRequest->buyer_id, $pickupRequest->seller_id);
-        abort_unless($isBlocked || in_array($pickupRequest->status, [PickupRequest::REJECTED, PickupRequest::CANCELLED, PickupRequest::COMPLETED], true), 422,
+        $isEmptyInquiry = $pickupRequest->status === PickupRequest::INQUIRY
+            && ! $pickupRequest->messages()->where('type', 'user')->exists();
+        abort_unless($isBlocked || $isEmptyInquiry || in_array($pickupRequest->status, [PickupRequest::REJECTED, PickupRequest::CANCELLED, PickupRequest::COMPLETED, PickupRequest::CLOSED], true), 422,
             'Aktif görüşme listeden kaldırılamaz. Önce talep veya rezervasyon sonuçlanmalıdır.');
         ConversationUserState::updateOrCreate([
             'pickup_request_id' => $pickupRequest->id,
             'user_id' => $request->user()->id,
         ], ['hidden_at' => now()]);
+        $notifications->clearConversationNotifications($request->user()->id, $pickupRequest->id);
 
         return response()->json(['data' => ['hidden' => true]]);
     }
@@ -325,12 +359,12 @@ class PickupRequestController extends Controller
         return response()->json(['data' => ['reported' => true]], $report->wasRecentlyCreated ? 201 : 200);
     }
 
-    public function accept(Request $request, PickupRequest $pickupRequest): PickupRequestResource
+    public function accept(Request $request, PickupRequest $pickupRequest, ListingConversationClosureService $closures): PickupRequestResource
     {
         abort_unless($pickupRequest->seller_id === $request->user()->id, 403);
         abort_unless($pickupRequest->status === PickupRequest::PENDING, 422, 'Yalnızca bekleyen bir talep kabul edilebilir.');
 
-        DB::transaction(function () use ($pickupRequest) {
+        $closedRequests = DB::transaction(function () use ($pickupRequest, $closures) {
             $listing = Listing::lockForUpdate()->findOrFail($pickupRequest->listing_id);
             abort_unless($listing->status === Listing::STATUS_ACTIVE, 422, 'Bu ilan artık müsait değil.');
 
@@ -342,12 +376,12 @@ class PickupRequestController extends Controller
                 'cancelled_at' => null,
             ]);
             $listing->update(['status' => Listing::STATUS_RESERVED]);
-            PickupRequest::where('listing_id', $listing->id)
-                ->whereKeyNot($pickupRequest->id)
-                ->whereIn('status', [PickupRequest::INQUIRY, PickupRequest::PENDING])
-                ->update(['status' => PickupRequest::REJECTED]);
+            $closedRequests = $closures->closeOpenWithinTransaction($listing, ListingConversationClosureService::LISTING_UNAVAILABLE, $pickupRequest->id);
             $this->systemMessage($pickupRequest, 'Satıcı talebi kabul etti. İlan senin için rezerve edildi.');
+
+            return $closedRequests;
         });
+        $closures->announce($closedRequests, ListingConversationClosureService::LISTING_UNAVAILABLE);
 
         $this->broadcastConversationChange($pickupRequest, 'status');
         $this->notify(
@@ -547,6 +581,23 @@ class PickupRequestController extends Controller
         return $pickupRequest->messages()->create(['sender_id' => null, 'type' => 'system', 'body' => $body]);
     }
 
+    private function listingSnapshot(Listing $listing): array
+    {
+        $labels = ['pet' => 'PET', 'glass' => 'Cam', 'aluminum' => 'Alüminyum'];
+
+        return [
+            'id' => $listing->id,
+            'sellerId' => $listing->user_id,
+            'seller' => $listing->seller->name,
+            'district' => $listing->public_area,
+            'items' => $listing->materials->map(fn ($material) => [
+                'material' => $labels[$material->type] ?? $material->type,
+                'type' => $material->type,
+                'count' => (int) $material->quantity,
+                'unitPrice' => (float) $material->unit_price,
+            ])->values()->all(),
+        ];
+    }
     private function hydrateBlockingState($items, User $user): void
     {
         $counterpartIds = $items->map(fn (PickupRequest $item) => $item->buyer_id === $user->id ? $item->seller_id : $item->buyer_id)->unique();
@@ -564,18 +615,22 @@ class PickupRequestController extends Controller
     private function loadConversation(PickupRequest $pickupRequest, User $user): PickupRequest
     {
         $loaded = $pickupRequest->load([
-            'buyer:id,name,rating,rating_count,avatar_path,updated_at',
-            'seller:id,name,rating,rating_count,avatar_path,updated_at',
+            'buyer:id,name,rating,rating_count,avatar_path,avatar_key,updated_at',
+            'seller:id,name,rating,rating_count,avatar_path,avatar_key,updated_at',
             'listing.seller',
             'listing.materials',
             'listing.photos',
             'listing.privateLocation',
             'latestMessage',
             'reviews:id,pickup_request_id,reviewer_id',
-        ])->loadCount(['messages as unread_count' => fn ($query) => $query
-            ->whereNull('read_at')
-            ->whereNotNull('sender_id')
-            ->where('sender_id', '!=', $user->id)]);
+            'userStates' => fn ($query) => $query->where('user_id', $user->id),
+        ])->loadCount([
+            'messages as unread_count' => fn ($query) => $query
+                ->whereNull('read_at')
+                ->whereNotNull('sender_id')
+                ->where('sender_id', '!=', $user->id),
+            'messages as user_messages_count' => fn ($query) => $query->where('type', 'user'),
+        ]);
         $this->hydrateBlockingState(collect([$loaded]), $user);
 
         return $loaded;

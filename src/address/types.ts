@@ -12,5 +12,6 @@ export type DeliveryAddress = {
   longitude: number;
   deliveryNotes?: string | null;
   isDefault?: boolean;
+  activeListingsCount?: number;
   saved: boolean;
 };

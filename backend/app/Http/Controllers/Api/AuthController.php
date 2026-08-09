@@ -8,7 +8,6 @@ use App\Models\LoginCode;
 use App\Models\User;
 use App\Services\ModerationSanctionService;
 use App\Services\AccountDeletionService;
-use App\Services\ProfileAvatarService;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -239,8 +238,8 @@ class AuthController extends Controller
             'phone' => $user->phone,
             'email_verified' => $user->email_verified_at !== null,
             'created_at' => $user->created_at?->toIso8601String(),
-            'avatar_url' => $user->avatar_path ? app(ProfileAvatarService::class)->url($user->avatar_path).'?v='.($user->updated_at?->timestamp ?? 0) : null,
-            'avatar_thumbnail_url' => $user->avatar_path ? app(ProfileAvatarService::class)->url($user->avatar_path, true).'?v='.($user->updated_at?->timestamp ?? 0) : null,
+            'avatar_url' => $user->avatarReference(),
+            'avatar_thumbnail_url' => $user->avatarReference(),
             'rating' => $user->rating !== null ? (float) $user->rating : null,
             'rating_count' => (int) $user->rating_count,
             'completed_transactions' => $user->completed_transactions,

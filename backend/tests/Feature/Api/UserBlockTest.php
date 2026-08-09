@@ -15,7 +15,7 @@ class UserBlockTest extends TestCase
 
     public function test_blocking_is_mutual_for_visibility_and_contact_and_can_be_undone(): void
     {
-        $seller = User::factory()->create(['status' => 'active', 'avatar_path' => 'avatars/seller/avatar-512.webp']);
+        $seller = User::factory()->create(['status' => 'active', 'avatar_key' => 'avatar_06']);
         $buyer = User::factory()->create(['status' => 'active']);
         $otherSeller = User::factory()->create(['status' => 'active']);
         $listing = $this->listing($seller, 'Satıcının ilanı');
@@ -34,9 +34,9 @@ class UserBlockTest extends TestCase
         $this->postJson("/api/v1/users/{$seller->id}/block")
             ->assertCreated()
             ->assertJsonPath('data.blocked', true)
-            ->assertJsonPath('data.avatarUrl', url('/storage/avatars/seller/avatar-128.webp'));
+            ->assertJsonPath('data.avatarUrl', 'preset://avatar_06');
         $this->getJson('/api/v1/blocks')->assertOk()
-            ->assertJsonPath('data.0.avatarUrl', url('/storage/avatars/seller/avatar-128.webp'));
+            ->assertJsonPath('data.0.avatarUrl', 'preset://avatar_06');
 
         $pickupRequest = PickupRequest::findOrFail($requestId);
         $this->assertSame(PickupRequest::CANCELLED, $pickupRequest->status);
@@ -69,8 +69,9 @@ class UserBlockTest extends TestCase
 
         Sanctum::actingAs($buyer, ['mobile']);
         $this->deleteJson("/api/v1/users/{$seller->id}/block")->assertNoContent();
-        $this->postJson("/api/v1/pickup-requests/{$requestId}/messages", ['message' => 'Engel kaldırıldı.'])
-            ->assertCreated();
+        // Engeli kaldırmak görünürlüğü geri getirir; engelleme sırasında iptal edilen eski görüşmeyi yeniden açmaz.
+        $this->postJson("/api/v1/pickup-requests/{$requestId}/messages", ['message' => 'Eski görüşmeye yazılmamalı.'])
+            ->assertUnprocessable();
         $this->getJson('/api/v1/listings')
             ->assertOk()
             ->assertJsonFragment(['sellerId' => $seller->id]);
