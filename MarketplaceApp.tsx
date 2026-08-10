@@ -51,7 +51,6 @@ import { AppNotification } from './src/notifications/types';
 import { observeNotificationResponses } from './src/push/notificationObserver';
 import { configureForegroundNotificationHandling, setForegroundConversation } from './src/push/notifications';
 import LeaderboardScreen from './src/ranking/LeaderboardScreen';
-import SupportersScreen, { SupporterRegion, SupportersDock } from './src/supporters/SupportersScreen';
 import { Conversation, ConversationCollectionResponse, ConversationResponse } from './src/chat/types';
 import {
   Coordinates,
@@ -68,8 +67,9 @@ import {
 } from './marketplace';
 
 type Tab = 'home' | 'ranking' | 'messages' | 'profile';
-type Route = Tab | 'supporters' | 'detail' | 'chat' | 'favorites' | 'my-listings' | 'purchase-history' | 'notifications' | 'public-profile' | 'addresses' | 'profile-edit' | 'usage-limits' | 'notification-preferences' | 'blocked-users' | 'legal-terms' | 'legal-privacy' | 'account-deletion';
+type Route = Tab | 'detail' | 'chat' | 'favorites' | 'my-listings' | 'purchase-history' | 'notifications' | 'public-profile' | 'addresses' | 'profile-edit' | 'usage-limits' | 'notification-preferences' | 'blocked-users' | 'legal-terms' | 'legal-privacy' | 'account-deletion';
 type FormLine = { enabled: boolean; count: string; price: string };
+type ListingRegion = { province?: string; district?: string };
 type NewListing = Pick<Listing, 'items' | 'note'> & { conditionConfirmed: boolean };
 type AddressCollectionResponse = { data: Omit<DeliveryAddress, 'saved'>[] };
 type ListingCategory = 'Tümü' | Material;
@@ -1070,7 +1070,7 @@ function AppContent({ fullName, userEmail = '', userEmailVerified = false, userI
   const [center, setCenter] = useState<Coordinates>(EMPTY_CENTER);
   const [radius, setRadius] = useState(10);
   const [locationLabel, setLocationLabel] = useState('Konumunu kullan');
-  const [supporterRegion, setSupporterRegion] = useState<SupporterRegion>({});
+  const [listingRegion, setListingRegion] = useState<ListingRegion>({});
   const showPickupInterstitial = usePickupInterstitial(!isGuest && !!token);
 
   useEffect(() => {
@@ -1125,7 +1125,7 @@ function AppContent({ fullName, userEmail = '', userEmailVerified = false, userI
       'page=' + encodeURIComponent(String(page)),
       'per_page=20',
     ];
-    if (supporterRegion.province) queryParts.push('province=' + encodeURIComponent(supporterRegion.province));
+    if (listingRegion.province) queryParts.push('province=' + encodeURIComponent(listingRegion.province));
     if (category !== 'Tümü') queryParts.push('material=' + encodeURIComponent(MATERIAL_API_TYPES[category]));
 
     try {
@@ -1164,7 +1164,7 @@ function AppContent({ fullName, userEmail = '', userEmailVerified = false, userI
         if (mode === 'more') setListingLoadingMore(false);
       }
     }
-  }, [category, center.latitude, center.longitude, locationReady, radius, showNotice, sort, supporterRegion.province, token]);
+  }, [category, center.latitude, center.longitude, listingRegion.province, locationReady, radius, showNotice, sort, token]);
 
   useEffect(() => {
     void loadListings(1, 'replace');
@@ -1310,10 +1310,6 @@ function AppContent({ fullName, userEmail = '', userEmailVerified = false, userI
       }
 
       if (route === 'notifications') {
-        setRoute('home');
-        return true;
-      }
-      if (route === 'supporters') {
         setRoute('home');
         return true;
       }
@@ -1541,7 +1537,7 @@ function AppContent({ fullName, userEmail = '', userEmailVerified = false, userI
         const city = address?.region || address?.city;
         const administrativeDistrict = address?.subregion || address?.district || address?.city;
         setLocationLabel(area && city && area !== city ? area + ', ' + city : city || area || 'Mevcut konum');
-        setSupporterRegion({ province: city || undefined, district: administrativeDistrict || undefined });
+        setListingRegion({ province: city || undefined, district: administrativeDistrict || undefined });
       } catch {
         setLocationLabel('Mevcut konum');
       }
@@ -1615,8 +1611,6 @@ function AppContent({ fullName, userEmail = '', userEmailVerified = false, userI
       ? 'profile'
       : route === 'notifications'
         ? 'home'
-        : route === 'supporters'
-          ? 'home'
           : route === 'public-profile'
           ? publicProfileTab
           : route === 'chat'
@@ -1664,7 +1658,6 @@ function AppContent({ fullName, userEmail = '', userEmailVerified = false, userI
           />
         )}
         {route === 'ranking' && <LeaderboardScreen token={token} userId={userId} requireAuth={onRequireAuth} />}
-        {route === 'supporters' && <SupportersScreen locationLabel={locationLabel} region={supporterRegion} back={() => setRoute('home')} />}
         {route === 'messages' && <ConversationList conversations={conversations} open={conversation => openConversation(conversation, 'messages')} onHide={hideConversationFromList} />}
         {route === 'profile' && (token ?
           <ProfileMenuScreen
@@ -1801,7 +1794,6 @@ function AppContent({ fullName, userEmail = '', userEmailVerified = false, userI
           />
         )}
       </View>
-      {route === 'home' && <SupportersDock locationLabel={locationLabel} onPress={() => setRoute('supporters')} bottomOffset={bottomNavHeight} />}
       {route !== 'chat' && (
         <View accessibilityRole="tablist" style={[s.nav, { minHeight: bottomNavHeight, paddingBottom: Math.max(insets.bottom, 10) }]} >
           <NavButton icon="home" label="Ana sayfa" active={tabActive('home')} onPress={() => goTab('home')} />

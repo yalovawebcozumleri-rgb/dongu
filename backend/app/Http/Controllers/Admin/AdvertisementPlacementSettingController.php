@@ -16,8 +16,8 @@ class AdvertisementPlacementSettingController extends Controller
 
         $base = $request->validate([
             'enabled' => ['required', 'boolean'],
-            'sourceOrder' => ['required', 'array', 'min:1', 'max:3'],
-            'sourceOrder.*' => ['required', 'string', 'distinct', Rule::in(AdvertisementPlacementSetting::SOURCES)],
+            'sourceOrder' => ['required', 'array', 'min:1', 'max:2'],
+            'sourceOrder.*' => ['required', 'string', 'distinct', Rule::in(AdvertisementPlacementSetting::NATIVE_SOURCES)],
             'firstAfter' => ['required', 'integer', 'min:0', 'max:1000'],
             'repeatEvery' => ['required', 'integer', 'min:0', 'max:1000'],
             'maxPerSession' => ['required', 'integer', 'min:1', 'max:1000'],

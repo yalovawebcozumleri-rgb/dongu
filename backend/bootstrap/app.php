@@ -2,7 +2,6 @@
 
 use App\Http\Middleware\EnsureAccountAllowed;
 use App\Http\Middleware\EnsureAdmin;
-use App\Http\Middleware\EnsureSupporter;
 use App\Http\Middleware\HandleInertiaRequests;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -20,10 +19,8 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware) {
         $middleware->web(append: [HandleInertiaRequests::class]);
-        $middleware->alias(['admin' => EnsureAdmin::class, 'supporter' => EnsureSupporter::class, 'account.allowed' => EnsureAccountAllowed::class]);
-        $middleware->redirectGuestsTo(
-            fn (Request $request) => $request->is('api/*') ? null : ($request->is('destekci/*') ? '/destekci/giris' : '/admin/login')
-        );
+        $middleware->alias(['admin' => EnsureAdmin::class, 'account.allowed' => EnsureAccountAllowed::class]);
+        $middleware->redirectGuestsTo(fn (Request $request) => $request->is('api/*') ? null : '/admin/login');
     })
     ->withExceptions(function (Exceptions $exceptions) {
         $exceptions->shouldRenderJsonWhen(

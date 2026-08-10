@@ -16,9 +16,9 @@ function SponsoredCard({ advertisement, placement, slotIndex, token }: { adverti
     <Text style={s.adHeadline}>{advertisement.headline}</Text><Text style={s.adBody}>{advertisement.body}</Text>
     {!!advertisement.targetUrl && !!advertisement.ctaLabel && <Text style={s.adCta}>{advertisement.ctaLabel} ›</Text>}
   </>;
-  const cardStyle = [s.adCard, { backgroundColor: advertisement.backgroundColor || C.soft }];
+  const cardStyle = [s.adCard, local.card, { backgroundColor: advertisement.backgroundColor || C.soft }];
   if (!advertisement.targetUrl) return <View accessible accessibilityLabel={`Sponsorlu içerik. ${advertisement.sponsorName}. ${advertisement.headline}. ${advertisement.body}`} style={cardStyle}>{content}</View>;
   return <Pressable accessibilityRole="link" accessibilityLabel={`Sponsorlu içerik. ${advertisement.sponsorName}. ${advertisement.headline}`} accessibilityHint="Reklam bağlantısını açar" onPress={open} style={({ pressed }) => [...cardStyle, pressed && s.pressed]}>{content}</Pressable>;
 }
-const local = StyleSheet.create({ image: { width: '100%', height: 148, borderRadius: 16, marginBottom: 13, backgroundColor: '#DCE6DE' } });
+const local = StyleSheet.create({ card: { width: '100%', minHeight: 170, marginHorizontal: 0, marginBottom: 0 }, image: { width: '100%', height: 148, borderRadius: 16, marginBottom: 13, backgroundColor: '#DCE6DE' } });
 export default memo(SponsoredCard);

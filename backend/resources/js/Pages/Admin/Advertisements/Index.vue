@@ -39,11 +39,7 @@ const statusClasses = {
 const formatLabels = { native: 'Standart reklam kartı', image: 'Standart reklam kartı', compact: 'Standart reklam kartı' };
 const labelFor = value => props.placementOptions.find(option => option.value === value)?.label || value;
 const rate = item => item.impressions ? `${((item.clicks / item.impressions) * 100).toFixed(1).replace('.', ',')}%` : '0,0%';
-const placementHint = value => ({
-  home_feed: '3. ilandan sonra; kullanıcı kaydırdıkça devamında her 8 ilanda bir yuva.',
-  leaderboard: 'İlk 10 kullanıcıdan sonra tek standart reklam kartı.',
-  listing_detail: 'İlan ayrıntısının alt bölümünde tek reklam yuvası.',
-}[value] || '');
+const placementHint = value => props.placementOptions.find(option => option.value === value)?.hint || '';
 
 const applyFilters = () => router.get('/admin/advertisements', {
   search: filter.search || undefined,
@@ -87,34 +83,30 @@ const confirmDelete = () => deleteForm.delete(`/admin/advertisements/${deleteCan
 
 <template>
   <Head title="Reklam Yönetimi" />
-  <AdminLayout eyebrow="Gelir" title="Reklam yönetimi" description="Doğrudan sattığın kurumsal kampanyaları yönet; AdMob ve yedek reklam katmanının durumunu ayrı olarak izle.">
+  <AdminLayout eyebrow="Gelir" title="Reklam yönetimi" description="Döngü’ye ait kampanyaları ve AdMob reklam alanlarını tek merkezden yönet.">
     <main class="mx-auto max-w-[1600px] px-5 py-8 lg:px-8">
       <div v-if="flash" class="mb-5 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-900">{{ flash }}</div>
 
-      <section class="grid gap-4 xl:grid-cols-3">
+      <section class="grid gap-4 xl:grid-cols-2">
         <article class="rounded-2xl border border-emerald-200 bg-white p-5 shadow-sm">
-          <div class="flex items-start justify-between gap-3"><div><p class="text-xs font-semibold uppercase tracking-wide text-emerald-800">1. öncelik</p><h2 class="mt-1 text-lg font-semibold text-slate-950">Doğrudan kampanyalar</h2></div><span class="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-800">Bu panelden</span></div>
-          <p class="mt-3 text-sm leading-6 text-slate-600">İşletmeden doğrudan aldığın reklamları burada oluşturursun. Bu kampanyalar uygun alanda Google reklamından önce gösterilir.</p>
+          <div class="flex items-start justify-between gap-3"><div><p class="text-xs font-semibold uppercase tracking-wide text-emerald-800">1. öncelik</p><h2 class="mt-1 text-lg font-semibold text-slate-950">Döngü kampanyaları</h2></div><span class="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-800">Bu panelden</span></div>
+          <p class="mt-3 text-sm leading-6 text-slate-600">Yalnızca sana ait marka, proje ve hizmetlerin tanıtımlarını burada oluşturursun. Uygun alanda AdMob’dan önce gösterilir.</p>
         </article>
         <article class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
           <div class="flex items-start justify-between gap-3"><div><p class="text-xs font-semibold uppercase tracking-wide text-slate-600">2. öncelik</p><h2 class="mt-1 text-lg font-semibold text-slate-950">Google AdMob</h2></div><span :class="['rounded-full px-2.5 py-1 text-xs font-semibold', adMob.earnsRevenue ? 'bg-emerald-50 text-emerald-800' : 'bg-amber-50 text-amber-900']">{{ adMob.modeLabel }}</span></div>
           <p class="mt-3 text-sm leading-6 text-slate-600">AdMob reklamları bu tabloya kampanya olarak eklenmez; mobil uygulamadaki Google reklam birimleri tarafından otomatik doldurulur.</p>
           <p v-if="!adMob.earnsRevenue" class="mt-3 rounded-xl bg-amber-50 px-3 py-2 text-xs font-semibold leading-5 text-amber-900">Test reklamları görünümü doğrular fakat gelir üretmez. Canlıya geçerken gerçek AdMob uygulama ve reklam birimi kimlikleri girilecek.</p>
-          <p v-if="adMob.coveredPlacementLabels.length" class="mt-3 rounded-xl border border-sky-200 bg-sky-50 px-3 py-2 text-xs font-semibold leading-5 text-sky-900">Şu anda {{ adMob.coveredPlacementLabels.join(', ') }} alanlarında doğrudan kampanya önce gösteriliyor. AdMob test reklamını görmek için bu alanları kullanan kampanyayı geçici olarak durdur.</p>
-          <p v-else class="mt-3 text-xs font-semibold leading-5 text-emerald-800">Doğrudan kampanya bulunmayan geçerli yuvalarda AdMob reklamı denenebilir.</p>
-        </article>
-        <article class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <div class="flex items-start justify-between gap-3"><div><p class="text-xs font-semibold uppercase tracking-wide text-slate-600">3. öncelik</p><h2 class="mt-1 text-lg font-semibold text-slate-950">Döngü tanıtım kartı</h2></div><span class="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700">Otomatik</span></div>
-          <p class="mt-3 text-sm leading-6 text-slate-600">Doğrudan kampanya yoksa ve AdMob reklam vermezse “İşletmenizi Döngü’de tanıtın” kartı gösterilir. Burada ayrıca kayıt oluşturman gerekmez.</p>
+          <p v-if="adMob.coveredPlacementLabels.length" class="mt-3 rounded-xl border border-sky-200 bg-sky-50 px-3 py-2 text-xs font-semibold leading-5 text-sky-900">Şu anda {{ adMob.coveredPlacementLabels.join(', ') }} alanlarında Döngü kampanyası önce gösteriliyor. AdMob test reklamını görmek için bu alanları kullanan kampanyayı geçici olarak durdur.</p>
+          <p v-else class="mt-3 text-xs font-semibold leading-5 text-emerald-800">Döngü kampanyası bulunmayan geçerli yuvalarda AdMob reklamı denenir. AdMob da reklam vermezse yuva kapanır.</p>
         </article>
       </section>
 
       <PlacementSettings :settings="placementSettings" />
 
       <section class="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <button type="button" @click="setStatus('')" :class="['rounded-2xl border bg-white p-5 text-left transition', !filter.status ? 'border-emerald-500 ring-2 ring-emerald-100' : 'border-slate-200 hover:border-slate-300']"><p class="text-sm font-semibold text-slate-700">Toplam kampanya</p><p class="mt-2 text-3xl font-semibold text-slate-950">{{ Number(counts.all).toLocaleString('tr-TR') }}</p><p class="mt-1 text-xs text-slate-600">Doğrudan satış kayıtları</p></button>
+        <button type="button" @click="setStatus('')" :class="['rounded-2xl border bg-white p-5 text-left transition', !filter.status ? 'border-emerald-500 ring-2 ring-emerald-100' : 'border-slate-200 hover:border-slate-300']"><p class="text-sm font-semibold text-slate-700">Toplam kampanya</p><p class="mt-2 text-3xl font-semibold text-slate-950">{{ Number(counts.all).toLocaleString('tr-TR') }}</p><p class="mt-1 text-xs text-slate-600">Döngü kampanya kayıtları</p></button>
         <button type="button" @click="setStatus('active')" :class="['rounded-2xl border bg-white p-5 text-left transition', filter.status === 'active' ? 'border-emerald-500 ring-2 ring-emerald-100' : 'border-slate-200 hover:border-slate-300']"><p class="text-sm font-semibold text-slate-700">Şu an yayında</p><p class="mt-2 text-3xl font-semibold text-slate-950">{{ Number(counts.active).toLocaleString('tr-TR') }}</p><p class="mt-1 text-xs text-slate-600">Tarih ve durum koşulları uygun</p></button>
-        <article class="rounded-2xl border border-slate-200 bg-white p-5"><p class="text-sm font-semibold text-slate-700">Toplam gösterim</p><p class="mt-2 text-3xl font-semibold text-slate-950">{{ Number(counts.impressions).toLocaleString('tr-TR') }}</p><p class="mt-1 text-xs text-slate-600">Doğrudan kampanyalar</p></article>
+        <article class="rounded-2xl border border-slate-200 bg-white p-5"><p class="text-sm font-semibold text-slate-700">Toplam gösterim</p><p class="mt-2 text-3xl font-semibold text-slate-950">{{ Number(counts.impressions).toLocaleString('tr-TR') }}</p><p class="mt-1 text-xs text-slate-600">Döngü kampanyaları</p></article>
         <article class="rounded-2xl border border-slate-200 bg-white p-5"><p class="text-sm font-semibold text-slate-700">Tıklanma oranı</p><p class="mt-2 text-3xl font-semibold text-slate-950">%{{ Number(counts.ctr).toLocaleString('tr-TR') }}</p><p class="mt-1 text-xs text-slate-600">{{ Number(counts.clicks).toLocaleString('tr-TR') }} doğrulanmış tıklama</p></article>
       </section>
 
@@ -129,7 +121,7 @@ const confirmDelete = () => deleteForm.delete(`/admin/advertisements/${deleteCan
       </section>
 
       <section class="mt-5 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-        <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-5 py-4"><div><h2 class="text-lg font-semibold text-slate-950">Doğrudan kampanyalar</h2><p class="mt-1 text-sm text-slate-600">Toplam {{ Number(campaigns.total).toLocaleString('tr-TR') }} sonuç · Sayfa {{ campaigns.current_page }} / {{ campaigns.last_page }}</p></div><button type="button" class="inline-flex h-11 items-center gap-2 rounded-xl bg-forest-700 px-5 text-sm font-semibold text-white" @click="openComposer"><svg viewBox="0 0 24 24" class="size-4" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 5v14M5 12h14"/></svg>Yeni kampanya oluştur</button></div>
+        <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-5 py-4"><div><h2 class="text-lg font-semibold text-slate-950">Döngü kampanyaları</h2><p class="mt-1 text-sm text-slate-600">Toplam {{ Number(campaigns.total).toLocaleString('tr-TR') }} sonuç · Sayfa {{ campaigns.current_page }} / {{ campaigns.last_page }}</p></div><button type="button" class="inline-flex h-11 items-center gap-2 rounded-xl bg-forest-700 px-5 text-sm font-semibold text-white" @click="openComposer"><svg viewBox="0 0 24 24" class="size-4" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 5v14M5 12h14"/></svg>Yeni kampanya oluştur</button></div>
         <div v-if="campaigns.data.length" class="overflow-x-auto">
           <table class="w-full min-w-[1180px] text-left text-sm">
             <thead class="border-b border-slate-200 bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-700"><tr><th class="px-5 py-3.5">Kampanya</th><th class="px-5 py-3.5">Yayın alanları</th><th class="px-5 py-3.5">Durum</th><th class="px-5 py-3.5">Yayın dönemi</th><th class="px-5 py-3.5">Performans</th><th class="px-5 py-3.5">Öncelik</th><th class="px-5 py-3.5 text-right">İşlemler</th></tr></thead>
@@ -144,14 +136,14 @@ const confirmDelete = () => deleteForm.delete(`/admin/advertisements/${deleteCan
             </tr></tbody>
           </table>
         </div>
-        <div v-else class="px-5 py-16 text-center"><p class="font-semibold text-slate-900">Bu filtrelerde doğrudan kampanya bulunamadı</p><p class="mt-1 text-sm text-slate-600">Google test reklamlarının burada satır olarak görünmemesi normaldir.</p><button type="button" class="mt-4 text-sm font-semibold text-emerald-700" @click="openComposer">İlk doğrudan kampanyayı oluştur</button></div>
+        <div v-else class="px-5 py-16 text-center"><p class="font-semibold text-slate-900">Bu filtrelerde Döngü kampanyası bulunamadı</p><p class="mt-1 text-sm text-slate-600">Google test reklamlarının burada satır olarak görünmemesi normaldir.</p><button type="button" class="mt-4 text-sm font-semibold text-emerald-700" @click="openComposer">İlk Döngü kampanyasını oluştur</button></div>
       </section>
       <nav v-if="campaigns.last_page > 1" class="mt-5 flex flex-wrap gap-2"><Link v-for="link in campaigns.links" :key="link.label" :href="link.url || ''" preserve-scroll :class="['rounded-lg border px-3 py-2 text-sm font-semibold', link.active ? 'border-emerald-600 bg-emerald-50 text-emerald-800' : 'border-slate-300 bg-white text-slate-700', !link.url && 'pointer-events-none opacity-40']" v-html="link.label" /></nav>
     </main>
 
     <div v-if="composeOpen" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 p-4 backdrop-blur-sm" @click.self="closeComposer" @keydown.esc.window="closeComposer">
       <section role="dialog" aria-modal="true" aria-labelledby="campaign-create-title" class="flex max-h-[92vh] w-full max-w-4xl flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl">
-        <header class="flex items-start justify-between gap-4 border-b border-slate-200 px-6 py-5"><div><h2 id="campaign-create-title" class="text-xl font-semibold text-slate-950">Yeni doğrudan kampanya</h2><p class="mt-1 text-sm text-slate-600">İşletmeden aldığın reklamı, yayın alanlarını ve tarih aralığını kaydet.</p></div><button type="button" class="grid size-10 place-items-center rounded-xl border border-slate-300 text-slate-600" @click="closeComposer"><svg viewBox="0 0 24 24" class="size-4" fill="none" stroke="currentColor" stroke-width="1.8"><path d="m6 6 12 12M18 6 6 18"/></svg></button></header>
+        <header class="flex items-start justify-between gap-4 border-b border-slate-200 px-6 py-5"><div><h2 id="campaign-create-title" class="text-xl font-semibold text-slate-950">Yeni Döngü kampanyası</h2><p class="mt-1 text-sm text-slate-600">Sana ait marka veya projenin tanıtımını, yayın alanlarını ve tarih aralığını kaydet.</p></div><button type="button" class="grid size-10 place-items-center rounded-xl border border-slate-300 text-slate-600" @click="closeComposer"><svg viewBox="0 0 24 24" class="size-4" fill="none" stroke="currentColor" stroke-width="1.8"><path d="m6 6 12 12M18 6 6 18"/></svg></button></header>
         <form class="overflow-y-auto p-6" @submit.prevent="submit">
           <fieldset><legend class="text-sm font-semibold text-slate-950">Yayın alanları <span class="text-red-600">*</span></legend><p class="mt-1 text-xs text-slate-600">Aynı kampanyayı bir veya birden fazla geçerli mobil alanda yayınlayabilirsin.</p><div class="mt-3 grid gap-3 md:grid-cols-3"><label v-for="option in placementOptions" :key="option.value" :class="['cursor-pointer rounded-xl border p-4 transition', form.placements.includes(option.value) ? 'border-emerald-500 bg-emerald-50 ring-2 ring-emerald-100' : 'border-slate-300 hover:border-slate-400']"><span class="flex items-center gap-2"><input v-model="form.placements" :value="option.value" type="checkbox" /><strong class="text-sm font-semibold text-slate-950">{{ option.label }}</strong></span><span class="mt-2 block text-xs leading-5 text-slate-600">{{ placementHint(option.value) }}</span></label></div><p v-if="form.errors.placements" class="mt-2 text-sm font-semibold text-red-700">{{ form.errors.placements }}</p></fieldset>
           <div class="mt-6 grid gap-4 md:grid-cols-2">

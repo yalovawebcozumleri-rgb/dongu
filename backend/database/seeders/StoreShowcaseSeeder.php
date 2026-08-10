@@ -10,7 +10,6 @@ use App\Models\ListingFavorite;
 use App\Models\ListingMaterial;
 use App\Models\ListingPrivateLocation;
 use App\Models\PickupRequest;
-use App\Models\SupporterBusiness;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
@@ -187,8 +186,6 @@ class StoreShowcaseSeeder extends Seeder
                     'updated_at' => $now->copy()->subMinutes(15),
                 ]);
             }
-
-            $this->seedSupporters($now);
         });
 
         $this->command?->info('Mağaza ekran görüntüleri için yerel tanıtım verileri hazırlandı.');
@@ -223,57 +220,5 @@ class StoreShowcaseSeeder extends Seeder
         ]);
 
         return $listing;
-    }
-
-    private function seedSupporters($now): void
-    {
-        $adminId = User::query()->where('role', User::ROLE_ADMIN)->value('id');
-        $supporters = [
-            ['yesil-market', 'Yeşil Market', 'Günlük ihtiyaçlarınız için yerel ve çevre dostu seçenekler.', 'whatsapp', 'WhatsApp’tan ulaş', '905413342219', 30],
-            ['kiyi-kafe', 'Kıyı Kafe', 'Çınarcık sahilinde sıcak içecekler ve keyifli molalar.', 'directions', 'Yol tarifi al', '40.6452,29.1110', 20],
-            ['yalova-teknik', 'Yalova Teknik', 'Telefon ve bilgisayarlarınız için hızlı teknik destek.', 'phone', 'Hemen ara', '905413342219', 10],
-        ];
-
-        foreach ($supporters as [$slug, $name, $summary, $ctaType, $ctaLabel, $ctaValue, $priority]) {
-            $owner = User::updateOrCreate(
-                ['email' => 'supporter-'.$slug.self::EMAIL_DOMAIN],
-                [
-                    'name' => $name,
-                    'password' => Hash::make(Str::random(40)),
-                    'status' => 'active',
-                    'role' => User::ROLE_SUPPORTER,
-                    'email_verified_at' => $now,
-                    'profile_completed_at' => $now,
-                    'terms_accepted_at' => $now,
-                    'terms_version' => config('legal.documents.terms.version'),
-                    'privacy_notice_acknowledged_at' => $now,
-                    'privacy_notice_version' => config('legal.documents.privacy.version'),
-                ]
-            );
-
-            SupporterBusiness::updateOrCreate(
-                ['slug' => 'store-showcase-'.$slug],
-                [
-                    'owner_user_id' => $owner->id,
-                    'created_by_admin_id' => $adminId,
-                    'name' => $name,
-                    'card_summary' => $summary,
-                    'detail_title' => $name.' ile bölgenizde daha fazlasını keşfedin',
-                    'detail_body' => $summary.' İşletmeye tek dokunuşla ulaşabilirsiniz.',
-                    'target_scope' => 'district',
-                    'province_code' => '77',
-                    'province_name' => 'Yalova',
-                    'district_code' => '773',
-                    'district_name' => 'Çınarcık',
-                    'cta_type' => $ctaType,
-                    'cta_label' => $ctaLabel,
-                    'cta_value' => $ctaValue,
-                    'priority' => $priority,
-                    'is_active' => true,
-                    'starts_at' => $now->copy()->subDay(),
-                    'ends_at' => $now->copy()->addMonths(3),
-                ]
-            );
-        }
     }
 }

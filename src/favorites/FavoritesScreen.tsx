@@ -147,6 +147,6 @@ const x = StyleSheet.create({
   emptyText: { color: C.muted, fontSize: 12, lineHeight: 18, textAlign: 'center', marginTop: 7 },
   retry: { minHeight: 42, marginTop: 16, paddingHorizontal: 18, borderRadius: 14, backgroundColor: C.green, justifyContent: 'center' },
   retryText: { color: C.white, fontSize: 12, fontWeight: '900' },
-  adSlot: { marginHorizontal: 16, marginTop: 4, marginBottom: 16 },
+  adSlot: { marginTop: 4, marginBottom: 16 },
   footer: { marginVertical: 20 },
 });

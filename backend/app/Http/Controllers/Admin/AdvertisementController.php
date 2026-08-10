@@ -101,6 +101,7 @@ class AdvertisementController extends Controller
             ->whereIn('advertisement_placements.placement', Advertisement::PLACEMENTS)
             ->distinct()
             ->pluck('advertisement_placements.placement');
+        $placementSettings = AdvertisementPlacementSetting::query()->orderBy('id')->get();
 
         return Inertia::render('Admin/Advertisements/Index', [
             'campaigns' => $campaigns,
@@ -116,7 +117,7 @@ class AdvertisementController extends Controller
                 'ctr' => $totalImpressions > 0 ? round(($totalClicks / $totalImpressions) * 100, 1) : 0,
             ],
             'pageSizes' => [25, 50, 100],
-            'placementSettings' => AdvertisementPlacementSetting::query()->orderBy('id')->get()->map(fn (AdvertisementPlacementSetting $setting) => [
+            'placementSettings' => $placementSettings->map(fn (AdvertisementPlacementSetting $setting) => [
                 'id' => $setting->id,
                 'key' => $setting->key,
                 'label' => $setting->label,
@@ -135,11 +136,13 @@ class AdvertisementController extends Controller
                 'dailyLimit' => (int) data_get($setting->settings, 'daily_limit', 3),
                 'ordinals' => data_get($setting->settings, 'ordinals', []),
             ])->values(),
-            'placementOptions' => collect(Advertisement::PLACEMENT_LABELS)->map(fn (string $label, string $value) => [
-                'value' => $value,
-                'label' => $label,
-                'policy' => config("advertising.placements.{$value}"),
-            ])->values(),
+            'placementOptions' => collect(Advertisement::PLACEMENT_LABELS)
+                ->map(fn (string $label, string $value) => [
+                    'value' => $value,
+                    'label' => $label,
+                    'hint' => $this->placementHint($placementSettings->firstWhere('key', $value)),
+                    'policy' => config("advertising.placements.{$value}"),
+                ])->values(),
             'adMob' => [
                 'mode' => config('advertising.admob.mode'),
                 'modeLabel' => config('advertising.admob.mode') === 'production' ? 'Canlı reklamlar' : 'Google test reklamları',
@@ -150,6 +153,23 @@ class AdvertisementController extends Controller
                     ->values(),
             ],
         ]);
+    }
+
+    private function placementHint(?AdvertisementPlacementSetting $setting): string
+    {
+        if (! $setting) {
+            return '';
+        }
+
+        if ($setting->repeat_every > 0) {
+            return "{$setting->first_after}. içerikten sonra; devamında her {$setting->repeat_every} içerikte bir reklam yuvası.";
+        }
+
+        if ($setting->first_after > 0) {
+            return "{$setting->first_after}. içerikten sonra tek reklam yuvası.";
+        }
+
+        return rtrim((string) $setting->location_label, ". \t\n\r\0\x0B").'.';
     }
 
     public function store(Request $request): RedirectResponse

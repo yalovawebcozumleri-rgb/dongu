@@ -19,7 +19,9 @@ class AdvertisementController extends Controller
         $filters = $request->validate(['placement' => ['required', 'string', Rule::in(Advertisement::PLACEMENTS)]]);
         $placement = $filters['placement'];
         $setting = AdvertisementPlacementSetting::forKey($placement);
-        $sources = $setting->source_order ?? [];
+        $sources = collect($setting->source_order ?? [])
+            ->filter(fn (string $source) => in_array($source, AdvertisementPlacementSetting::NATIVE_SOURCES, true))
+            ->values()->all();
 
         $advertisements = collect();
         if ($setting->enabled && in_array(AdvertisementPlacementSetting::SOURCE_DIRECT, $sources, true)) {
@@ -49,8 +51,8 @@ class AdvertisementController extends Controller
                 'repeatEvery' => $setting->repeat_every,
                 'maxPerSession' => $setting->max_per_session,
                 'minItems' => $setting->min_items,
-                'adMobAndroidUnitId' => $setting->admob_android_unit_id,
-                'adMobIosUnitId' => $setting->admob_ios_unit_id,
+                'adMobAndroidUnitId' => $setting->adMobUnitId('android', 'native'),
+                'adMobIosUnitId' => $setting->adMobUnitId('ios', 'native'),
             ],
         ]);
     }

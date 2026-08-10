@@ -8,6 +8,16 @@ return [
     ],
     'admob' => [
         'mode' => env('ADMOB_MODE', 'test'),
+        'test_unit_ids' => [
+            'android' => [
+                'native' => 'ca-app-pub-3940256099942544/2247696110',
+                'interstitial' => 'ca-app-pub-3940256099942544/1033173712',
+            ],
+            'ios' => [
+                'native' => 'ca-app-pub-3940256099942544/3986624511',
+                'interstitial' => 'ca-app-pub-3940256099942544/4411468910',
+            ],
+        ],
     ],
     'impression_retention_days' => (int) env('AD_IMPRESSION_RETENTION_DAYS', 90),
 ];

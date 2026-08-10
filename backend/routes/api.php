@@ -14,7 +14,6 @@ use App\Http\Controllers\Api\PublicUserProfileController;
 use App\Http\Controllers\Api\PushTokenController;
 use App\Http\Controllers\Api\RegionController;
 use App\Http\Controllers\Api\RewardedListingBoostController;
-use App\Http\Controllers\Api\SupporterController;
 use App\Http\Controllers\Api\UsagePolicyController;
 use App\Http\Controllers\Api\UserAddressController;
 use App\Http\Controllers\Api\UserBlockController;
@@ -33,10 +32,6 @@ Route::prefix('v1')->group(function () {
     Route::get('/advertisements/{advertisement}/image', [AdvertisementController::class, 'image'])->middleware('throttle:120,1');
     Route::post('/advertisements/{advertisement}/impressions', [AdvertisementController::class, 'impression'])->middleware('throttle:30,1');
     Route::post('/advertisements/{advertisement}/clicks', [AdvertisementController::class, 'click'])->middleware('throttle:30,1');
-    Route::get('/supporters', [SupporterController::class, 'index'])->middleware('throttle:60,1');
-    Route::get('/supporters/{supporter}', [SupporterController::class, 'show'])->middleware('throttle:60,1');
-    Route::get('/supporters/{supporter}/logo', [SupporterController::class, 'logo'])->middleware('throttle:120,1');
-    Route::post('/supporters/{supporter}/events', [SupporterController::class, 'event'])->middleware('throttle:120,1');
     Route::get('/leaderboard', [LeaderboardController::class, 'index'])->middleware('throttle:60,1');
     Route::get('/admob/rewarded/callback', [RewardedListingBoostController::class, 'callback'])->middleware('throttle:120,1');
     Route::get('/users/{user}/public-profile', [PublicUserProfileController::class, 'show'])->middleware('throttle:60,1');

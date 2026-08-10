@@ -3,6 +3,7 @@
 namespace Tests\Feature\Api;
 
 use App\Models\Advertisement;
+use App\Models\AdvertisementPlacementSetting;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -26,6 +27,53 @@ class AdvertisementTest extends TestCase
             ->assertJsonPath('data.0.id', $active->id)->assertJsonPath('meta.firstAfter', 3)
             ->assertJsonPath('meta.repeatEvery', 8)->assertJsonPath('meta.maxPerSession', 1000);
         $this->getJson('/api/v1/advertisements?placement=leaderboard')->assertOk()->assertJsonCount(0, 'data');
+    }
+
+    public function test_native_api_never_exposes_house_fallback_source(): void
+    {
+        AdvertisementPlacementSetting::forKey('home_feed')->update([
+            'source_order' => ['direct', 'admob', 'house'],
+        ]);
+
+        $this->getJson('/api/v1/advertisements?placement=home_feed')
+            ->assertOk()
+            ->assertJsonPath('meta.sourceOrder', ['direct', 'admob']);
+    }
+
+    public function test_test_mode_exposes_official_google_native_demo_units(): void
+    {
+        config()->set('advertising.admob.mode', 'test');
+
+        $this->getJson('/api/v1/advertisements?placement=home_feed')
+            ->assertOk()
+            ->assertJsonPath('meta.adMobAndroidUnitId', 'ca-app-pub-3940256099942544/2247696110')
+            ->assertJsonPath('meta.adMobIosUnitId', 'ca-app-pub-3940256099942544/3986624511');
+    }
+
+    public function test_production_mode_exposes_placement_native_unit(): void
+    {
+        config()->set('advertising.admob.mode', 'production');
+        AdvertisementPlacementSetting::forKey('home_feed')->update([
+            'admob_android_unit_id' => 'ca-app-pub-6681150378641816/4910102351',
+        ]);
+
+        $this->getJson('/api/v1/advertisements?placement=home_feed')
+            ->assertOk()
+            ->assertJsonPath('meta.adMobAndroidUnitId', 'ca-app-pub-6681150378641816/4910102351');
+    }
+
+    public function test_rewarded_unit_is_never_replaced_by_demo_unit(): void
+    {
+        config()->set('advertising.admob.mode', 'test');
+        $setting = AdvertisementPlacementSetting::forKey('home_feed');
+        $setting->update([
+            'admob_android_unit_id' => 'ca-app-pub-6681150378641816/1142247732',
+        ]);
+
+        $this->assertSame(
+            $setting->admob_android_unit_id,
+            $setting->adMobUnitId('android', 'rewarded'),
+        );
     }
 
     public function test_impression_and_click_are_unique_per_session_placement_and_slot(): void

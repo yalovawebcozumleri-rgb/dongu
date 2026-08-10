@@ -97,7 +97,6 @@ LEGAL_CONTACT_EMAIL=yalovawebcozumleri@gmail.com
 LEGAL_CONTACT_PHONE="+90 541 334 22 19"
 LEGAL_CONTACT_PHONE_URI=+905413342219
 LEGAL_MINIMUM_AGE=18
-SUPPORTER_CONTACT_URL="https://wa.me/905413342219?text=Merhaba%2C%20D%C3%B6ng%C3%BC%20reklam%20ve%20destek%C3%A7i%20se%C3%A7enekleri%20hakk%C4%B1nda%20bilgi%20almak%20istiyorum."
 
 ADMOB_MODE=production
 EOF

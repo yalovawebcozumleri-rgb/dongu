@@ -9,12 +9,10 @@ class AdvertisementPlacementSetting extends Model
     public const KIND_NATIVE = 'native';
     public const KIND_INTERSTITIAL = 'interstitial';
     public const KIND_REWARDED = 'rewarded';
-    public const KIND_HOUSE = 'house';
 
     public const SOURCE_DIRECT = 'direct';
     public const SOURCE_ADMOB = 'admob';
-    public const SOURCE_HOUSE = 'house';
-    public const SOURCES = [self::SOURCE_DIRECT, self::SOURCE_ADMOB, self::SOURCE_HOUSE];
+    public const NATIVE_SOURCES = [self::SOURCE_DIRECT, self::SOURCE_ADMOB];
 
     protected $fillable = [
         'key', 'label', 'kind', 'location_label', 'enabled', 'locked', 'source_order',
@@ -36,6 +34,16 @@ class AdvertisementPlacementSetting extends Model
         ];
     }
 
+    public function adMobUnitId(string $platform, string $format): ?string
+    {
+        if (config('advertising.admob.mode') === 'test' && in_array($format, ['native', 'interstitial'], true)) {
+            return config("advertising.admob.test_unit_ids.{$platform}.{$format}");
+        }
+
+        return $platform === 'ios'
+            ? $this->admob_ios_unit_id
+            : $this->admob_android_unit_id;
+    }
     public static function forKey(string $key): self
     {
         return static::query()->where('key', $key)->firstOrFail();

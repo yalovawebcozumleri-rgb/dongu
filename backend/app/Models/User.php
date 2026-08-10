@@ -15,7 +15,6 @@ class User extends Authenticatable
 
     public const ROLE_USER = 'user';
     public const ROLE_ADMIN = 'admin';
-    public const ROLE_SUPPORTER = 'supporter';
 
     public const AVATAR_KEYS = [
         'avatar_01', 'avatar_02', 'avatar_03', 'avatar_04', 'avatar_05',
@@ -99,20 +98,12 @@ class User extends Authenticatable
     {
         return $this->hasMany(UserBlock::class, 'blocked_id');
     }
-    public function supporterBusiness(): HasOne
-    {
-        return $this->hasOne(SupporterBusiness::class, 'owner_user_id');
-    }
 
     public function isAdmin(): bool
     {
         return $this->role === self::ROLE_ADMIN;
     }
 
-    public function isSupporter(): bool
-    {
-        return $this->role === self::ROLE_SUPPORTER;
-    }
     public function avatarReference(): ?string
     {
         return self::avatarReferenceFromKey($this->avatar_key);

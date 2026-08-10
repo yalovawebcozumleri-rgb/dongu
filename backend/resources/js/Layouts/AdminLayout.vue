@@ -115,7 +115,6 @@ onBeforeUnmount(() => {
 
                     <Link href="/admin/announcements" :class="['admin-nav-trigger inline-flex h-10 items-center justify-center border-b-2 border-transparent px-3 transition', isActive('/admin/announcements') ? 'border-emerald-600 text-slate-950' : 'text-slate-900 hover:border-slate-300 hover:text-slate-950']" @click="closeMenus"><span class="admin-nav-label">Duyurular</span></Link>
                     <Link href="/admin/advertisements" :class="['admin-nav-trigger inline-flex h-10 items-center justify-center border-b-2 border-transparent px-3 transition', isActive('/admin/advertisements') ? 'border-emerald-600 text-slate-950' : 'text-slate-900 hover:border-slate-300 hover:text-slate-950']" @click="closeMenus"><span class="admin-nav-label">Reklamlar</span></Link>
-                    <Link href="/admin/supporters" :class="['admin-nav-trigger inline-flex h-10 items-center justify-center border-b-2 border-transparent px-3 transition', isActive('/admin/supporters') ? 'border-emerald-600 text-slate-950' : 'text-slate-900 hover:border-slate-300 hover:text-slate-950']" @click="closeMenus"><span class="admin-nav-label">Destekçiler</span></Link>
 
                     <div class="relative">
                         <button
@@ -172,7 +171,6 @@ onBeforeUnmount(() => {
                     <section class="grid gap-1 sm:grid-cols-2">
                         <Link href="/admin/announcements" :class="['rounded-xl px-4 py-3 text-sm font-semibold', isActive('/admin/announcements') ? 'bg-emerald-50 text-forest-700' : 'text-slate-900 hover:bg-slate-50']" @click="closeMenus">Duyurular</Link>
                         <Link href="/admin/advertisements" :class="['rounded-xl px-4 py-3 text-sm font-semibold', isActive('/admin/advertisements') ? 'bg-emerald-50 text-forest-700' : 'text-slate-900 hover:bg-slate-50']" @click="closeMenus">Reklamlar</Link>
-                        <Link href="/admin/supporters" :class="['rounded-xl px-4 py-3 text-sm font-semibold', isActive('/admin/supporters') ? 'bg-emerald-50 text-forest-700' : 'text-slate-900 hover:bg-slate-50']" @click="closeMenus">Destekçiler</Link>
                     </section>
                     <section>
                         <p class="px-4 pb-1.5 text-[10px] font-semibold uppercase tracking-[.16em] text-slate-600">Sistem Ayarları</p>

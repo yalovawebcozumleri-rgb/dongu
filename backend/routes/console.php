@@ -1,11 +1,9 @@
 <?php
 
 use App\Models\AdvertisementImpression;
-use App\Models\SupporterEvent;
 use App\Models\User;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schedule;
 
 Artisan::command('inspire', function () {
@@ -61,12 +59,4 @@ Schedule::call(function () {
         ->delete();
 })->name('advertisement-impressions-prune')
     ->dailyAt('04:40')
-    ->withoutOverlapping();
-
-Schedule::call(function () {
-    $cutoff = now()->subDays(config('supporters.raw_event_retention_days', 90));
-    SupporterEvent::query()->where('occurred_at', '<', $cutoff)->delete();
-    DB::table('supporter_daily_visitors')->where('visit_date', '<', $cutoff->toDateString())->delete();
-})->name('supporter-raw-events-prune')
-    ->dailyAt('04:50')
     ->withoutOverlapping();

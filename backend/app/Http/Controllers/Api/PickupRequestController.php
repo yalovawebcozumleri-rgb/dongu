@@ -239,8 +239,8 @@ class PickupRequestController extends Controller
                 'showInterstitial' => $interstitial->enabled
                     && $notificationKind === 'pickup_request'
                     && in_array($dailyOrdinal, $interstitialOrdinals, true),
-                'adMobAndroidUnitId' => $interstitial->admob_android_unit_id,
-                'adMobIosUnitId' => $interstitial->admob_ios_unit_id,
+                'adMobAndroidUnitId' => $interstitial->adMobUnitId('android', 'interstitial'),
+                'adMobIosUnitId' => $interstitial->adMobUnitId('ios', 'interstitial'),
                 'dailyPickupOrdinal' => $dailyOrdinal,
             ],
         ]);

@@ -12,9 +12,6 @@ use App\Http\Controllers\Admin\ListingManagementController;
 use App\Http\Controllers\Admin\ListingReportController;
 use App\Http\Controllers\Admin\UserManagementController;
 use App\Http\Controllers\Admin\UserReportController;
-use App\Http\Controllers\Admin\SupporterBusinessController;
-use App\Http\Controllers\Supporter\AuthController as SupporterAuthController;
-use App\Http\Controllers\Supporter\DashboardController as SupporterDashboardController;
 use App\Http\Controllers\LegalDocumentController;
 use App\Http\Controllers\AccountDeletionController;
 use Illuminate\Support\Facades\Route;
@@ -28,7 +25,6 @@ Route::get('/legal/{document}', [LegalDocumentController::class, 'web'])->whereI
 
 Route::view('/', 'marketing.home')->name('marketing.home');
 Route::view('/nasil-calisir', 'marketing.how-it-works')->name('marketing.how-it-works');
-Route::view('/destekciler', 'marketing.supporters')->name('marketing.supporters');
 Route::view('/hakkimizda', 'marketing.about')->name('marketing.about');
 Route::view('/sss', 'marketing.faq')->name('marketing.faq');
 Route::view('/iletisim', 'marketing.contact')->name('marketing.contact');
@@ -36,13 +32,6 @@ Route::view('/iletisim', 'marketing.contact')->name('marketing.contact');
 Route::middleware('guest')->group(function () {
     Route::get('/admin/login', [AuthController::class, 'create'])->name('admin.login');
     Route::post('/admin/login', [AuthController::class, 'store'])->name('admin.login.store');
-    Route::get('/destekci/giris', [SupporterAuthController::class, 'create'])->name('supporter.login');
-    Route::post('/destekci/giris', [SupporterAuthController::class, 'store'])->name('supporter.login.store');
-});
-
-Route::prefix('destekci')->middleware(['auth', 'supporter'])->group(function () {
-    Route::get('/panel', SupporterDashboardController::class)->name('supporter.dashboard');
-    Route::post('/cikis', [SupporterAuthController::class, 'destroy'])->name('supporter.logout');
 });
 
 Route::prefix('admin')->middleware(['auth', 'admin'])->group(function () {
@@ -64,10 +53,6 @@ Route::prefix('admin')->middleware(['auth', 'admin'])->group(function () {
     Route::patch('/advertisements/{advertisement}', [AdvertisementController::class, 'update'])->name('admin.advertisements.update');
     Route::delete('/advertisements/{advertisement}', [AdvertisementController::class, 'destroy'])->name('admin.advertisements.destroy');
     Route::patch('/advertisement-placements/{setting}', [AdvertisementPlacementSettingController::class, 'update'])->name('admin.advertisement-placements.update');
-    Route::get('/supporters', [SupporterBusinessController::class, 'index'])->name('admin.supporters.index');
-    Route::post('/supporters', [SupporterBusinessController::class, 'store'])->name('admin.supporters.store');
-    Route::patch('/supporters/{supporter}', [SupporterBusinessController::class, 'update'])->name('admin.supporters.update');
-    Route::delete('/supporters/{supporter}', [SupporterBusinessController::class, 'destroy'])->name('admin.supporters.destroy');
     Route::get('/cycle-risk-cases', [CycleRiskCaseController::class, 'index'])->name('admin.cycle-risk-cases.index');
     Route::get('/cycle-risk-cases/{cycleRiskCase}', [CycleRiskCaseController::class, 'show'])->name('admin.cycle-risk-cases.show');
     Route::patch('/cycle-risk-cases/{cycleRiskCase}', [CycleRiskCaseController::class, 'update'])->name('admin.cycle-risk-cases.update');

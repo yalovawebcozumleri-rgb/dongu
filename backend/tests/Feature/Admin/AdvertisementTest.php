@@ -3,6 +3,7 @@
 namespace Tests\Feature\Admin;
 
 use App\Models\Advertisement;
+use App\Models\AdvertisementPlacementSetting;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -68,11 +69,36 @@ class AdvertisementTest extends TestCase
             ->assertInertia(fn (Assert $page) => $page
                 ->component('Admin/Advertisements/Index')
                 ->has('placementOptions', 13)
-                ->has('placementSettings', 17)
+                ->where('placementOptions.0.hint', '3. içerikten sonra; devamında her 8 içerikte bir reklam yuvası.')
+                ->where('placementOptions.2.hint', 'Sayfanın altında tek reklam.')
+                ->where('placementOptions.3.hint', '5. içerikten sonra tek reklam yuvası.')
+                ->has('placementSettings', 15)
                 ->where('adMob.mode', 'test')
                 ->where('adMob.earnsRevenue', false)
                 ->where('adMob.coveredPlacements', [])
                 ->where('campaigns.per_page', 25));
+    }
+
+    public function test_native_placement_rejects_house_fallback_source(): void
+    {
+        $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
+        $setting = AdvertisementPlacementSetting::forKey('home_feed');
+
+        $this->actingAs($admin)->from('/admin/advertisements')->patch("/admin/advertisement-placements/{$setting->id}", [
+            'enabled' => true,
+            'sourceOrder' => ['direct', 'admob', 'house'],
+            'firstAfter' => 3,
+            'repeatEvery' => 8,
+            'maxPerSession' => 1000,
+            'minItems' => 3,
+            'adMobAndroidUnitId' => 'ca-app-pub-6681150378641816/4910102351',
+            'adMobIosUnitId' => null,
+            'boostHours' => 24,
+            'dailyLimit' => 3,
+            'ordinals' => [2, 4],
+        ])->assertRedirect('/admin/advertisements')->assertSessionHasErrors('sourceOrder');
+
+        $this->assertSame(['direct', 'admob'], $setting->fresh()->source_order);
     }
 
     public function test_unknown_mobile_placement_cannot_be_added_to_a_campaign(): void

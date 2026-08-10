@@ -29,7 +29,9 @@ class PickupInterstitialPolicyTest extends TestCase
         $this->postJson("/api/v1/listings/{$secondListing->id}/pickup-requests", ['intent' => 'pickup'])
             ->assertCreated()
             ->assertJsonPath('monetization.showInterstitial', true)
-            ->assertJsonPath('monetization.dailyPickupOrdinal', 2);
+            ->assertJsonPath('monetization.dailyPickupOrdinal', 2)
+            ->assertJsonPath('monetization.adMobAndroidUnitId', 'ca-app-pub-3940256099942544/1033173712')
+            ->assertJsonPath('monetization.adMobIosUnitId', 'ca-app-pub-3940256099942544/4411468910');
     }
 
     private function listing(User $seller): Listing
