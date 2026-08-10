@@ -40,7 +40,7 @@ class AnnouncementDeliveryTest extends TestCase
         Queue::assertPushed(SendUserNotificationPush::class, 1);
     }
 
-    public function test_second_marketing_campaign_inside_twenty_four_hours_is_delayed(): void
+    public function test_second_marketing_campaign_inside_twenty_four_hours_is_sent_without_admin_cooldown(): void
     {
         User::factory()->create(['status' => 'active']);
         AnnouncementCampaign::create([
@@ -57,9 +57,9 @@ class AnnouncementDeliveryTest extends TestCase
         (new DispatchAnnouncementCampaign($campaign->id))->handle(app(UserNotificationService::class));
 
         $campaign->refresh();
-        $this->assertSame(AnnouncementCampaign::STATUS_SCHEDULED, $campaign->status);
-        $this->assertTrue($campaign->next_send_at->greaterThan(now()->addHours(22)));
-        $this->assertDatabaseCount('user_notifications', 0);
+        $this->assertSame(AnnouncementCampaign::STATUS_COMPLETED, $campaign->status);
+        $this->assertNull($campaign->next_send_at);
+        $this->assertDatabaseCount('user_notifications', 1);
     }
 
     public function test_due_command_queues_campaign_only_once(): void

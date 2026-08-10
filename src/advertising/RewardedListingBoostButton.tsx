@@ -58,7 +58,7 @@ export default function RewardedListingBoostButton({ listing, token, userId, onB
     }
     setBusy(true);
     try {
-      const challenge = await apiRequest<Challenge>(`/listings/${listing.id}/rewarded-boost/challenge`, { method: 'POST', token });
+      const challenge = await apiRequest<Challenge>(`/listings/${listing.id}/rewarded-boost/challenge`, { method: 'POST', token, body: { platform: Platform.OS } });
       let adsReady = false;
       setBoostHours(challenge.data.boostHours);
       const remoteUnitId = Platform.OS === 'ios' ? challenge.data.adMobIosUnitId : challenge.data.adMobAndroidUnitId;

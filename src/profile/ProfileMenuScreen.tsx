@@ -44,12 +44,12 @@ export default function ProfileMenuScreen({ fullName, avatarUrl, email, emailVer
       <MenuRow label="Alım taleplerim ve işlem geçmişi" onPress={openPurchaseHistory} />
       <MenuRow label="Bildirim tercihleri" onPress={openNotificationPreferences} />
       <MenuRow label="Engellediğim kullanıcılar" onPress={openBlockedUsers} />
+      <MonetizedAdSlot placement="profile_home" token={token} />
       <Text style={[x.sectionLabel, { marginTop: 15 }]}>HUKUK VE GİZLİLİK</Text>
       <MenuRow label="Kullanım Şartları" onPress={openTerms} />
       <MenuRow label="Gizlilik Politikası ve KVKK" onPress={openPrivacy} />
       <MenuRow label="Hesabımı sil" danger onPress={openDeleteAccount} />
       <MenuRow label="Çıkış yap" danger onPress={onSignOut} />
-      <MonetizedAdSlot placement="profile_home" token={token} />
     </ScrollView>
   );
 }

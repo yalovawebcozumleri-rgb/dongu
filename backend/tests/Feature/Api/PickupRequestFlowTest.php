@@ -35,7 +35,8 @@ class PickupRequestFlowTest extends TestCase
 
         $this->postJson("/api/v1/pickup-requests/{$requestId}/messages", [
             'message' => 'Saat konusunda konuşabiliriz.',
-        ])->assertCreated()->assertJsonPath('data.sender', 'me');
+        ])->assertCreated()->assertJsonPath('data.sender', 'me')
+            ->assertJsonPath('data.createdAt', fn ($value) => is_string($value) && str_contains($value, 'T'));
 
         Sanctum::actingAs($stranger, ['mobile']);
         $this->getJson("/api/v1/pickup-requests/{$requestId}/messages")->assertForbidden();
@@ -44,7 +45,8 @@ class PickupRequestFlowTest extends TestCase
         $this->getJson('/api/v1/conversations')
             ->assertOk()
             ->assertJsonPath('data.0.role', 'seller')
-            ->assertJsonPath('data.0.counterpart.id', $buyer->id);
+            ->assertJsonPath('data.0.counterpart.id', $buyer->id)
+            ->assertJsonPath('data.0.lastMessage.createdAt', fn ($value) => is_string($value) && str_contains($value, 'T'));
 
         $this->postJson("/api/v1/pickup-requests/{$requestId}/accept")
             ->assertOk()

@@ -7,6 +7,7 @@ import UserAvatar from '../profile/UserAvatar';
 import MonetizedAdSlot from '../advertising/MonetizedAdSlot';
 import { insertAdvertisementSlots } from '../advertising/listSlots';
 import { useAdvertisements } from '../advertising/useAdvertisements';
+import { formatLocalMessageTime } from './time';
 
 const statusLabel: Record<Conversation['status'], string> = {
   inquiry: 'Görüşme',
@@ -117,7 +118,7 @@ export default function ConversationList({ conversations, open, onHide }: { conv
             <View style={x.copy}>
               <View style={x.nameRow}>
                 <Text style={x.name}>{conversation.counterpart.name}</Text>
-                <Text style={x.time}>{conversation.lastMessage?.time}</Text>
+                <Text style={x.time}>{formatLocalMessageTime(conversation.lastMessage?.createdAt, conversation.lastMessage?.time)}</Text>
               </View>
               <Text style={x.listing}>{listingLabel(conversation)}</Text>
               <Text numberOfLines={1} style={x.preview}>{conversation.lastMessage?.body || 'Görüşme başlatıldı.'}</Text>

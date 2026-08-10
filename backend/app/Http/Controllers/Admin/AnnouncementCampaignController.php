@@ -28,7 +28,7 @@ class AnnouncementCampaignController extends Controller
                 'activeUsers' => User::where('status', 'active')->count(),
                 'marketingOptIns' => NotificationPreference::where('marketing_enabled', true)->count(),
             ],
-            'limits' => ['marketingCooldownHours' => 24, 'dailyMaximumDays' => 31],
+            'limits' => ['dailyMaximumDays' => 31],
         ]);
     }
 

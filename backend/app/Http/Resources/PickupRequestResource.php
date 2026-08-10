@@ -63,6 +63,7 @@ class PickupRequestResource extends JsonResource
             'lastMessage' => $this->whenLoaded('latestMessage', fn () => $this->latestMessage ? [
                 'body' => $this->latestMessage->moderated_at ? 'Bu mesaj topluluk kurallarını ihlal ettiği için kaldırıldı.' : $this->latestMessage->body,
                 'time' => $this->latestMessage->created_at?->format('H:i'),
+                'createdAt' => $this->latestMessage->created_at?->toIso8601String(),
             ] : null),
             'unreadCount' => (int) ($this->unread_count ?? 0),
             'conversationHidden' => $conversationHidden,

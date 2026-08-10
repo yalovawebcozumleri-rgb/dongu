@@ -44,6 +44,7 @@ import PurchaseHistoryScreen from './src/transactions/PurchaseHistoryScreen';
 import ListingCard, { MaterialIcon } from './src/listings/ListingCard';
 import MonetizedAdSlot from './src/advertising/MonetizedAdSlot';
 import RewardedListingBoostButton from './src/advertising/RewardedListingBoostButton';
+import RewardedUsageRightButton, { RewardOffer } from './src/advertising/RewardedUsageRightButton';
 import { usePickupInterstitial } from './src/advertising/usePickupInterstitial';
 import { useAdvertisements } from './src/advertising/useAdvertisements';
 import NotificationCenter from './src/notifications/NotificationCenterFinal';
@@ -80,7 +81,7 @@ type ListingCollectionResponse = {
   meta: { current_page: number; last_page: number; per_page: number; total: number };
 };
 type ListingResponse = { data: Listing };
-type InteractionOption = { allowed: boolean; action: 'start' | 'open' | 'blocked'; reason: string | null; retryAt: string | null; conversationId?: number };
+type InteractionOption = { allowed: boolean; action: 'start' | 'open' | 'blocked'; reason: string | null; retryAt: string | null; rewardOffer?: RewardOffer | null; conversationId?: number };
 type InteractionEligibility = { message: InteractionOption; pickup: InteractionOption; account?: { isNewAccount: boolean; newAccountHours: number; newAccountEndsAt: string | null } };
 type FeedItem =
   | { kind: 'listing'; listing: Listing }
@@ -369,6 +370,7 @@ function ListingDetail({
   bottomInset,
   isOwn,
   token,
+  userId,
   requireAuth,
   openSellerProfile,
 }: {
@@ -380,6 +382,7 @@ function ListingDetail({
   bottomInset: number;
   isOwn: boolean;
   token?: string | null;
+  userId: string;
   requireAuth?: () => void;
   openSellerProfile: () => void;
 }) {
@@ -595,6 +598,18 @@ function ListingDetail({
         {!isOwn && eligibilityLoading && <Text style={ds.interactionHint}>Kullanım hakların kontrol ediliyor…</Text>}
         {!isOwn && !eligibilityLoading && eligibilityError && <Text style={ds.interactionHint}>Hak bilgisi alınamadı; işlem sırasında yeniden kontrol edilecek.</Text>}
         {!isOwn && !eligibilityLoading && interactionHint && <Text style={ds.interactionHint}>{interactionHint}{formatRetryAt(messageUnavailable ? interactionEligibility?.message.retryAt ?? null : interactionEligibility?.pickup.retryAt ?? null) ? ` · ${formatRetryAt(messageUnavailable ? interactionEligibility?.message.retryAt ?? null : interactionEligibility?.pickup.retryAt ?? null)} tarihinde yenilenir` : ''}</Text>}
+        {!!token && !!userId && messageUnavailable && !!interactionEligibility?.message.rewardOffer && (
+          <RewardedUsageRightButton compact offer={interactionEligibility.message.rewardOffer} token={token} userId={userId} onRewarded={async () => {
+            const response = await apiRequest<{ data: InteractionEligibility }>(`/listings/${listing.id}/interaction-eligibility`, { token, retry: false });
+            setInteractionEligibility(response.data);
+          }} />
+        )}
+        {!!token && !!userId && pickupUnavailable && !!interactionEligibility?.pickup.rewardOffer && interactionEligibility.pickup.rewardOffer.rewardKey !== interactionEligibility?.message.rewardOffer?.rewardKey && (
+          <RewardedUsageRightButton compact offer={interactionEligibility.pickup.rewardOffer} token={token} userId={userId} onRewarded={async () => {
+            const response = await apiRequest<{ data: InteractionEligibility }>(`/listings/${listing.id}/interaction-eligibility`, { token, retry: false });
+            setInteractionEligibility(response.data);
+          }} />
+        )}
       </View>
       <Modal transparent visible={reportOpen} animationType="fade" onRequestClose={closeReport}>
         <SafeAreaProvider style={ds.reportProvider}>
@@ -771,6 +786,10 @@ function CreateModal({
   selectedAddress,
   openAddressPicker,
   bottomInset,
+  token,
+  userId,
+  rewardOffer,
+  onRewarded,
 }: {
   visible: boolean;
   close: () => void;
@@ -778,6 +797,10 @@ function CreateModal({
   selectedAddress: DeliveryAddress | null;
   openAddressPicker: () => void;
   bottomInset: number;
+  token: string;
+  userId: string;
+  rewardOffer: RewardOffer | null;
+  onRewarded: () => void | Promise<void>;
 }) {
   const { showNotice } = useNotice();
   const [lines, setLines] = useState(initialForm);
@@ -944,6 +967,7 @@ function CreateModal({
               <View style={s.calcDivider} />
               <View><Text style={s.calcLabel}>POTANSİYEL BRÜT FARK</Text><Text style={s.calcGain}>+{money(quantity - total)}</Text></View>
             </View>
+            {!!rewardOffer && <RewardedUsageRightButton offer={rewardOffer} token={token} userId={userId} onRewarded={onRewarded} />}
             <Pressable onPress={submit} disabled={submitting} style={[s.primary, submitting && { opacity: .65 }]}>
               {submitting ? <ActivityIndicator color="#FFFFFF" /> : <Text style={s.primaryText}>İlanı yayınla</Text>}
             </Pressable>
@@ -1019,9 +1043,6 @@ function NavButton({ icon, label, active, onPress, badgeCount = 0 }: {
     <Pressable accessibilityRole="tab" accessibilityLabel={`${label}${badgeCount > 0 ? `, ${badgeCount} okunmamış` : ''}`} accessibilityState={{ selected: active }} onPress={onPress} style={s.navItem}>
       <View style={s.navIconWrap}>
         <NavigationIcon name={icon} active={active} />
-        {badgeCount > 0 && (
-          <View style={s.navBadge}><Text style={s.navBadgeText}>{badgeCount > 99 ? '99+' : badgeCount}</Text></View>
-        )}
       </View>
       <Text style={[s.navLabel, active && s.navActive]}>{label}{badgeCount > 0 ? ' (' + badgeCount + ')' : ''}</Text>
     </Pressable>
@@ -1061,6 +1082,7 @@ function AppContent({ fullName, userEmail = '', userEmailVerified = false, userI
   const listingRequestId = useRef(0);
   const [publishedListing, setPublishedListing] = useState<Listing | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
+  const [listingRewardOffer, setListingRewardOffer] = useState<RewardOffer | null>(null);
   const [addressMode, setAddressMode] = useState<'select' | 'manage' | null>(null);
   const [selectedAddress, setSelectedAddress] = useState<DeliveryAddress | null>(null);
   const [locationOpen, setLocationOpen] = useState(false);
@@ -1574,6 +1596,7 @@ function AppContent({ fullName, userEmail = '', userEmailVerified = false, userI
       return false;
     }
 
+    setListingRewardOffer(null);
     try {
       const response = await apiRequest<ListingResponse>('/listings', {
         method: 'POST',
@@ -1596,6 +1619,7 @@ function AppContent({ fullName, userEmail = '', userEmailVerified = false, userI
       setTimeout(() => setPublishedListing(response.data), 250);
       return true;
     } catch (error) {
+      if (error instanceof ApiError && error.status === 429) setListingRewardOffer(error.rewardOffer);
       showNotice({ tone: 'error', title: 'İlan yayınlanamadı', message: error instanceof ApiError ? error.message : 'İlan servisine ulaşılamadı.' });
       return false;
     }
@@ -1682,7 +1706,7 @@ function AppContent({ fullName, userEmail = '', userEmailVerified = false, userI
           />
           : <Profile fullName={fullName} onSignOut={onSignOut} openAddresses={() => onRequireAuth?.()} />
         )}
-        {route === 'usage-limits' && !!token && <UsageLimitsScreen token={token} back={() => setRoute('profile')} />}
+        {route === 'usage-limits' && !!token && <UsageLimitsScreen token={token} userId={userId || ''} back={() => setRoute('profile')} />}
         {route === 'profile-edit' && !!token && (
           <ProfileInfoModal visible embedded token={token} initialName={fullName} initialEmail={userEmail} close={() => setRoute('profile')} saveName={onProfileUpdated || (async () => ({ error: 'Profil güncelleme servisi hazır değil.' }))} onAvatarChanged={onProfileRefresh} />
         )}
@@ -1748,6 +1772,7 @@ function AppContent({ fullName, userEmail = '', userEmailVerified = false, userI
             isOwn={String(selected.sellerId) === userId}
             bottomInset={0}
             token={token}
+            userId={userId || ''}
             requireAuth={onRequireAuth}
             openSellerProfile={() => openPublicProfile(selected)}
           />
@@ -1773,6 +1798,7 @@ function AppContent({ fullName, userEmail = '', userEmailVerified = false, userI
           <ConversationScreen
             conversation={activeConversation}
             token={token}
+            userId={userId || ''}
             back={() => {
               void loadConversations(true);
               setRoute(chatBackRoute);
@@ -1850,11 +1876,16 @@ function AppContent({ fullName, userEmail = '', userEmailVerified = false, userI
         close={() => {
           setCreateOpen(false);
           setSelectedAddress(null);
+          setListingRewardOffer(null);
         }}
         create={addListing}
         selectedAddress={selectedAddress}
         openAddressPicker={() => setAddressMode('select')}
         bottomInset={insets.bottom}
+        token={token || ''}
+        userId={userId || ''}
+        rewardOffer={listingRewardOffer}
+        onRewarded={() => setListingRewardOffer(null)}
       />
       {!!token && (
         <AddressBookModal

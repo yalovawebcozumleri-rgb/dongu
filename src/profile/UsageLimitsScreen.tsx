@@ -1,11 +1,12 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { C } from '../../styles';
-import { ApiError, apiRequest } from '../lib/api';
 import MonetizedAdSlot from '../advertising/MonetizedAdSlot';
+import RewardedUsageRightButton, { RewardOffer } from '../advertising/RewardedUsageRightButton';
+import { ApiError, apiRequest } from '../lib/api';
 
-type RollingQuota = { used: number; limit: number; remaining: number; nextAvailableAt: string | null };
-type CapacityQuota = { used: number; limit: number };
+type RollingQuota = { used: number; baseLimit: number; bonus: number; limit: number; remaining: number; nextAvailableAt: string | null; rewardOffer: RewardOffer | null };
+type CapacityQuota = { used: number; baseLimit: number; bonus: number; limit: number; remaining: number; rewardOffer: RewardOffer | null };
 type UsageData = {
   isNewAccount: boolean;
   newAccountEndsAt: string | null;
@@ -22,11 +23,10 @@ const formatDate = (value: string | null) => value
   ? new Date(value).toLocaleString('tr-TR', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })
   : null;
 
-export default function UsageLimitsScreen({ token, back }: { token: string; back: () => void }) {
+export default function UsageLimitsScreen({ token, userId, back }: { token: string; userId: string; back: () => void }) {
   const [data, setData] = useState<UsageData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-
   const load = useCallback(async () => {
     setLoading(true);
     setError('');
@@ -39,62 +39,56 @@ export default function UsageLimitsScreen({ token, back }: { token: string; back
       setLoading(false);
     }
   }, [token]);
-
   useEffect(() => { void load(); }, [load]);
 
-  return (
-    <View style={x.screen}>
-      <View style={x.header}>
-        <Pressable accessibilityRole="button" accessibilityLabel="Profile dön" onPress={back} style={x.back}><Text style={x.backText}>‹</Text></Pressable>
-        <View style={x.headerCopy}><Text style={x.eyebrow}>KULLANIM HAKLARI</Text><Text style={x.title}>Limitlerim</Text></View>
-      </View>
-      {loading ? (
-        <View style={x.center}><ActivityIndicator color={C.green} size="large" /><Text style={x.centerText}>Güncel hakların hesaplanıyor…</Text></View>
-      ) : error || !data ? (
-        <View style={x.center}><Text style={x.errorTitle}>Limitler alınamadı</Text><Text style={x.centerText}>{error}</Text><Pressable onPress={() => void load()} style={x.retry}><Text style={x.retryText}>Tekrar dene</Text></Pressable></View>
-      ) : (
-        <ScrollView contentContainerStyle={x.content} showsVerticalScrollIndicator={false}>
+  return <View style={x.screen}>
+    <View style={x.header}>
+      <Pressable accessibilityRole="button" accessibilityLabel="Profile dön" onPress={back} style={x.back}><Text style={x.backText}>‹</Text></Pressable>
+      <View style={x.headerCopy}><Text style={x.eyebrow}>KULLANIM HAKLARI</Text><Text style={x.title}>Limitlerim</Text></View>
+    </View>
+    {loading ? <View style={x.center}><ActivityIndicator color={C.green} size="large" /><Text style={x.centerText}>Güncel hakların hesaplanıyor…</Text></View>
+      : error || !data ? <View style={x.center}><Text style={x.errorTitle}>Limitler alınamadı</Text><Text style={x.centerText}>{error}</Text><Pressable onPress={() => void load()} style={x.retry}><Text style={x.retryText}>Tekrar dene</Text></Pressable></View>
+        : <ScrollView contentContainerStyle={x.content} showsVerticalScrollIndicator={false}>
           <View style={[x.accountCard, data.isNewAccount && x.accountCardNew]}>
             <Text style={x.accountEyebrow}>{data.isNewAccount ? 'YENİ HESAP DÖNEMİ' : 'STANDART HESAP'}</Text>
             <Text style={x.accountTitle}>{data.isNewAccount ? 'Yeni kullanıcı limitleri uygulanıyor' : 'Standart kullanım limitleri uygulanıyor'}</Text>
-            <Text style={x.accountText}>{data.isNewAccount && data.newAccountEndsAt
-              ? `Yeni hesap dönemin ${formatDate(data.newAccountEndsAt)} tarihinde sona erecek. Sonrasında standart limitlere otomatik geçeceksin.`
-              : 'Hakların son 24 saat içindeki kullanımına göre hareketli olarak yenilenir.'}</Text>
+            <Text style={x.accountText}>{data.isNewAccount && data.newAccountEndsAt ? `Yeni hesap dönemin ${formatDate(data.newAccountEndsAt)} tarihinde sona erecek. Sonrasında standart limitlere otomatik geçeceksin.` : 'Hakların son 24 saat içindeki kullanımına göre hareketli olarak yenilenir.'}</Text>
           </View>
-
           <Text style={x.sectionTitle}>SON 24 SAATLİK HAKLAR</Text>
-          <QuotaCard title="İlan oluşturma" quota={data.listings} />
-          <QuotaCard title="Yeni görüşme başlatma" quota={data.contacts} />
-          <QuotaCard title="Mesaj amaçlı görüşme" quota={data.messageConversations} />
-          <QuotaCard title="Alım talebi gönderme" quota={data.pickups} />
-          <QuotaCard title="Mesaj gönderme" quota={data.messages} detail={`Dakikada ${data.messages.perMinute} · Saatte ${data.messages.perHour} · Yanıt gelmeden en fazla ${data.messages.unansweredLimit}`} />
-
+          <QuotaCard title="İlan oluşturma" quota={data.listings} token={token} userId={userId} reload={load} />
+          <QuotaCard title="Yeni görüşme başlatma" quota={data.contacts} token={token} userId={userId} reload={load} />
+          <QuotaCard title="Mesaj amaçlı görüşme" quota={data.messageConversations} token={token} userId={userId} reload={load} />
+          <QuotaCard title="Alım talebi gönderme" quota={data.pickups} token={token} userId={userId} reload={load} />
+          <QuotaCard title="Mesaj gönderme" quota={data.messages} detail={`Dakikada ${data.messages.perMinute} · Saatte ${data.messages.perHour} · Yanıt gelmeden en fazla ${data.messages.unansweredLimit}`} token={token} userId={userId} reload={load} />
           <Text style={x.sectionTitle}>AKTİF KONTENJANLAR</Text>
-          <CapacityCard title="Aktif ilanlar" quota={data.activeListings} />
-          <CapacityCard title="Aktif alım talepleri" quota={data.activePickups} />
-          <Text style={x.footerText}>Bu ekran yalnızca açıldığında sunucudan güncel bilgi alır. Haklar yönetici ayarlarına göre anında hesaplanır.</Text>
+          <CapacityCard title="Aktif ilanlar" quota={data.activeListings} token={token} userId={userId} reload={load} />
+          <CapacityCard title="Aktif alım talepleri" quota={data.activePickups} token={token} userId={userId} reload={load} />
+          <Text style={x.footerText}>Ek haklar yalnızca ilgili standart sınır dolduğunda kullanılabilir. Kazanılan ve kullanılmayan haklar belirtilen süre sonunda otomatik silinir.</Text>
           <MonetizedAdSlot placement="usage_limits" token={token} />
-        </ScrollView>
-      )}
-    </View>
-  );
-}
-
-function QuotaCard({ title, quota, detail }: { title: string; quota: RollingQuota; detail?: string }) {
-  const ratio = quota.limit > 0 ? Math.min(1, quota.used / quota.limit) : 0;
-  const next = quota.remaining === 0 ? formatDate(quota.nextAvailableAt) : null;
-  return <View style={x.card}>
-    <View style={x.cardTop}><Text style={x.cardTitle}>{title}</Text><Text style={[x.remaining, quota.remaining === 0 && x.exhausted]}>{quota.remaining} kaldı</Text></View>
-    <Text style={x.count}>{quota.used} / {quota.limit} kullanıldı</Text>
-    <View style={x.track}><View style={[x.progress, { width: `${ratio * 100}%` }, quota.remaining === 0 && x.progressExhausted]} /></View>
-    {next && <Text style={x.next}>İlk hak {next} tarihinde yenilenir.</Text>}
-    {detail && <Text style={x.detail}>{detail}</Text>}
+        </ScrollView>}
   </View>;
 }
 
-function CapacityCard({ title, quota }: { title: string; quota: CapacityQuota }) {
-  const remaining = Math.max(0, quota.limit - quota.used);
-  return <View style={x.card}><View style={x.cardTop}><Text style={x.cardTitle}>{title}</Text><Text style={[x.remaining, remaining === 0 && x.exhausted]}>{remaining} boş yer</Text></View><Text style={x.count}>{quota.used} / {quota.limit} aktif</Text></View>;
+function QuotaCard({ title, quota, detail, token, userId, reload }: { title: string; quota: RollingQuota; detail?: string; token: string; userId: string; reload: () => Promise<void> }) {
+  const ratio = quota.limit > 0 ? Math.min(1, quota.used / quota.limit) : 0;
+  const next = quota.used >= quota.baseLimit ? formatDate(quota.nextAvailableAt) : null;
+  return <View style={x.card}>
+    <View style={x.cardTop}><Text style={x.cardTitle}>{title}</Text><Text style={[x.remaining, quota.remaining === 0 && x.exhausted]}>{quota.remaining} kullanılabilir</Text></View>
+    <Text style={x.count}>{Math.min(quota.used, quota.baseLimit)} / {quota.baseLimit} standart hak kullanıldı{quota.bonus > 0 ? ` · ${quota.bonus} ek hak hazır` : ''}</Text>
+    <View style={x.track}><View style={[x.progress, { width: `${ratio * 100}%` }, quota.remaining === 0 && x.progressExhausted]} /></View>
+    {next && <Text style={x.next}>İlk standart hak {next} tarihinde yenilenir.</Text>}
+    {detail && <Text style={x.detail}>{detail}</Text>}
+    {quota.used >= quota.baseLimit && quota.bonus === 0 && quota.rewardOffer && <RewardedUsageRightButton compact offer={quota.rewardOffer} token={token} userId={userId} onRewarded={reload} />}
+  </View>;
+}
+
+function CapacityCard({ title, quota, token, userId, reload }: { title: string; quota: CapacityQuota; token: string; userId: string; reload: () => Promise<void> }) {
+  const remaining = quota.remaining;
+  return <View style={x.card}>
+    <View style={x.cardTop}><Text style={x.cardTitle}>{title}</Text><Text style={[x.remaining, remaining === 0 && x.exhausted]}>{remaining} boş yer</Text></View>
+    <Text style={x.count}>{quota.used} / {quota.baseLimit} aktif{quota.bonus > 0 ? ` · ${quota.bonus} ek kontenjan hazır` : ''}</Text>
+    {quota.used >= quota.baseLimit && quota.bonus === 0 && quota.rewardOffer && <RewardedUsageRightButton compact offer={quota.rewardOffer} token={token} userId={userId} onRewarded={reload} />}
+  </View>;
 }
 
 const x = StyleSheet.create({

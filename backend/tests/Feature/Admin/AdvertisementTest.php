@@ -5,6 +5,7 @@ namespace Tests\Feature\Admin;
 use App\Models\Advertisement;
 use App\Models\AdvertisementPlacementSetting;
 use App\Models\User;
+use App\Services\RewardedUsageGrantService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -72,7 +73,7 @@ class AdvertisementTest extends TestCase
                 ->where('placementOptions.0.hint', '3. içerikten sonra; devamında her 8 içerikte bir reklam yuvası.')
                 ->where('placementOptions.2.hint', 'Sayfanın altında tek reklam.')
                 ->where('placementOptions.3.hint', '5. içerikten sonra tek reklam yuvası.')
-                ->has('placementSettings', 15)
+                ->has('placementSettings', 16)
                 ->where('adMob.mode', 'test')
                 ->where('adMob.earnsRevenue', false)
                 ->where('adMob.coveredPlacements', [])
@@ -124,5 +125,40 @@ class AdvertisementTest extends TestCase
     {
         $this->get('/admin/advertisements')->assertRedirect('/admin/login');
         $this->actingAs(User::factory()->create())->get('/admin/advertisements')->assertForbidden();
+    }
+    public function test_admin_can_manage_every_rewarded_usage_right_from_one_setting(): void
+    {
+        $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
+        $setting = AdvertisementPlacementSetting::forKey('rewarded_extra_rights');
+        $usageRewards = collect(RewardedUsageGrantService::DEFINITIONS)->map(function (array $definition, string $key): array {
+            return [
+                'key' => $key,
+                'enabled' => $key !== 'contact_cooldown',
+                'amount' => $key === 'message_daily' ? 12 : 1,
+                'dailyLimit' => 3,
+                'validHours' => 24,
+            ];
+        })->values()->all();
+
+        $this->actingAs($admin)->patch("/admin/advertisement-placements/{$setting->id}", [
+            'enabled' => true,
+            'sourceOrder' => ['admob'],
+            'firstAfter' => 0,
+            'repeatEvery' => 0,
+            'maxPerSession' => 20,
+            'minItems' => 0,
+            'adMobAndroidUnitId' => 'ca-app-pub-6681150378641816/6596149732',
+            'adMobIosUnitId' => null,
+            'boostHours' => 24,
+            'dailyLimit' => 3,
+            'ordinals' => [2, 4],
+            'usageRewards' => $usageRewards,
+        ])->assertRedirect();
+
+        $fresh = $setting->fresh();
+        $this->assertCount(count(RewardedUsageGrantService::DEFINITIONS), $fresh->settings['rewards']);
+        $this->assertSame(12, $fresh->settings['rewards']['message_daily']['amount']);
+        $this->assertFalse($fresh->settings['rewards']['contact_cooldown']['enabled']);
+        $this->assertSame('ek_hak', $fresh->settings['reward_item']);
     }
 }

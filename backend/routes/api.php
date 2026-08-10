@@ -13,7 +13,9 @@ use App\Http\Controllers\Api\ProfileImpactController;
 use App\Http\Controllers\Api\PublicUserProfileController;
 use App\Http\Controllers\Api\PushTokenController;
 use App\Http\Controllers\Api\RegionController;
+use App\Http\Controllers\Api\RewardedAdCallbackController;
 use App\Http\Controllers\Api\RewardedListingBoostController;
+use App\Http\Controllers\Api\RewardedUsageRightController;
 use App\Http\Controllers\Api\UsagePolicyController;
 use App\Http\Controllers\Api\UserAddressController;
 use App\Http\Controllers\Api\UserBlockController;
@@ -33,7 +35,7 @@ Route::prefix('v1')->group(function () {
     Route::post('/advertisements/{advertisement}/impressions', [AdvertisementController::class, 'impression'])->middleware('throttle:30,1');
     Route::post('/advertisements/{advertisement}/clicks', [AdvertisementController::class, 'click'])->middleware('throttle:30,1');
     Route::get('/leaderboard', [LeaderboardController::class, 'index'])->middleware('throttle:60,1');
-    Route::get('/admob/rewarded/callback', [RewardedListingBoostController::class, 'callback'])->middleware('throttle:120,1');
+    Route::get('/admob/rewarded/callback', RewardedAdCallbackController::class)->middleware('throttle:120,1');
     Route::get('/users/{user}/public-profile', [PublicUserProfileController::class, 'show'])->middleware('throttle:60,1');
     Route::get('/users/{user}/reviews', [PublicUserProfileController::class, 'reviews'])->middleware('throttle:60,1');
     Route::get('/regions/provinces', [RegionController::class, 'provinces'])->middleware('throttle:60,1');
@@ -89,6 +91,9 @@ Route::prefix('v1')->group(function () {
         Route::post('/listings/{listing}/rewarded-boost/challenge', [RewardedListingBoostController::class, 'challenge'])->middleware('throttle:5,60');
         Route::post('/listings/{listing}/rewarded-boost/complete', [RewardedListingBoostController::class, 'complete'])->middleware('throttle:5,60');
         Route::get('/listings/{listing}/rewarded-boost/status', [RewardedListingBoostController::class, 'status'])->middleware('throttle:30,1');
+        Route::post('/rewarded-rights/{rewardKey}/challenge', [RewardedUsageRightController::class, 'challenge'])->middleware('throttle:10,60');
+        Route::post('/rewarded-rights/{rewardKey}/complete', [RewardedUsageRightController::class, 'complete'])->middleware('throttle:10,60');
+        Route::get('/rewarded-rights/{rewardKey}/status', [RewardedUsageRightController::class, 'status'])->middleware('throttle:60,1');
         Route::delete('/listings/{listing}', [ListingController::class, 'destroy']);
     });
 });

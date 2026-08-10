@@ -122,9 +122,9 @@ const confirmDelete = () => {
           <p class="mt-1 text-xs text-slate-600">Kampanya push bildirimi alabilir</p>
         </article>
         <article class="rounded-2xl border border-slate-200 bg-white p-5">
-          <p class="text-sm font-semibold text-slate-700">Pazarlama aralığı</p>
-          <p class="mt-2 text-3xl font-semibold text-slate-950">{{ limits.marketingCooldownHours }} saat</p>
-          <p class="mt-1 text-xs text-slate-600">Kullanıcı başına korunan süre</p>
+          <p class="text-sm font-semibold text-slate-700">Yönetici gönderimi</p>
+          <p class="mt-2 text-3xl font-semibold text-emerald-700">Serbest</p>
+          <p class="mt-1 text-xs text-slate-600">Acil durumlarda günlük gönderim sınırı yok</p>
         </article>
         <article class="rounded-2xl border border-slate-200 bg-white p-5">
           <p class="text-sm font-semibold text-slate-700">Kayıtlı kampanya</p>
@@ -324,7 +324,7 @@ const confirmDelete = () => {
                   </div>
         
                   <div v-if="form.type === 'marketing'" class="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-900">
-                    Pazarlama push bildirimi yalnızca izin veren kullanıcılara gönderilir. Sistem aynı kullanıcıya {{ limits.marketingCooldownHours }} saat içinde ikinci bir pazarlama push bildirimi göndermez.
+                    Pazarlama push bildirimi yalnızca izin veren kullanıcılara gönderilir. Yönetici gönderimleri günlük adet veya 24 saat bekleme sınırına tabi değildir.
                   </div>
                   <div v-if="Object.keys(form.errors).length" class="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-800">
                     <p v-for="(error, key) in form.errors" :key="key">{{ error }}</p>

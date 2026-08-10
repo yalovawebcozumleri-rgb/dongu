@@ -2,11 +2,25 @@ const configuredUrl = process.env.EXPO_PUBLIC_API_URL?.trim();
 
 export const API_URL = (configuredUrl || 'http://192.168.1.102:8000/api/v1').replace(/\/$/, '');
 export const isApiConfigured = Boolean(configuredUrl || __DEV__);
+export type QuotaRewardOffer = {
+  rewardKey: string;
+  label: string;
+  unit: string;
+  amount: number;
+  dailyLimit: number;
+  adsUsed: number;
+  adsRemaining: number;
+  validHours: number;
+  activeBonus: number;
+  available: boolean;
+  nextAvailableAt: string | null;
+};
 
 export class ApiError extends Error {
   public status: number;
   public details: Record<string, unknown>;
   public retryAt: string | null;
+  public rewardOffer: QuotaRewardOffer | null;
 
   constructor(message: string, status: number, details: Record<string, unknown> = {}) {
     super(message);
@@ -14,6 +28,9 @@ export class ApiError extends Error {
     this.details = details;
     const quota = details.quota && typeof details.quota === 'object' ? details.quota as Record<string, unknown> : null;
     this.retryAt = typeof quota?.retryAt === 'string' ? quota.retryAt : null;
+    this.rewardOffer = quota?.rewardOffer && typeof quota.rewardOffer === 'object'
+      ? quota.rewardOffer as QuotaRewardOffer
+      : null;
   }
 }
 

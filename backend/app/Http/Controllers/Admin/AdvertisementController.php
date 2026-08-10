@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Advertisement;
 use App\Models\AdvertisementPlacementSetting;
+use App\Services\RewardedUsageGrantService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -135,6 +136,18 @@ class AdvertisementController extends Controller
                 'boostHours' => (int) data_get($setting->settings, 'boost_hours', 24),
                 'dailyLimit' => (int) data_get($setting->settings, 'daily_limit', 3),
                 'ordinals' => data_get($setting->settings, 'ordinals', []),
+                'usageRewards' => collect(RewardedUsageGrantService::DEFINITIONS)->map(function (array $definition, string $key) use ($setting): array {
+                    $config = data_get($setting->settings, "rewards.{$key}", []);
+                    return [
+                        'key' => $key,
+                        'label' => $definition['label'],
+                        'unit' => $definition['unit'],
+                        'enabled' => (bool) ($config['enabled'] ?? false),
+                        'amount' => (int) ($config['amount'] ?? 1),
+                        'dailyLimit' => (int) ($config['daily_limit'] ?? 1),
+                        'validHours' => (int) ($config['valid_hours'] ?? 24),
+                    ];
+                })->values(),
             ])->values(),
             'placementOptions' => collect(Advertisement::PLACEMENT_LABELS)
                 ->map(fn (string $label, string $value) => [

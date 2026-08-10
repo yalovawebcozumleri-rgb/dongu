@@ -11,11 +11,11 @@ class RewardedAdClaim extends Model
     public const REWARDED = 'rewarded';
     public const VERIFIED = 'verified';
 
-    protected $fillable = ['user_id', 'listing_id', 'token_hash', 'reward_type', 'status', 'transaction_id', 'expires_at', 'rewarded_at', 'verified_at'];
+    protected $fillable = ['user_id', 'listing_id', 'token_hash', 'reward_type', 'reward_key', 'reward_amount', 'expected_ad_unit_id', 'expected_reward_item', 'status', 'transaction_id', 'expires_at', 'rewarded_at', 'verified_at'];
 
     protected function casts(): array
     {
-        return ['expires_at' => 'datetime', 'rewarded_at' => 'datetime', 'verified_at' => 'datetime'];
+        return ['reward_amount' => 'integer', 'expires_at' => 'datetime', 'rewarded_at' => 'datetime', 'verified_at' => 'datetime'];
     }
 
     public function listing(): BelongsTo { return $this->belongsTo(Listing::class); }

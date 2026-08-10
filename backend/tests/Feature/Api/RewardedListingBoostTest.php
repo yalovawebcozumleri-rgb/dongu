@@ -18,7 +18,7 @@ class RewardedListingBoostTest extends TestCase
         $listing = $this->listing($owner, now()->subDay());
         Sanctum::actingAs($owner, ['mobile']);
 
-        $token = $this->postJson("/api/v1/listings/{$listing->id}/rewarded-boost/challenge")
+        $token = $this->postJson("/api/v1/listings/{$listing->id}/rewarded-boost/challenge", ['platform' => 'android'])
             ->assertOk()
             ->assertJsonPath('data.clientCompletionAllowed', true)
             ->assertJsonPath('data.testMode', true)
@@ -47,7 +47,7 @@ class RewardedListingBoostTest extends TestCase
         $this->getJson('/api/v1/listings?sort=newest')->assertOk()->assertJsonPath('data.0.id', $boosted->id);
 
         Sanctum::actingAs($other, ['mobile']);
-        $this->postJson("/api/v1/listings/{$boosted->id}/rewarded-boost/challenge")->assertForbidden();
+        $this->postJson("/api/v1/listings/{$boosted->id}/rewarded-boost/challenge", ['platform' => 'android'])->assertForbidden();
         $this->assertNotSame($boosted->id, $newest->id);
     }
 

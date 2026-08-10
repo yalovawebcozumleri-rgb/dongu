@@ -11,7 +11,6 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
-use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Throwable;
 
@@ -30,14 +29,6 @@ class DispatchAnnouncementCampaign implements ShouldQueue
             $campaign = AnnouncementCampaign::query()->lockForUpdate()->find($this->campaignId);
             if (! $campaign || ! in_array($campaign->status, [AnnouncementCampaign::STATUS_SENDING, AnnouncementCampaign::STATUS_SCHEDULED], true)) return [null, null];
 
-            if ($campaign->type === AnnouncementCampaign::TYPE_MARKETING) {
-                $lastMarketing = AnnouncementCampaign::query()->where('type', AnnouncementCampaign::TYPE_MARKETING)
-                    ->whereNotNull('last_sent_at')->max('last_sent_at');
-                if ($lastMarketing && now()->lt($allowedAt = Carbon::parse($lastMarketing)->addDay())) {
-                    $campaign->update(['status' => AnnouncementCampaign::STATUS_SCHEDULED, 'next_send_at' => $allowedAt]);
-                    return [null, null];
-                }
-            }
 
             $scheduledFor = $campaign->next_send_at ?? now();
             $runKey = $scheduledFor->format('YmdHis');

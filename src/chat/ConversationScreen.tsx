@@ -7,6 +7,8 @@ import { ApiError, apiRequest } from '../lib/api';
 import { useNotice } from '../notice/NoticeProvider';
 import { Conversation, ConversationMessage, ConversationResponse, MessageCollectionResponse } from './types';
 import UserAvatar from '../profile/UserAvatar';
+import RewardedUsageRightButton, { RewardOffer } from '../advertising/RewardedUsageRightButton';
+import { formatLocalMessageTime } from './time';
 
 const statusText: Record<Conversation['status'], string> = {
   inquiry: 'İlan hakkında görüşme',
@@ -29,6 +31,7 @@ const userReportReasons = [
 export default function ConversationScreen({
   conversation,
   token,
+  userId,
   back,
   onUpdated,
   onRead,
@@ -41,6 +44,7 @@ export default function ConversationScreen({
 }: {
   conversation: Conversation;
   token: string;
+  userId: string;
   back: () => void;
   onUpdated: (conversation: Conversation) => void;
   onRead: (conversationId: number) => void;
@@ -71,6 +75,7 @@ export default function ConversationScreen({
   const [userActionPending, setUserActionPending] = useState(false);
   const [messageQuota, setMessageQuota] = useState<{ used: number; limit: number; remaining: number; nextAvailableAt: string | null } | null>(null);
   const [messageLimitNotice, setMessageLimitNotice] = useState<string | null>(null);
+  const [messageRewardOffer, setMessageRewardOffer] = useState<RewardOffer | null>(null);
   const [messageRetryAt, setMessageRetryAt] = useState<string | null>(null);
   const scrollRef = useRef<ScrollView>(null);
 
@@ -83,9 +88,12 @@ export default function ConversationScreen({
 
   const loadMessageQuota = useCallback(async () => {
     try {
-      const response = await apiRequest<{ data?: { messages?: { used: number; limit: number; remaining: number; nextAvailableAt?: string | null } } }>('/usage-policy', { token });
+      const response = await apiRequest<{ data?: { messages?: { used: number; limit: number; remaining: number; nextAvailableAt?: string | null; rewardOffer?: RewardOffer | null } } }>('/usage-policy', { token });
       const messagesQuota = response.data?.messages;
-      if (messagesQuota) setMessageQuota({ ...messagesQuota, nextAvailableAt: messagesQuota.nextAvailableAt ?? null });
+      if (messagesQuota) {
+        setMessageQuota({ ...messagesQuota, nextAvailableAt: messagesQuota.nextAvailableAt ?? null });
+        setMessageRewardOffer(messagesQuota.remaining === 0 ? messagesQuota.rewardOffer ?? null : null);
+      }
     } catch {}
   }, [token]);
 
@@ -164,6 +172,7 @@ export default function ConversationScreen({
       if (error instanceof ApiError && error.status === 429) {
         setMessageLimitNotice(error.message);
         setMessageRetryAt(error.retryAt);
+        setMessageRewardOffer(error.rewardOffer);
         if (error.message.includes('24 saat')) {
           setMessageQuota(current => current ? { ...current, remaining: 0, nextAvailableAt: error.retryAt } : { used: 0, limit: 0, remaining: 0, nextAvailableAt: error.retryAt });
         }
@@ -500,7 +509,7 @@ export default function ConversationScreen({
                 style={[x.bubble, message.sender === 'me' && x.bubbleMe, message.sender === 'system' && x.bubbleSystem, message.deliveryState === 'failed' && x.bubbleFailed]}
               >
                 <Text style={[x.bubbleText, message.sender === 'me' && x.bubbleTextMe]}>{message.text}</Text>
-                <Text style={[x.bubbleTime, message.sender === 'me' && x.bubbleTimeMe]}>{message.time}{message.deliveryState === 'sending' ? ' · Gönderiliyor' : message.deliveryState === 'failed' ? ' · Gönderilemedi, tekrar dene' : message.sender === 'me' && message.readAt ? ' · Okundu' : ''}</Text>
+                <Text style={[x.bubbleTime, message.sender === 'me' && x.bubbleTimeMe]}>{formatLocalMessageTime(message.createdAt, message.time)}{message.deliveryState === 'sending' ? ' · Gönderiliyor' : message.deliveryState === 'failed' ? ' · Gönderilemedi, tekrar dene' : message.sender === 'me' && message.readAt ? ' · Okundu' : ''}</Text>
               </Pressable>
             </View>
           </Fragment>;
@@ -608,6 +617,12 @@ export default function ConversationScreen({
         {!conversationReadOnly && !messageLimitReached && showQuickReplies && <ScrollView horizontal showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={x.quickReplies}>
           {quickReplies.map(reply => <Pressable key={reply} onPress={() => setDraft(reply)} style={x.quickReply}><Text style={x.quickReplyText}>{reply}</Text></Pressable>)}
       </ScrollView>}
+        {messageLimitReached && messageRewardOffer && <RewardedUsageRightButton compact offer={messageRewardOffer} token={token} userId={userId} onRewarded={async () => {
+          setMessageLimitNotice(null);
+          setMessageRetryAt(null);
+          setMessageRewardOffer(null);
+          await loadMessageQuota();
+        }} />}
         <View style={x.composerRow}>
           <TextInput editable={!conversationReadOnly && !messageLimitReached} value={conversationReadOnly || messageLimitReached ? '' : draft} onChangeText={setDraft} multiline maxLength={1000} placeholder={messageLimitReached ? messageLimitPlaceholder : conversation.isBlocked ? 'Bu kullanıcıyla mesajlaşamazsın' : conversation.status === 'completed' ? 'Teslimat tamamlandı; sohbet kapalı' : conversation.status === 'rejected' ? 'Talep reddedildi; sohbet kapalı' : conversation.status === 'cancelled' ? 'İşlem iptal edildi; sohbet salt okunur' : conversation.status === 'closed' ? 'İlan kapandı; sohbet salt okunur' : 'Mesajını yaz...'} placeholderTextColor="#87948C" style={[x.input, (conversationReadOnly || messageLimitReached) && x.inputDisabled]} />
           <Pressable disabled={conversationReadOnly || messageLimitReached || busy || !draft.trim()} onPress={() => void send()} style={[x.send, (conversationReadOnly || messageLimitReached || !draft.trim() || busy) && x.sendDisabled]}>

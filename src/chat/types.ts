@@ -20,7 +20,7 @@ export type Conversation = {
   listingAvailable: boolean;
   closureReason: 'listing_unavailable' | 'listing_removed' | 'listing_expired' | null;
   closedAt: string | null;
-  lastMessage: { body: string; time: string } | null;
+  lastMessage: { body: string; time: string; createdAt?: string | null } | null;
   unreadCount: number;
   conversationHidden: boolean;
   hasMessages: boolean;
