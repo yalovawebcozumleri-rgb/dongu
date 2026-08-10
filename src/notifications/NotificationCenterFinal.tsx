@@ -15,6 +15,9 @@ import { C } from '../../styles';
 import { ApiError, apiRequest } from '../lib/api';
 import { useNotice } from '../notice/NoticeProvider';
 import { AppNotification } from './types';
+import MonetizedAdSlot from '../advertising/MonetizedAdSlot';
+import { insertAdvertisementSlots } from '../advertising/listSlots';
+import { useAdvertisements } from '../advertising/useAdvertisements';
 
 type NotificationCategory = 'all' | 'listings' | 'messages' | 'announcements';
 
@@ -41,6 +44,35 @@ const emptyCopy: Record<NotificationCategory, { title: string; message: string }
   listings: { title: '\u0130lan bildirimin yok', message: 'Al\u0131m talebi, rezervasyon ve teslimat hareketlerin burada g\u00f6r\u00fcnecek.' },
   messages: { title: 'Mesaj bildirimin yok', message: 'Yeni sohbet mesajlar\u0131n burada tek kartta toplanacak.' },
   announcements: { title: 'Duyuru bulunmuyor', message: 'D\u00f6ng\u00fc duyurular\u0131 ve y\u00f6netim bilgilendirmeleri burada g\u00f6r\u00fcnecek.' },
+};
+
+const normalizeNotificationText = (value: string | null | undefined) => {
+  if (!value) return '';
+
+  return value
+    .replaceAll('\u00c3\u00bc', '\u00fc')
+    .replaceAll('\u00c3\u009c', '\u00dc')
+    .replaceAll('\u00c3\u0152', '\u00dc')
+    .replaceAll('\u00c3\u00b6', '\u00f6')
+    .replaceAll('\u00c3\u0096', '\u00d6')
+    .replaceAll('\u00c3\u2013', '\u00d6')
+    .replaceAll('\u00c3\u00a7', '\u00e7')
+    .replaceAll('\u00c3\u0087', '\u00c7')
+    .replaceAll('\u00c3\u2021', '\u00c7')
+    .replaceAll('\u00c4\u009f', '\u011f')
+    .replaceAll('\u00c4\u0178', '\u011f')
+    .replaceAll('\u00c4\u009e', '\u011e')
+    .replaceAll('\u00c4\u017d', '\u011e')
+    .replaceAll('\u00c4\u00b1', '\u0131')
+    .replaceAll('\u00c4\u00b0', '\u0130')
+    .replaceAll('\u00c5\u009f', '\u015f')
+    .replaceAll('\u00c5\u0178', '\u015f')
+    .replaceAll('\u00c5\u009e', '\u015e')
+    .replaceAll('\u00c5\u017d', '\u015e')
+    .replaceAll('\u00e2\u20ac\u2122', '\u2019')
+    .replaceAll('\u00e2\u20ac\u0153', '\u201c')
+    .replaceAll('\u00e2\u20ac\u009d', '\u201d')
+    .replaceAll('\u00e2\u20ac\u201c', '\u2013');
 };
 
 const iconFor = (category: AppNotification['category'], type: string) => {
@@ -285,8 +317,8 @@ export default function NotificationCenterFinal({
   };
 
   const displayTitle = (item: AppNotification) => {
-    if (item.category !== 'messages' || item.messageCount <= 1) return item.title;
-    const sender = item.body.split(':')[0]?.trim();
+    if (item.category !== 'messages' || item.messageCount <= 1) return normalizeNotificationText(item.title);
+    const sender = normalizeNotificationText(item.body).split(':')[0]?.trim();
     return sender ? `${sender} \u00b7 ${item.messageCount} yeni mesaj` : `${item.messageCount} yeni mesaj`;
   };
 
@@ -294,10 +326,13 @@ export default function NotificationCenterFinal({
     ? { title: 'Okunmam\u0131\u015f bildirimin yok', message: 'Yeni bildirimlerin bu filtrede g\u00f6r\u00fcnecek.' }
     : emptyCopy[category];
 
+  const advertisementCollection = useAdvertisements('notifications', token);
+  const listData = insertAdvertisementSlots(items, item => String(item.id), advertisementCollection?.meta);
+
   return (
     <View style={x.screen}>
       <View style={x.header}>
-        <Pressable accessibilityRole="button" accessibilityLabel="Ana sayfaya d\u00f6n" onPress={back} style={x.back}>
+        <Pressable accessibilityRole="button" accessibilityLabel={'Ana sayfaya d\u00f6n'} onPress={back} style={x.back}>
           <Text style={x.backText}>{"\u2039"}</Text>
         </Pressable>
         <View style={x.headerCopy}>
@@ -305,23 +340,26 @@ export default function NotificationCenterFinal({
           <Text style={x.title}>Bildirimler</Text>
         </View>
         <Pressable disabled={!counts.all} onPress={() => void markAll()} style={x.markAll}>
-          <Text style={[x.markAllText, !counts.all && x.muted]}>T\u00fcm\u00fcn\u00fc oku</Text>
+          <Text style={[x.markAllText, !counts.all && x.muted]}>{'T\u00fcm\u00fcn\u00fc oku'}</Text>
         </Pressable>
       </View>
 
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={x.tabs}>
+      <View style={x.tabs}>
         {(Object.keys(categoryLabels) as NotificationCategory[]).map(tab => (
           <Pressable
             key={tab}
             onPress={() => { setItems([]); setCategory(tab); }}
             style={[x.tab, category === tab && x.tabActive]}
           >
-            <Text style={[x.tabText, category === tab && x.tabTextActive]}>
-              {categoryLabels[tab]}{counts[tab] > 0 ? ` (${counts[tab] > 99 ? '99+' : counts[tab]})` : ''}
-            </Text>
+            <Text numberOfLines={1} style={[x.tabText, category === tab && x.tabTextActive]}>{categoryLabels[tab]}</Text>
+            {counts[tab] > 0 && (
+              <View style={[x.tabBadge, category === tab && x.tabBadgeActive]}>
+                <Text style={[x.tabBadgeText, category === tab && x.tabBadgeTextActive]}>{counts[tab] > 99 ? '99+' : counts[tab]}</Text>
+              </View>
+            )}
           </Pressable>
         ))}
-      </ScrollView>
+      </View>
 
       <View style={x.filterRow}>
         <Text style={x.resultText}>{onlyUnread ? 'Yaln\u0131zca okunmam\u0131\u015f bildirimler' : categoryLabels[category]}</Text>
@@ -332,15 +370,16 @@ export default function NotificationCenterFinal({
           style={[x.unreadFilter, onlyUnread && x.unreadFilterActive]}
         >
           <View style={[x.filterDot, onlyUnread && x.filterDotActive]} />
-          <Text style={[x.unreadFilterText, onlyUnread && x.unreadFilterTextActive]}>Okunmam\u0131\u015f</Text>
+          <Text style={[x.unreadFilterText, onlyUnread && x.unreadFilterTextActive]}>{'Okunmam\u0131\u015f'}</Text>
         </Pressable>
       </View>
 
       <FlatList
-        data={items}
-        keyExtractor={item => String(item.id)}
+        data={listData}
+        keyExtractor={item => item.key}
         contentContainerStyle={items.length ? x.list : x.emptyList}
-        renderItem={({ item }) => (
+        renderItem={({ item: row }) => row.kind === 'advertisement'
+          ? <MonetizedAdSlot placement="notifications" token={token} slotIndex={row.slotIndex} itemCount={items.length} /> : ((item: AppNotification) => (
           <SwipeNotificationRow notification={item} onDelete={removeNotification}>
             <Pressable onPress={() => void open(item)} style={({ pressed }) => [x.row, !item.read && x.rowUnread, pressed && x.pressed]}>
               <View style={[x.icon, !item.read && x.iconUnread]}>
@@ -351,13 +390,13 @@ export default function NotificationCenterFinal({
                   <Text style={x.rowTitle} numberOfLines={1}>{displayTitle(item)}</Text>
                   {!item.read && <View style={x.dot} />}
                 </View>
-                <Text style={x.body} numberOfLines={2}>{item.body}</Text>
-                <Text style={x.time}>{item.time}</Text>
+                <Text style={x.body} numberOfLines={2}>{normalizeNotificationText(item.body)}</Text>
+                <Text style={x.time}>{normalizeNotificationText(item.time)}</Text>
               </View>
               <Text style={x.arrow}>{"\u203a"}</Text>
             </Pressable>
           </SwipeNotificationRow>
-        )}
+        ))(row.item)}
         refreshing={refreshing}
         onRefresh={() => void load(1, 'refresh')}
         onEndReached={() => {
@@ -368,7 +407,7 @@ export default function NotificationCenterFinal({
           <View style={x.empty}><ActivityIndicator color={C.green} /></View>
         ) : error ? (
           <View style={x.empty}>
-            <Text style={x.emptyTitle}>Bildirimler al\u0131namad\u0131</Text>
+            <Text style={x.emptyTitle}>{'Bildirimler al\u0131namad\u0131'}</Text>
             <Text style={x.emptyText}>{error}</Text>
             <Pressable onPress={() => void load()} style={x.retry}><Text style={x.retryText}>Tekrar dene</Text></Pressable>
           </View>
@@ -406,9 +445,9 @@ export default function NotificationCenterFinal({
               </Pressable>
             </View>
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={x.modalScroll}>
-              <Text style={x.modalTitle}>{selectedNotification?.title}</Text>
-              <Text style={x.modalTime}>{selectedNotification?.time}</Text>
-              <Text style={x.modalBody}>{selectedNotification?.body}</Text>
+              <Text style={x.modalTitle}>{normalizeNotificationText(selectedNotification?.title)}</Text>
+              <Text style={x.modalTime}>{normalizeNotificationText(selectedNotification?.time)}</Text>
+              <Text style={x.modalBody}>{normalizeNotificationText(selectedNotification?.body)}</Text>
             </ScrollView>
             <Pressable onPress={() => setSelectedNotification(null)} style={x.modalButton}>
               <Text style={x.modalButtonText}>Kapat</Text>
@@ -431,11 +470,15 @@ const x = StyleSheet.create({
   markAll: { minHeight: 42, justifyContent: 'center', paddingLeft: 8 },
   markAllText: { color: C.green, fontSize: 12, fontWeight: '900' },
   muted: { color: C.muted },
-  tabs: { gap: 8, paddingHorizontal: 14, paddingTop: 14, paddingBottom: 8 },
-  tab: { minHeight: 38, paddingHorizontal: 16, borderRadius: 19, backgroundColor: C.white, borderWidth: 1, borderColor: C.line, alignItems: 'center', justifyContent: 'center' },
+  tabs: { flexDirection: 'row', gap: 6, paddingHorizontal: 14, paddingTop: 14, paddingBottom: 8 },
+  tab: { flex: 1, minWidth: 0, minHeight: 40, paddingHorizontal: 5, borderRadius: 20, backgroundColor: C.white, borderWidth: 1, borderColor: C.line, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4 },
   tabActive: { backgroundColor: C.dark, borderColor: C.dark },
-  tabText: { color: C.muted, fontSize: 12, fontWeight: '800' },
+  tabText: { flexShrink: 1, color: C.muted, fontSize: 11, fontWeight: '800' },
   tabTextActive: { color: C.white },
+  tabBadge: { minWidth: 18, height: 18, borderRadius: 9, paddingHorizontal: 4, backgroundColor: C.soft, alignItems: 'center', justifyContent: 'center' },
+  tabBadgeActive: { backgroundColor: C.white },
+  tabBadgeText: { color: C.green, fontSize: 10, fontWeight: '900' },
+  tabBadgeTextActive: { color: C.dark },
   filterRow: { minHeight: 44, paddingHorizontal: 15, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   resultText: { color: C.muted, fontSize: 11, fontWeight: '800' },
   unreadFilter: { minHeight: 32, flexDirection: 'row', alignItems: 'center', gap: 7, borderRadius: 16, paddingHorizontal: 11, backgroundColor: C.white, borderWidth: 1, borderColor: C.line },

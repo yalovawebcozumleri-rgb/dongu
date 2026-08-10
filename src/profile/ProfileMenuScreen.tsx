@@ -2,6 +2,7 @@ import React from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { C } from '../../styles';
 import UserAvatar from './UserAvatar';
+import MonetizedAdSlot from '../advertising/MonetizedAdSlot';
 
 export default function ProfileMenuScreen({ fullName, avatarUrl, email, emailVerified, token, openPublicProfile, openEditProfile, openUsageLimits, openAddresses, openMyListings, openFavorites, openPurchaseHistory, openNotificationPreferences, openBlockedUsers, openTerms, openPrivacy, openDeleteAccount, onSignOut }: {
   fullName: string;
@@ -48,6 +49,7 @@ export default function ProfileMenuScreen({ fullName, avatarUrl, email, emailVer
       <MenuRow label="Gizlilik Politikası ve KVKK" onPress={openPrivacy} />
       <MenuRow label="Hesabımı sil" danger onPress={openDeleteAccount} />
       <MenuRow label="Çıkış yap" danger onPress={onSignOut} />
+      <MonetizedAdSlot placement="profile_home" token={token} />
     </ScrollView>
   );
 }

@@ -38,7 +38,7 @@ class AdvertisementTest extends TestCase
         $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
         $this->actingAs($admin)->post('/admin/advertisements', [
             'sponsorName' => 'Görselli sponsor', 'headline' => 'Görselli kampanya', 'body' => 'Görsel reklam açıklaması.',
-            'format' => 'image', 'image' => UploadedFile::fake()->image('sponsor.jpg', 1200, 630),
+            'format' => 'native', 'image' => UploadedFile::fake()->image('sponsor.jpg', 1200, 630),
             'backgroundColor' => '#E8F4E9', 'priority' => 10, 'isActive' => true, 'placements' => ['listing_detail'],
         ])->assertRedirect();
 
@@ -67,23 +67,21 @@ class AdvertisementTest extends TestCase
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->component('Admin/Advertisements/Index')
-                ->has('placementOptions', 3)
-                ->where('placementOptions.0.value', 'home_feed')
-                ->where('placementOptions.1.value', 'leaderboard')
-                ->where('placementOptions.2.value', 'listing_detail')
+                ->has('placementOptions', 13)
+                ->has('placementSettings', 17)
                 ->where('adMob.mode', 'test')
                 ->where('adMob.earnsRevenue', false)
                 ->where('adMob.coveredPlacements', [])
                 ->where('campaigns.per_page', 25));
     }
 
-    public function test_removed_mobile_placement_cannot_be_added_to_a_campaign(): void
+    public function test_unknown_mobile_placement_cannot_be_added_to_a_campaign(): void
     {
         $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
         $this->actingAs($admin)->from('/admin/advertisements')->post('/admin/advertisements', [
             'sponsorName' => 'Sponsor', 'headline' => 'Başlık', 'body' => 'Açıklama',
             'backgroundColor' => '#E8F4E9', 'priority' => 0, 'isActive' => false,
-            'format' => 'native', 'placements' => ['profile'],
+            'format' => 'native', 'placements' => ['chat_screen'],
         ])->assertRedirect('/admin/advertisements')->assertSessionHasErrors('placements.0');
     }
 

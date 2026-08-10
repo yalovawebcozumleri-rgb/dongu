@@ -6,6 +6,7 @@ import { ApiError, apiRequest } from '../lib/api';
 import { useNotice } from '../notice/NoticeProvider';
 import UserAvatar from '../profile/UserAvatar';
 import { C } from '../../styles';
+import MonetizedAdSlot from '../advertising/MonetizedAdSlot';
 
 const statusLabels: Record<Conversation['status'], string> = {
   inquiry: 'Görüşme',
@@ -122,6 +123,7 @@ export default function TransactionDetailScreen({ item, token, back, openMessage
           <View style={x.info}><Text style={x.infoText}>Bu işlem için görüntülenecek bir mesaj geçmişi bulunmuyor.</Text></View>
         )}
       </ScrollView>
+        <MonetizedAdSlot placement="transaction_detail" token={token} />
     </View>
   );
 }

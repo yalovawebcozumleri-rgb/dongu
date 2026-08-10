@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Advertisement;
+use App\Models\AdvertisementPlacementSetting;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -115,6 +116,25 @@ class AdvertisementController extends Controller
                 'ctr' => $totalImpressions > 0 ? round(($totalClicks / $totalImpressions) * 100, 1) : 0,
             ],
             'pageSizes' => [25, 50, 100],
+            'placementSettings' => AdvertisementPlacementSetting::query()->orderBy('id')->get()->map(fn (AdvertisementPlacementSetting $setting) => [
+                'id' => $setting->id,
+                'key' => $setting->key,
+                'label' => $setting->label,
+                'kind' => $setting->kind,
+                'locationLabel' => $setting->location_label,
+                'enabled' => $setting->enabled,
+                'locked' => $setting->locked,
+                'sourceOrder' => $setting->source_order ?? [],
+                'firstAfter' => $setting->first_after,
+                'repeatEvery' => $setting->repeat_every,
+                'maxPerSession' => $setting->max_per_session,
+                'minItems' => $setting->min_items,
+                'adMobAndroidUnitId' => $setting->admob_android_unit_id,
+                'adMobIosUnitId' => $setting->admob_ios_unit_id,
+                'boostHours' => (int) data_get($setting->settings, 'boost_hours', 24),
+                'dailyLimit' => (int) data_get($setting->settings, 'daily_limit', 3),
+                'ordinals' => data_get($setting->settings, 'ordinals', []),
+            ])->values(),
             'placementOptions' => collect(Advertisement::PLACEMENT_LABELS)->map(fn (string $label, string $value) => [
                 'value' => $value,
                 'label' => $label,
@@ -138,8 +158,8 @@ class AdvertisementController extends Controller
             'sponsorName' => ['required', 'string', 'max:100'],
             'headline' => ['required', 'string', 'max:140'],
             'body' => ['required', 'string', 'max:240'],
-            'format' => ['required', Rule::in(Advertisement::FORMATS)],
-            'image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:4096', 'required_if:format,image'],
+            'format' => ['required', Rule::in(['native'])],
+            'image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:4096'],
             'ctaLabel' => ['nullable', 'string', 'max:40', 'required_with:targetUrl'],
             'targetUrl' => ['nullable', 'url:http,https', 'max:500'],
             'backgroundColor' => ['required', 'regex:/^#[0-9A-Fa-f]{6}$/'],
@@ -155,7 +175,6 @@ class AdvertisementController extends Controller
             'placements.*.in' => 'Seçilen yayın alanı artık desteklenmiyor.',
             'endsAt.after' => 'Bitiş zamanı başlangıç zamanından sonra olmalıdır.',
             'targetUrl.url' => 'Yönlendirme bağlantısı http:// veya https:// ile başlayan geçerli bir adres olmalıdır.',
-            'image.required_if' => 'Görselli reklam için bir görsel yüklemelisin.',
             'image.max' => 'Reklam görseli en fazla 4 MB olabilir.',
         ], [
             'sponsorName' => 'Sponsor adı', 'headline' => 'Başlık', 'body' => 'Açıklama', 'format' => 'Reklam biçimi',

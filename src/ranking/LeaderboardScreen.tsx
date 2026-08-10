@@ -88,7 +88,7 @@ export default function LeaderboardScreen({ token, userId, requireAuth }: { toke
           <View style={x.periodRow}><Text style={x.periodLabel}>{meta?.periodLabel}</Text><Text style={x.participants}>{meta?.totalParticipants ?? 0} katılımcı</Text></View>
           {podium.length ? <View style={x.podium}>{podium.map(row => <Podium key={row.userId} row={row} />)}</View> : <View style={x.empty}><Text style={x.emptyTitle}>İlk puanı sen kazan</Text><Text style={x.emptyText}>Bu dönemde tamamlanan bir teslimat henüz yok.</Text></View>}
           {!!rest.length && <View style={x.list}>{rest.slice(0, 7).map(row => <RankItem key={row.userId} row={row} />)}</View>}
-          {rows.length >= 10 && <MonetizedAdSlot placement="leaderboard" token={token} compact style={x.adSlot} />}
+          <MonetizedAdSlot placement="leaderboard" token={token} itemCount={rows.length} style={x.adSlot} />
           {rest.length > 7 && <View style={x.list}>{rest.slice(7).map(row => <RankItem key={row.userId} row={row} />)}</View>}
 
           {token && own ? <View style={x.ownCard}>

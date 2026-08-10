@@ -9,6 +9,7 @@ import { readStaleCache, writeStaleCache } from '../lib/staleCache';
 import { useNotice } from '../notice/NoticeProvider';
 import UserAvatar from './UserAvatar';
 
+import MonetizedAdSlot from '../advertising/MonetizedAdSlot';
 type Badge = { code: string; name: string; description: string; icon: string; awardedAt: string | null };
 type Review = { id: number; rating: number; comment: string | null; reviewer: { id: number; name: string; avatarUrl?: string | null }; createdAt: string | null };
 type NextBadge = { code: string; name: string; description: string; icon: string; current: number; target: number; unit: 'puan' | 'teslimat'; progress: number };
@@ -256,6 +257,7 @@ export default function PublicUserProfileScreen({ userId, token, currentUserId, 
           />
         ))}</View>}
         {!profile.activeListings.length && <View style={x.emptyCard}><Text style={x.emptyCopy}>Şu anda aktif ilanı yok.</Text></View>}
+        <MonetizedAdSlot placement="public_profile" token={token} itemCount={profile.activeListings.length} />
 
         <View style={x.sectionHeading}><View><Text style={x.sectionEyebrow}>TOPLULUK DENEYİMİ</Text><Text style={x.sectionTitle}>Değerlendirmeler</Text></View><Text style={x.sectionCount}>{reviewTotal}</Text></View>
         {reviewsLoading && <View accessibilityLabel="Değerlendirmeler hazırlanıyor" style={x.reviewSkeleton}><View style={x.reviewSkeletonTop}><View style={x.reviewSkeletonAvatar} /><View style={x.reviewSkeletonName} /><View style={x.reviewSkeletonStars} /></View><View style={x.reviewSkeletonLine} /><View style={x.reviewSkeletonLineShort} /></View>}

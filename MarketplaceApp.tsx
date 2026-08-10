@@ -183,13 +183,17 @@ function Home({
   const feedData = useMemo<FeedItem[]>(() => {
     const result: FeedItem[] = [];
     let slotCount = 0;
-    const firstAfter = advertisementPolicy?.firstAfter || 3;
-    const repeatEvery = advertisementPolicy?.repeatEvery || 8;
-    const minItems = advertisementPolicy?.minItems || 3;
+    const firstAfter = advertisementPolicy?.firstAfter ?? 3;
+    const repeatEvery = advertisementPolicy?.repeatEvery ?? 8;
+    const minItems = advertisementPolicy?.minItems ?? 3;
+    const maxPerSession = advertisementPolicy?.maxPerSession ?? 1000;
     visibleListings.forEach((listing, index) => {
       result.push({ kind: 'listing', listing });
       const itemNumber = index + 1;
-      const shouldInsert = visibleListings.length >= minItems
+      const hasCapacity = slotCount < maxPerSession;
+      const placementEnabled = advertisementPolicy?.enabled ?? false;
+      const hasStartingPoint = firstAfter > 0;
+      const shouldInsert = placementEnabled && hasStartingPoint && hasCapacity && visibleListings.length >= minItems
         && itemNumber >= firstAfter
         && (itemNumber === firstAfter || (repeatEvery > 0 && (itemNumber - firstAfter) % repeatEvery === 0));
       if (shouldInsert) result.push({ kind: 'ad-slot', slotIndex: ++slotCount });
@@ -1494,7 +1498,7 @@ function AppContent({ fullName, userEmail = '', userEmailVerified = false, userI
       updateConversation(response.data);
       openConversation(response.data, 'detail');
       if (intent === 'pickup' && response.monetization?.showInterstitial) {
-        setTimeout(() => showPickupInterstitial(), 450);
+        setTimeout(() => showPickupInterstitial(Platform.OS === 'ios' ? response.monetization?.adMobIosUnitId : response.monetization?.adMobAndroidUnitId), 450);
       }
     } catch (error) {
       showNotice({ tone: 'error', title: intent === 'pickup' ? 'Alım talebi gönderilemedi' : 'Görüşme başlatılamadı', message: error instanceof ApiError ? error.message : 'Mesaj servisine ulaşılamadı.' });

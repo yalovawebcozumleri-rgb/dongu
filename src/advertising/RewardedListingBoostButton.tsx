@@ -1,19 +1,29 @@
-import React, { useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, Platform, Pressable, StyleSheet, Text } from 'react-native';
 import { Listing } from '../../marketplace';
 import { C, s } from '../../styles';
 import { ApiError, apiRequest } from '../lib/api';
 import { useNotice } from '../notice/NoticeProvider';
 import { googleAds, initializeGoogleAds, rewardedUnitId } from './googleMobileAds';
 
-type Challenge = { data: { token: string; clientCompletionAllowed: boolean } };
-type BoostStatus = { data: { isBoosted: boolean; boostedUntil: string | null } };
+type Challenge = { data: { token: string; clientCompletionAllowed: boolean; boostHours: number; dailyLimit: number; adMobAndroidUnitId: string | null; adMobIosUnitId: string | null } };
+type BoostStatus = { data: { isBoosted: boolean; boostedUntil: string | null; enabled: boolean; boostHours: number; dailyLimit: number } };
 
 export default function RewardedListingBoostButton({ listing, token, userId, onBoosted }: {
   listing: Listing; token: string; userId: string; onBoosted: (listing: Listing) => void;
 }) {
   const { showNotice } = useNotice();
   const [busy, setBusy] = useState(false);
+  const [boostHours, setBoostHours] = useState(24);
+  const [enabled, setEnabled] = useState(true);
+
+  useEffect(() => {
+    void apiRequest<BoostStatus>(`/listings/${listing.id}/rewarded-boost/status`, { token })
+      .then(status => {
+        setEnabled(status.data.enabled);
+        setBoostHours(status.data.boostHours);
+      }).catch(() => undefined);
+  }, [listing.id, token]);
   const earnedRef = useRef(false);
 
   const syncVerifiedReward = async () => {
@@ -27,20 +37,22 @@ export default function RewardedListingBoostButton({ listing, token, userId, onB
             isBoosted: true,
             boostedUntil: status.data.boostedUntil,
           });
-          showNotice({ tone: 'success', title: 'İlanın öne çıkarıldı', message: 'İlanın 24 saat boyunca sonuçlarda daha görünür olacak.' });
+          setBoostHours(status.data.boostHours);
+          setEnabled(status.data.enabled);
+          showNotice({ tone: 'success', title: 'İlanın öne çıkarıldı', message: `İlanın ${status.data.boostHours} saat boyunca sonuçlarda daha görünür olacak.` });
           return;
         }
       } catch {
         // Google doğrulaması gecikirse ilan durumu bir sonraki yenilemede de alınabilir.
       }
     }
-    showNotice({ tone: 'info', title: 'Ödül doğrulanıyor', message: 'Google doğrulaması tamamlandığında ilanın 24 saatlik öne çıkarılması otomatik başlayacak.' });
+    showNotice({ tone: 'info', title: 'Ödül doğrulanıyor', message: `Google doğrulaması tamamlandığında ilanın ${boostHours} saatlik öne çıkarılması otomatik başlayacak.` });
   };
 
   const start = async () => {
     const module = googleAds();
-    const unitId = rewardedUnitId();
-    if (!module || !unitId) {
+    const fallbackUnitId = rewardedUnitId();
+    if (!module || !fallbackUnitId) {
       showNotice({ tone: 'info', title: 'Development build gerekli', message: 'Ödüllü reklamlar Expo Go’da çalışmaz. Development build ile denediğinde Google test reklamı açılacak.' });
       return;
     }
@@ -48,6 +60,10 @@ export default function RewardedListingBoostButton({ listing, token, userId, onB
     try {
       const challenge = await apiRequest<Challenge>(`/listings/${listing.id}/rewarded-boost/challenge`, { method: 'POST', token });
       const adsReady = await initializeGoogleAds();
+      setBoostHours(challenge.data.boostHours);
+      const remoteUnitId = Platform.OS === 'ios' ? challenge.data.adMobIosUnitId : challenge.data.adMobAndroidUnitId;
+      const unitId = rewardedUnitId(remoteUnitId);
+      if (!unitId) throw new Error('Reklam birimi bulunamadı');
       if (!adsReady) throw new Error('Reklam izni alınamadı');
       const ad = module.RewardedAd.createForAdRequest(unitId, {
         requestNonPersonalizedAdsOnly: true,
@@ -62,7 +78,7 @@ export default function RewardedListingBoostButton({ listing, token, userId, onB
           if (challenge.data.clientCompletionAllowed) {
             const response = await apiRequest<{ data: Listing }>(`/listings/${listing.id}/rewarded-boost/complete`, { method: 'POST', token, body: { token: challenge.data.token } });
             onBoosted(response.data);
-            showNotice({ tone: 'success', title: 'İlanın öne çıkarıldı', message: 'İlanın 24 saat boyunca sonuçlarda daha görünür olacak.' });
+            showNotice({ tone: 'success', title: 'İlanın öne çıkarıldı', message: `İlanın ${challenge.data.boostHours} saat boyunca sonuçlarda daha görünür olacak.` });
           } else {
             await syncVerifiedReward();
           }
@@ -87,11 +103,12 @@ export default function RewardedListingBoostButton({ listing, token, userId, onB
   const boostedUntil = listing.boostedUntil ? Date.parse(listing.boostedUntil) : null;
   const boostActive = Boolean(listing.isBoosted && (!boostedUntil || boostedUntil > Date.now()));
   const remainingHours = boostedUntil ? Math.max(1, Math.ceil((boostedUntil - Date.now()) / 3_600_000)) : 24;
+  if (!enabled) return null;
   if (boostActive) {
     return <Text style={local.active}>✓ Öne çıkarma aktif · {remainingHours} saat kaldı</Text>;
   }
   return <Pressable disabled={busy} onPress={() => void start()} style={({ pressed }) => [local.button, busy && local.disabled, pressed && s.pressed]}>
-    {busy ? <ActivityIndicator color={C.dark} /> : <Text style={local.buttonText}>Reklam izle · 24 saat öne çıkar</Text>}
+    {busy ? <ActivityIndicator color={C.dark} /> : <Text style={local.buttonText}>Reklam izle · {boostHours} saat öne çıkar</Text>}
   </Pressable>;
 }
 

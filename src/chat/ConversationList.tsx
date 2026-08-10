@@ -4,6 +4,9 @@ import { C } from '../../styles';
 import { money } from '../../marketplace';
 import { Conversation } from './types';
 import UserAvatar from '../profile/UserAvatar';
+import MonetizedAdSlot from '../advertising/MonetizedAdSlot';
+import { insertAdvertisementSlots } from '../advertising/listSlots';
+import { useAdvertisements } from '../advertising/useAdvertisements';
 
 const statusLabel: Record<Conversation['status'], string> = {
   inquiry: 'Görüşme',
@@ -17,7 +20,7 @@ const statusLabel: Record<Conversation['status'], string> = {
 
 const canDeleteConversation = (conversation: Conversation) => conversation.isBlocked
   || ['rejected', 'cancelled', 'completed', 'closed'].includes(conversation.status)
-  || (conversation.status === 'inquiry' && conversation.lastMessage === null);
+  || conversation.status === 'inquiry';
 
 const listingLabel = (conversation: Conversation) => {
   const summary = conversation.listing ?? conversation.listingSummary;
@@ -93,6 +96,9 @@ function SwipeRow({ conversation, onHide, children }: { conversation: Conversati
 }
 
 export default function ConversationList({ conversations, open, onHide }: { conversations: Conversation[]; open: (conversation: Conversation) => void; onHide?: HideConversation }) {
+  const advertisementCollection = useAdvertisements('messages_list');
+  const listData = insertAdvertisementSlots(conversations, item => String(item.id), advertisementCollection?.meta);
+
   return (
     <ScrollView style={x.screen} contentContainerStyle={x.content}>
       <Text style={x.eyebrow}>GÖRÜŞMELER</Text>
@@ -103,7 +109,8 @@ export default function ConversationList({ conversations, open, onHide }: { conv
           <Text style={x.emptyTitle}>Henüz mesajın yok</Text>
           <Text style={x.emptyText}>Bir ilan hakkında yazdığında veya alım talebi aldığında konuşma burada görünecek.</Text>
         </View>
-      ) : conversations.map(conversation => (
+      ) : listData.map(row => row.kind === 'advertisement'
+        ? <MonetizedAdSlot key={row.key} placement="messages_list" slotIndex={row.slotIndex} itemCount={conversations.length} /> : ((conversation: Conversation) => (
         <SwipeRow key={conversation.id} conversation={conversation} onHide={onHide}>
           <Pressable onPress={() => open(conversation)} style={x.card}>
             <UserAvatar uri={conversation.counterpart.avatarUrl} name={conversation.counterpart.name} size={48} style={{ marginRight: 12 }} />
@@ -121,7 +128,7 @@ export default function ConversationList({ conversations, open, onHide }: { conv
             </View>
           </Pressable>
         </SwipeRow>
-      ))}
+      ))(row.item))}
     </ScrollView>
   );
 }

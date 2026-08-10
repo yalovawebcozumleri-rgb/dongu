@@ -1,5 +1,6 @@
 <script setup>
 import AdminLayout from '../../../Layouts/AdminLayout.vue';
+import PlacementSettings from './PlacementSettings.vue';
 import { Head, Link, router, useForm, usePage } from '@inertiajs/vue3';
 import { computed, reactive, ref } from 'vue';
 
@@ -7,6 +8,7 @@ const props = defineProps({
   campaigns: Object,
   filters: Object,
   counts: Object,
+  placementSettings: Array,
   pageSizes: Array,
   placementOptions: Array,
   adMob: Object,
@@ -34,12 +36,12 @@ const statusClasses = {
   paused: 'bg-slate-100 text-slate-700',
   ended: 'bg-amber-50 text-amber-900',
 };
-const formatLabels = { native: 'Sponsor kartı', image: 'Görselli', compact: 'Kompakt' };
+const formatLabels = { native: 'Standart reklam kartı', image: 'Standart reklam kartı', compact: 'Standart reklam kartı' };
 const labelFor = value => props.placementOptions.find(option => option.value === value)?.label || value;
 const rate = item => item.impressions ? `${((item.clicks / item.impressions) * 100).toFixed(1).replace('.', ',')}%` : '0,0%';
 const placementHint = value => ({
   home_feed: '3. ilandan sonra; kullanıcı kaydırdıkça devamında her 8 ilanda bir yuva.',
-  leaderboard: 'İlk 10 kullanıcıdan sonra tek kompakt reklam yuvası.',
+  leaderboard: 'İlk 10 kullanıcıdan sonra tek standart reklam kartı.',
   listing_detail: 'İlan ayrıntısının alt bölümünde tek reklam yuvası.',
 }[value] || '');
 
@@ -107,6 +109,8 @@ const confirmDelete = () => deleteForm.delete(`/admin/advertisements/${deleteCan
         </article>
       </section>
 
+      <PlacementSettings :settings="placementSettings" />
+
       <section class="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <button type="button" @click="setStatus('')" :class="['rounded-2xl border bg-white p-5 text-left transition', !filter.status ? 'border-emerald-500 ring-2 ring-emerald-100' : 'border-slate-200 hover:border-slate-300']"><p class="text-sm font-semibold text-slate-700">Toplam kampanya</p><p class="mt-2 text-3xl font-semibold text-slate-950">{{ Number(counts.all).toLocaleString('tr-TR') }}</p><p class="mt-1 text-xs text-slate-600">Doğrudan satış kayıtları</p></button>
         <button type="button" @click="setStatus('active')" :class="['rounded-2xl border bg-white p-5 text-left transition', filter.status === 'active' ? 'border-emerald-500 ring-2 ring-emerald-100' : 'border-slate-200 hover:border-slate-300']"><p class="text-sm font-semibold text-slate-700">Şu an yayında</p><p class="mt-2 text-3xl font-semibold text-slate-950">{{ Number(counts.active).toLocaleString('tr-TR') }}</p><p class="mt-1 text-xs text-slate-600">Tarih ve durum koşulları uygun</p></button>
@@ -152,10 +156,10 @@ const confirmDelete = () => deleteForm.delete(`/admin/advertisements/${deleteCan
           <fieldset><legend class="text-sm font-semibold text-slate-950">Yayın alanları <span class="text-red-600">*</span></legend><p class="mt-1 text-xs text-slate-600">Aynı kampanyayı bir veya birden fazla geçerli mobil alanda yayınlayabilirsin.</p><div class="mt-3 grid gap-3 md:grid-cols-3"><label v-for="option in placementOptions" :key="option.value" :class="['cursor-pointer rounded-xl border p-4 transition', form.placements.includes(option.value) ? 'border-emerald-500 bg-emerald-50 ring-2 ring-emerald-100' : 'border-slate-300 hover:border-slate-400']"><span class="flex items-center gap-2"><input v-model="form.placements" :value="option.value" type="checkbox" /><strong class="text-sm font-semibold text-slate-950">{{ option.label }}</strong></span><span class="mt-2 block text-xs leading-5 text-slate-600">{{ placementHint(option.value) }}</span></label></div><p v-if="form.errors.placements" class="mt-2 text-sm font-semibold text-red-700">{{ form.errors.placements }}</p></fieldset>
           <div class="mt-6 grid gap-4 md:grid-cols-2">
             <label class="text-xs font-semibold text-slate-700">Sponsor adı <span class="text-red-600">*</span><input v-model="form.sponsorName" maxlength="100" class="mt-1.5 h-11 w-full rounded-xl border border-slate-300 px-3 text-sm text-slate-950" /><span v-if="form.errors.sponsorName" class="mt-1 block text-xs text-red-700">{{ form.errors.sponsorName }}</span></label>
-            <label class="text-xs font-semibold text-slate-700">Reklam biçimi <span class="text-red-600">*</span><select v-model="form.format" class="mt-1.5 h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm text-slate-950"><option value="native">Sponsor kartı</option><option value="image">Görselli</option><option value="compact">Kompakt</option></select></label>
+            <label class="text-xs font-semibold text-slate-700">Reklam biçimi <span class="mt-1.5 flex h-11 w-full items-center rounded-xl border border-slate-300 bg-slate-50 px-3 text-sm text-slate-950">Standart reklam kartı</span></label>
             <label class="text-xs font-semibold text-slate-700 md:col-span-2">Başlık <span class="text-red-600">*</span><input v-model="form.headline" maxlength="140" class="mt-1.5 h-11 w-full rounded-xl border border-slate-300 px-3 text-sm text-slate-950" /><span v-if="form.errors.headline" class="mt-1 block text-xs text-red-700">{{ form.errors.headline }}</span></label>
             <label class="text-xs font-semibold text-slate-700 md:col-span-2">Açıklama <span class="text-red-600">*</span><textarea v-model="form.body" maxlength="240" rows="4" class="mt-1.5 w-full rounded-xl border border-slate-300 p-3 text-sm leading-6 text-slate-950" /><span class="mt-1 flex justify-between text-xs"><span class="font-semibold text-red-700">{{ form.errors.body }}</span><span class="text-slate-500">{{ form.body.length }} / 240</span></span></label>
-            <label v-if="form.format === 'image'" class="rounded-xl border border-dashed border-slate-300 p-4 text-xs font-semibold text-slate-700 md:col-span-2">Reklam görseli <span class="text-red-600">*</span><span class="mt-1 block font-normal text-slate-600">JPG, PNG veya WebP · en fazla 4 MB</span><input type="file" accept="image/jpeg,image/png,image/webp" class="mt-3 block w-full text-sm" @change="form.image = $event.target.files[0]" /><span v-if="form.errors.image" class="mt-2 block text-red-700">{{ form.errors.image }}</span></label>
+            <label class="rounded-xl border border-dashed border-slate-300 p-4 text-xs font-semibold text-slate-700 md:col-span-2">Reklam görseli <span class="font-normal text-slate-500">(isteğe bağlı)</span><span class="mt-1 block font-normal text-slate-600">JPG, PNG veya WebP · en fazla 4 MB</span><input type="file" accept="image/jpeg,image/png,image/webp" class="mt-3 block w-full text-sm" @change="form.image = $event.target.files[0]" /><span v-if="form.errors.image" class="mt-2 block text-red-700">{{ form.errors.image }}</span></label>
             <label class="text-xs font-semibold text-slate-700">Buton yazısı<input v-model="form.ctaLabel" maxlength="40" placeholder="İncele" class="mt-1.5 h-11 w-full rounded-xl border border-slate-300 px-3 text-sm text-slate-950" /></label>
             <label class="text-xs font-semibold text-slate-700">Arka plan rengi <span class="text-red-600">*</span><input v-model="form.backgroundColor" type="color" class="mt-1.5 h-11 w-full rounded-xl border border-slate-300 p-1" /></label>
             <label class="text-xs font-semibold text-slate-700 md:col-span-2">Yönlendirme bağlantısı<input v-model="form.targetUrl" type="url" maxlength="500" placeholder="https://" class="mt-1.5 h-11 w-full rounded-xl border border-slate-300 px-3 text-sm text-slate-950" /><span v-if="form.errors.targetUrl" class="mt-1 block text-xs text-red-700">{{ form.errors.targetUrl }}</span></label>

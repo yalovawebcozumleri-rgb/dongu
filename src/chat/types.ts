@@ -54,7 +54,7 @@ export type ConversationMessage = {
   createdAt: string;
 };
 
-export type ConversationResponse = { data: Conversation; monetization?: { showInterstitial: boolean; dailyPickupOrdinal: number } };
+export type ConversationResponse = { data: Conversation; monetization?: { showInterstitial: boolean; dailyPickupOrdinal: number; adMobAndroidUnitId?: string | null; adMobIosUnitId?: string | null } };
 export type ConversationCollectionResponse = { data: Conversation[] };
 export type MessageCollectionResponse = { data: ConversationMessage[]; meta: { hasMore: boolean; nextCursor: number | null } };
 export type BlockedUser = { id: number; name: string; blockedAt: string | null };

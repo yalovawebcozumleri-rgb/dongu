@@ -1,0 +1,43 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+
+class AdvertisementPlacementSetting extends Model
+{
+    public const KIND_NATIVE = 'native';
+    public const KIND_INTERSTITIAL = 'interstitial';
+    public const KIND_REWARDED = 'rewarded';
+    public const KIND_HOUSE = 'house';
+
+    public const SOURCE_DIRECT = 'direct';
+    public const SOURCE_ADMOB = 'admob';
+    public const SOURCE_HOUSE = 'house';
+    public const SOURCES = [self::SOURCE_DIRECT, self::SOURCE_ADMOB, self::SOURCE_HOUSE];
+
+    protected $fillable = [
+        'key', 'label', 'kind', 'location_label', 'enabled', 'locked', 'source_order',
+        'first_after', 'repeat_every', 'max_per_session', 'min_items',
+        'admob_android_unit_id', 'admob_ios_unit_id', 'settings',
+    ];
+
+    protected function casts(): array
+    {
+        return [
+            'enabled' => 'boolean',
+            'locked' => 'boolean',
+            'source_order' => 'array',
+            'settings' => 'array',
+            'first_after' => 'integer',
+            'repeat_every' => 'integer',
+            'max_per_session' => 'integer',
+            'min_items' => 'integer',
+        ];
+    }
+
+    public static function forKey(string $key): self
+    {
+        return static::query()->where('key', $key)->firstOrFail();
+    }
+}

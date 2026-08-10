@@ -7,6 +7,9 @@ import UserAvatar from '../profile/UserAvatar';
 import { ApiError, apiRequest } from '../lib/api';
 import { useNotice } from '../notice/NoticeProvider';
 import TransactionDetailScreen from './TransactionDetailScreen';
+import MonetizedAdSlot from '../advertising/MonetizedAdSlot';
+import { insertAdvertisementSlots } from '../advertising/listSlots';
+import { useAdvertisements } from '../advertising/useAdvertisements';
 
 type Scope = 'active' | 'history';
 type Response = {
@@ -73,6 +76,10 @@ export default function PurchaseHistoryScreen({ token, back, openConversation }:
 
   useEffect(() => { setItems([]); void load(); }, [load]);
 
+  const placement = scope === 'active' ? 'purchase_requests' : 'transaction_history';
+  const advertisementCollection = useAdvertisements(placement, token);
+  const listData = insertAdvertisementSlots(items, item => String(item.id), advertisementCollection?.meta);
+
   if (selected) {
     return (
       <TransactionDetailScreen
@@ -99,9 +106,11 @@ export default function PurchaseHistoryScreen({ token, back, openConversation }:
         <ScopeTab label="Geçmiş" count={summary.history} selected={scope === 'history'} onPress={() => setScope('history')} />
       </View>
       <FlatList
-        data={items}
-        keyExtractor={item => String(item.id)}
-        renderItem={({ item }) => <TransactionCard item={item} scope={scope} open={() => scope === 'active' ? openConversation(item) : setSelected(item)} />}
+        data={listData}
+        keyExtractor={item => item.key}
+        renderItem={({ item }) => item.kind === 'advertisement'
+          ? <MonetizedAdSlot placement={placement} token={token} slotIndex={item.slotIndex} itemCount={items.length} />
+          : <TransactionCard item={item.item} scope={scope} open={() => scope === 'active' ? openConversation(item.item) : setSelected(item.item)} />}
         contentContainerStyle={items.length ? x.list : x.emptyList}
         refreshing={refreshing}
         onRefresh={() => void load(1, 'refresh')}
@@ -114,7 +123,7 @@ export default function PurchaseHistoryScreen({ token, back, openConversation }:
         ) : (
           <View style={x.empty}><Text style={x.emptyIcon}>{scope === 'active' ? '◎' : '✓'}</Text><Text style={x.emptyTitle}>{scope === 'active' ? 'Aktif alım talebin yok' : 'İşlem geçmişin henüz boş'}</Text><Text style={x.emptyText}>{scope === 'active' ? 'Bir ilan için “Almak istiyorum” dediğinde süreci buradan takip edebilirsin.' : 'Sonuçlanan alım taleplerin ve tamamlanan teslimatların burada saklanacak.'}</Text></View>
         )}
-        ListFooterComponent={<>{loadingMore && <ActivityIndicator color={C.green} style={x.footer} />}</>}
+        ListFooterComponent={loadingMore ? <ActivityIndicator color={C.green} style={x.footer} /> : null}
         initialNumToRender={7}
         maxToRenderPerBatch={7}
         windowSize={7}

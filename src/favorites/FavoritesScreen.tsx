@@ -4,7 +4,10 @@ import { Listing } from '../../marketplace';
 import { C } from '../../styles';
 import { ApiError, apiRequest } from '../lib/api';
 import ListingCard from '../listings/ListingCard';
+import MonetizedAdSlot from '../advertising/MonetizedAdSlot';
 
+import { insertAdvertisementSlots } from '../advertising/listSlots';
+import { useAdvertisements } from '../advertising/useAdvertisements';
 type FavoriteResponse = {
   data: Listing[];
   meta: { current_page: number; last_page: number; total: number };
@@ -67,6 +70,9 @@ export default function FavoritesScreen({
 
   useEffect(() => { void load(); }, [load]);
 
+  const advertisementCollection = useAdvertisements('favorites', token);
+  const listData = insertAdvertisementSlots(listings, item => String(item.id), advertisementCollection?.meta);
+
   const remove = async (listing: Listing) => {
     if (!await toggleFavorite(listing)) return;
     setListings(current => current.filter(item => item.id !== listing.id));
@@ -86,18 +92,19 @@ export default function FavoritesScreen({
         <View style={x.totalBadge}><Text style={x.totalText}>{total}</Text></View>
       </View>
       <FlatList
-        data={listings}
-        keyExtractor={item => String(item.id)}
-        renderItem={({ item }) => (
-          <ListingCard
-            item={item}
-            center={null}
-            isOwn={String(item.sellerId) === userId}
-            open={() => openListing(item)}
-            favoritePending={pendingIds.has(item.id)}
-            toggleFavorite={() => void remove(item)}
-          />
-        )}
+        data={listData}
+        keyExtractor={item => item.key}
+        renderItem={({ item }) => item.kind === 'advertisement'
+          ? <MonetizedAdSlot placement="favorites" token={token} slotIndex={item.slotIndex} itemCount={listings.length} style={x.adSlot} />
+          : <ListingCard
+              item={item.item}
+              center={null}
+              isOwn={String(item.item.sellerId) === userId}
+              open={() => openListing(item.item)}
+              favoritePending={pendingIds.has(item.item.id)}
+              toggleFavorite={() => void remove(item.item)}
+            />
+        }
         contentContainerStyle={listings.length ? x.list : x.emptyList}
         refreshing={refreshing}
         onRefresh={() => void load(1, 'refresh')}
@@ -112,7 +119,7 @@ export default function FavoritesScreen({
         ) : (
           <View style={x.empty}><Text style={x.emptyIcon}>♡</Text><Text style={x.emptyTitle}>Henüz favorin yok</Text><Text style={x.emptyText}>Ana sayfadaki kalp simgesine dokunduğun ilanlar burada görünecek.</Text></View>
         )}
-        ListFooterComponent={<>{loadingMore && <ActivityIndicator color={C.green} style={x.footer} />}</>}
+        ListFooterComponent={loadingMore ? <ActivityIndicator color={C.green} style={x.footer} /> : null}
         initialNumToRender={6}
         maxToRenderPerBatch={6}
         windowSize={7}

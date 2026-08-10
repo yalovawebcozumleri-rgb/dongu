@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { C } from '../../styles';
 import { ApiError, apiRequest } from '../lib/api';
+import MonetizedAdSlot from '../advertising/MonetizedAdSlot';
 
 type RollingQuota = { used: number; limit: number; remaining: number; nextAvailableAt: string | null };
 type CapacityQuota = { used: number; limit: number };
@@ -72,6 +73,7 @@ export default function UsageLimitsScreen({ token, back }: { token: string; back
           <CapacityCard title="Aktif ilanlar" quota={data.activeListings} />
           <CapacityCard title="Aktif alım talepleri" quota={data.activePickups} />
           <Text style={x.footerText}>Bu ekran yalnızca açıldığında sunucudan güncel bilgi alır. Haklar yönetici ayarlarına göre anında hesaplanır.</Text>
+          <MonetizedAdSlot placement="usage_limits" token={token} />
         </ScrollView>
       )}
     </View>

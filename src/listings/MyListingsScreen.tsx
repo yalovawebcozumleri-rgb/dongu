@@ -5,6 +5,9 @@ import { C } from '../../styles';
 import { ApiError, apiRequest } from '../lib/api';
 import { useNotice } from '../notice/NoticeProvider';
 import RewardedListingBoostButton from '../advertising/RewardedListingBoostButton';
+import MonetizedAdSlot from '../advertising/MonetizedAdSlot';
+import { insertAdvertisementSlots } from '../advertising/listSlots';
+import { useAdvertisements } from '../advertising/useAdvertisements';
 
 type Scope = 'active' | 'history';
 type ListingCollectionResponse = {
@@ -126,6 +129,9 @@ export default function MyListingsScreen({ token, userId, back, openListing, cre
     });
   };
 
+  const advertisementCollection = useAdvertisements('my_listings', token);
+  const listData = insertAdvertisementSlots(listings, item => String(item.id), advertisementCollection?.meta);
+
   return (
     <View style={x.screen}>
       <View style={x.header}>
@@ -138,15 +144,17 @@ export default function MyListingsScreen({ token, userId, back, openListing, cre
         <ScopeTab label="Geçmiş" count={summary.history} selected={scope === 'history'} onPress={() => setScope('history')} />
       </View>
       <FlatList
-        data={listings}
-        keyExtractor={item => String(item.id)}
-        renderItem={({ item }) => (
+        data={listData}
+        keyExtractor={item => item.key}
+        renderItem={({ item }) => item.kind === 'advertisement'
+          ? <MonetizedAdSlot placement="my_listings" token={token} slotIndex={item.slotIndex} itemCount={listings.length} />
+          : (
           <MyListingCard
-            listing={item}
-            pending={pendingIds.has(item.id)}
-            open={() => openListing(item)}
-            renew={() => void renew(item)}
-            remove={() => void remove(item)}
+            listing={item.item}
+            pending={pendingIds.has(item.item.id)}
+            open={() => openListing(item.item)}
+            renew={() => void renew(item.item)}
+            remove={() => void remove(item.item)}
             token={token}
             userId={userId}
             onBoosted={boosted => {

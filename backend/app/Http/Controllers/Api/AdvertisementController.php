@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Advertisement;
 use App\Models\AdvertisementImpression;
+use App\Models\AdvertisementPlacementSetting;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -17,12 +18,16 @@ class AdvertisementController extends Controller
     {
         $filters = $request->validate(['placement' => ['required', 'string', Rule::in(Advertisement::PLACEMENTS)]]);
         $placement = $filters['placement'];
-        $policy = config("advertising.placements.{$placement}");
+        $setting = AdvertisementPlacementSetting::forKey($placement);
+        $sources = $setting->source_order ?? [];
 
-        $advertisements = Advertisement::query()
-            ->currentlyActive()
-            ->whereHas('placements', fn ($query) => $query->where('placement', $placement))
-            ->orderByDesc('priority')->orderBy('id')->limit(10)->get();
+        $advertisements = collect();
+        if ($setting->enabled && in_array(AdvertisementPlacementSetting::SOURCE_DIRECT, $sources, true)) {
+            $advertisements = Advertisement::query()
+                ->currentlyActive()
+                ->whereHas('placements', fn ($query) => $query->where('placement', $placement))
+                ->orderByDesc('priority')->orderBy('id')->limit(10)->get();
+        }
 
         return response()->json([
             'data' => $advertisements->map(fn (Advertisement $advertisement) => [
@@ -33,15 +38,19 @@ class AdvertisementController extends Controller
                 'ctaLabel' => $advertisement->cta_label,
                 'targetUrl' => $advertisement->target_url,
                 'backgroundColor' => $advertisement->background_color,
-                'format' => $advertisement->format,
+                'format' => 'native',
                 'imageUrl' => $advertisement->image_path ? $request->root()."/api/v1/advertisements/{$advertisement->id}/image" : null,
             ])->values(),
             'meta' => [
                 'placement' => $placement,
-                'firstAfter' => (int) $policy['first_after'],
-                'repeatEvery' => (int) $policy['repeat_every'],
-                'maxPerSession' => (int) $policy['max_per_session'],
-                'minItems' => (int) $policy['min_items'],
+                'enabled' => $setting->enabled,
+                'sourceOrder' => $sources,
+                'firstAfter' => $setting->first_after,
+                'repeatEvery' => $setting->repeat_every,
+                'maxPerSession' => $setting->max_per_session,
+                'minItems' => $setting->min_items,
+                'adMobAndroidUnitId' => $setting->admob_android_unit_id,
+                'adMobIosUnitId' => $setting->admob_ios_unit_id,
             ],
         ]);
     }
@@ -71,9 +80,11 @@ class AdvertisementController extends Controller
             'placement' => ['required', 'string', Rule::in(Advertisement::PLACEMENTS)],
             'slotIndex' => ['required', 'integer', 'min:1', 'max:1000'],
         ]);
+        $setting = AdvertisementPlacementSetting::forKey($validated['placement']);
 
         abort_unless(
-            $advertisement->is_active
+            $setting->enabled
+            && $advertisement->is_active
             && ($advertisement->starts_at === null || $advertisement->starts_at->lte(now()))
             && ($advertisement->ends_at === null || $advertisement->ends_at->gt(now()))
             && $advertisement->placements()->where('placement', $validated['placement'])->exists(),

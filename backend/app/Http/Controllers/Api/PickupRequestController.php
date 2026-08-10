@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Events\ConversationChanged;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\ConversationMessageResource;
+use App\Models\AdvertisementPlacementSetting;
 use App\Http\Resources\PickupRequestResource;
 use App\Models\ConversationMessage;
 use App\Models\ConversationUserState;
@@ -230,9 +231,16 @@ class PickupRequestController extends Controller
                 ->count()
             : 0;
 
+        $interstitial = AdvertisementPlacementSetting::forKey('pickup_interstitial');
+        $interstitialOrdinals = collect(data_get($interstitial->settings, 'ordinals', []))->map(fn ($value) => (int) $value)->all();
+
         return (new PickupRequestResource($this->loadConversation($pickupRequest, $buyer)))->additional([
             'monetization' => [
-                'showInterstitial' => $notificationKind === 'pickup_request' && in_array($dailyOrdinal, [2, 4], true),
+                'showInterstitial' => $interstitial->enabled
+                    && $notificationKind === 'pickup_request'
+                    && in_array($dailyOrdinal, $interstitialOrdinals, true),
+                'adMobAndroidUnitId' => $interstitial->admob_android_unit_id,
+                'adMobIosUnitId' => $interstitial->admob_ios_unit_id,
                 'dailyPickupOrdinal' => $dailyOrdinal,
             ],
         ]);
