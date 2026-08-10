@@ -9,7 +9,7 @@ export default function GoogleNativeAdCard({ unitId: configuredUnitId, onUnavail
   useEffect(() => {
     let active = true; let loadedAd: any = null;
     if (!module || !unitId) { onUnavailable(); return; }
-    void initializeGoogleAds().then(ready => { if (!ready) throw new Error('Ad consent is unavailable'); return module.NativeAd.createForAdRequest(unitId, { requestNonPersonalizedAdsOnly: true }); })
+    void initializeGoogleAds(unitId).then(ready => { if (!ready) throw new Error('Ad consent is unavailable'); return module.NativeAd.createForAdRequest(unitId, { requestNonPersonalizedAdsOnly: true }); })
       .then(ad => { if (!active) return ad.destroy(); loadedAd = ad; setNativeAd(ad); }).catch(onUnavailable);
     return () => { active = false; loadedAd?.destroy(); };
   }, [module, unitId]);

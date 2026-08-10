@@ -3,7 +3,8 @@ import { Platform } from 'react-native';
 
 type GoogleAdsModule = typeof import('react-native-google-mobile-ads');
 let cachedModule: GoogleAdsModule | null | undefined;
-let initialization: Promise<unknown> | null = null;
+let sdkInitialization: Promise<boolean> | null = null;
+let consentInitialization: Promise<boolean> | null = null;
 
 export function googleAds(): GoogleAdsModule | null {
   if (cachedModule !== undefined) return cachedModule;
@@ -12,13 +13,30 @@ export function googleAds(): GoogleAdsModule | null {
   return cachedModule;
 }
 
-export function initializeGoogleAds() {
-  const module = googleAds();
-  if (!module) return Promise.resolve(null);
-  if (!initialization) {
-    initialization = module.AdsConsent.requestInfoUpdate().then(() => module.AdsConsent.loadAndShowConsentFormIfRequired()).then(consent => consent.canRequestAds ? module.default().initialize().then(() => true) : false).catch(() => false);
+function initializeSdk(module: GoogleAdsModule) {
+  if (!sdkInitialization) {
+    sdkInitialization = module.default().initialize().then(() => true).catch(() => false);
   }
-  return initialization;
+  return sdkInitialization;
+}
+
+export function isGoogleTestUnitId(unitId?: string | null) {
+  const module = googleAds();
+  if (!module || !unitId) return false;
+  return Object.values(module.TestIds).some(testId => Boolean(testId) && testId === unitId);
+}
+
+export function initializeGoogleAds(unitId?: string | null, testMode = false) {
+  const module = googleAds();
+  if (!module) return Promise.resolve(false);
+  if (testMode || isGoogleTestUnitId(unitId)) return initializeSdk(module);
+  if (!consentInitialization) {
+    consentInitialization = module.AdsConsent.requestInfoUpdate()
+      .then(() => module.AdsConsent.loadAndShowConsentFormIfRequired())
+      .then(consent => consent.canRequestAds ? initializeSdk(module) : false)
+      .catch(() => false);
+  }
+  return consentInitialization;
 }
 
 export function nativeUnitId(remoteUnitId?: string | null) {

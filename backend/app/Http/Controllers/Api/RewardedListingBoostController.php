@@ -44,6 +44,7 @@ class RewardedListingBoostController extends Controller
             'token' => $token,
             'expiresAt' => now()->addMinutes(30)->toIso8601String(),
             'clientCompletionAllowed' => app()->environment(['local', 'testing']),
+            'testMode' => config('advertising.admob.mode') === 'test',
             'boostHours' => $boostHours,
             'dailyLimit' => $dailyLimit,
             'adMobAndroidUnitId' => $setting->admob_android_unit_id,
@@ -81,7 +82,10 @@ class RewardedListingBoostController extends Controller
     {
         abort_unless($this->validGoogleSignature($request), 403, 'Geçersiz reklam doğrulama imzası.');
         $token = (string) $request->query('custom_data');
-        $claim = RewardedAdClaim::where('token_hash', hash('sha256', $token))->firstOrFail();
+        $claim = RewardedAdClaim::where('token_hash', hash('sha256', $token))->first();
+        if (! $claim) {
+            return response()->json(['data' => ['verified' => true, 'rewardGranted' => false]]);
+        }
         abort_if($claim->expires_at->isPast(), 422, 'Ödül isteğinin süresi dolmuş.');
         $transactionId = (string) $request->query('transaction_id');
         if ($transactionId !== '' && RewardedAdClaim::where('transaction_id', $transactionId)->whereKeyNot($claim->id)->exists()) {

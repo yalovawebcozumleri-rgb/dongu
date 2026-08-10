@@ -19,7 +19,11 @@ class RewardedListingBoostTest extends TestCase
         Sanctum::actingAs($owner, ['mobile']);
 
         $token = $this->postJson("/api/v1/listings/{$listing->id}/rewarded-boost/challenge")
-            ->assertOk()->assertJsonPath('data.clientCompletionAllowed', true)->json('data.token');
+            ->assertOk()
+            ->assertJsonPath('data.clientCompletionAllowed', true)
+            ->assertJsonPath('data.testMode', true)
+            ->assertJsonPath('data.adMobAndroidUnitId', 'ca-app-pub-6681150378641816/1142247732')
+            ->json('data.token');
 
         $this->postJson("/api/v1/listings/{$listing->id}/rewarded-boost/complete", ['token' => $token])
             ->assertOk()->assertJsonPath('data.isBoosted', true);

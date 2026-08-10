@@ -15,7 +15,7 @@ export function usePickupInterstitial(enabled: boolean) {
     const unitId = interstitialUnitId(remoteUnitId);
     if (!enabled || !module || !unitId) return;
     unitIdRef.current = unitId;
-    void initializeGoogleAds().then(ready => {
+    void initializeGoogleAds(unitId).then(ready => {
       if (!ready) return;
       const ad = module.InterstitialAd.createForAdRequest(unitId, { requestNonPersonalizedAdsOnly: true });
       adRef.current = ad;
@@ -35,7 +35,7 @@ export function usePickupInterstitial(enabled: boolean) {
   }, [enabled]);
 
   useEffect(() => {
-    prepare();
+    if (__DEV__) prepare();
     return () => { cleanupRef.current.forEach(cleanup => cleanup()); cleanupRef.current = []; };
   }, [prepare]);
 

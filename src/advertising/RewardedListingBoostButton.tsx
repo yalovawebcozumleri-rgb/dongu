@@ -6,7 +6,7 @@ import { ApiError, apiRequest } from '../lib/api';
 import { useNotice } from '../notice/NoticeProvider';
 import { googleAds, initializeGoogleAds, rewardedUnitId } from './googleMobileAds';
 
-type Challenge = { data: { token: string; clientCompletionAllowed: boolean; boostHours: number; dailyLimit: number; adMobAndroidUnitId: string | null; adMobIosUnitId: string | null } };
+type Challenge = { data: { token: string; clientCompletionAllowed: boolean; testMode: boolean; boostHours: number; dailyLimit: number; adMobAndroidUnitId: string | null; adMobIosUnitId: string | null } };
 type BoostStatus = { data: { isBoosted: boolean; boostedUntil: string | null; enabled: boolean; boostHours: number; dailyLimit: number } };
 
 export default function RewardedListingBoostButton({ listing, token, userId, onBoosted }: {
@@ -59,11 +59,12 @@ export default function RewardedListingBoostButton({ listing, token, userId, onB
     setBusy(true);
     try {
       const challenge = await apiRequest<Challenge>(`/listings/${listing.id}/rewarded-boost/challenge`, { method: 'POST', token });
-      const adsReady = await initializeGoogleAds();
+      let adsReady = false;
       setBoostHours(challenge.data.boostHours);
       const remoteUnitId = Platform.OS === 'ios' ? challenge.data.adMobIosUnitId : challenge.data.adMobAndroidUnitId;
       const unitId = rewardedUnitId(remoteUnitId);
       if (!unitId) throw new Error('Reklam birimi bulunamadı');
+      adsReady = await initializeGoogleAds(unitId, challenge.data.testMode);
       if (!adsReady) throw new Error('Reklam izni alınamadı');
       const ad = module.RewardedAd.createForAdRequest(unitId, {
         requestNonPersonalizedAdsOnly: true,
