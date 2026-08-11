@@ -5,7 +5,7 @@
     <meta name="description" content="@yield('description', 'Döngü, DOA işaretli depozitolu PET, cam ve alüminyum ambalajlar için insanları yakındaki ilanlarla buluşturan bağımsız platformdur.')">
     <meta property="og:type" content="website"><meta property="og:site_name" content="Döngü"><meta property="og:title" content="@yield('title', 'Döngü')"><meta property="og:description" content="@yield('description', 'Depozitolu ambalajlar için yerel ve güvenli buluşma platformu.')"><meta property="og:image" content="{{ url('/images/site/dongu-social.png') }}"><meta property="og:locale" content="tr_TR">
     <link rel="canonical" href="{{ url()->current() }}"><link rel="icon" type="image/png" href="{{ asset('images/site/dongu-icon.png') }}"><link rel="preconnect" href="https://fonts.bunny.net"><link href="https://fonts.bunny.net/css?family=manrope:400,500,600,700,800&display=swap" rel="stylesheet"><link rel="stylesheet" href="{{ asset('site/marketing.css') }}"><link rel="stylesheet" href="{{ asset('site/marketing-v2.css') }}"><link rel="stylesheet" href="{{ asset('site/marketing-mobile-fix.css') }}">
-    <link rel="stylesheet" href="{{ asset('site/marketing-vision.css') }}">
+    <link rel="stylesheet" href="{{ asset('site/marketing-vision.css') }}?v=20260811-navbar">
     <link rel="stylesheet" href="{{ asset('site/marketing-vision-responsive.css') }}">
     <title>@yield('title', 'Döngü') · Depozitolu ambalajlar için yeni döngü</title>
 </head>
