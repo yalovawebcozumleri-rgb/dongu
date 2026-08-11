@@ -1,2 +1,5 @@
-<!doctype html><html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Hesap silindi · Döngü</title></head><body style="margin:0;background:#f4f7f2;color:#173629;font-family:Arial,sans-serif"><main style="max-width:620px;margin:70px auto;padding:20px"><section style="background:#fff;border-radius:26px;padding:40px;text-align:center"><div style="font-size:48px">✓</div><h1>Hesabın silindi</h1><p style="color:#64756c;line-height:1.7">Kişisel bilgiler kaldırıldı ve tüm cihaz oturumları kapatıldı. Güvenlik ve tamamlanmış işlem kayıtları yalnızca kimlikten arındırılmış biçimde korunabilir.</p></section></main></body></html>
-
+@extends('layouts.marketing')
+@section('title', 'Hesap silindi')
+@section('content')
+<section class="vision-legal"><div class="site-shell"><article class="vision-legal-content" style="max-width:720px;margin:0 auto;text-align:center"><div style="width:72px;height:72px;border-radius:50%;background:#c9f35b;display:grid;place-items:center;font-size:32px;margin:0 auto 24px">✓</div><span class="vision-legal-kicker">İŞLEM TAMAMLANDI</span><h1 style="font-size:clamp(40px,7vw,66px)">Hesabın silindi</h1><p class="vision-legal-summary" style="margin:0 auto 30px">Kişisel bilgilerin kaldırıldı ve tüm cihaz oturumları kapatıldı. Güvenlik ve tamamlanmış işlem kayıtları yalnızca kimlikten arındırılmış biçimde korunabilir.</p><a class="vision-primary" href="{{ route('marketing.home') }}">Ana sayfaya dön <b>→</b></a></article></div></section>
+@endsection
