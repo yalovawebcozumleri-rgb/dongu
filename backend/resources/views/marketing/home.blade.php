@@ -1,6 +1,6 @@
 @extends('layouts.marketing')
-@section('title', 'Döngü')
-@section('description', 'Depozitolu PET, cam ve alüminyum ambalajlar için yakındaki ilanları keşfet; güvenli teslimatla döngüye katıl.')
+@section('title', 'Döngü | Depozitolu Ambalaj Paylaşım Platformu')
+@section('description', 'Döngü ile PET şişe, cam şişe ve alüminyum kutular için yakındaki ilanları keşfet; talep gönder, mesajlaş ve teslimatı güvenli akışla tamamla.')
 @section('content')
 @include('marketing.home-vision')
 @endsection

@@ -28,6 +28,7 @@ Route::view('/nasil-calisir', 'marketing.how-it-works')->name('marketing.how-it-
 Route::view('/hakkimizda', 'marketing.about')->name('marketing.about');
 Route::view('/sss', 'marketing.faq')->name('marketing.faq');
 Route::view('/iletisim', 'marketing.contact')->name('marketing.contact');
+Route::view('/mobil-uygulama', 'marketing.mobile-app')->name('marketing.mobile-app');
 
 Route::middleware('guest')->group(function () {
     Route::get('/admin/login', [AuthController::class, 'create'])->name('admin.login');

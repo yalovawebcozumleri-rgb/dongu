@@ -1,8 +1,53 @@
 @extends('layouts.marketing')
-@section('title', 'Nasıl Çalışır?')
-@section('description', 'Döngü’de ilan oluşturma, alım talebi, mesajlaşma, rezervasyon ve teslimat kodu sürecini adım adım öğrenin.')
+@section('title', 'Nasıl Çalışır? | Döngü')
+@section('description', 'Döngü’de ilan oluşturma, alım talebi gönderme, satıcıyla mesajlaşma, rezervasyon ve teslimat kodu sürecinin nasıl çalıştığını öğrenin.')
 @section('content')
-<section class="site-page-hero"><div class="site-shell site-page-hero-inner"><span class="site-kicker"><i></i> NASIL ÇALIŞIR?</span><h1>İlandan teslimata,<br>her adım net.</h1><p>Döngü, kullanıcıların birbirini bulduğu bir ilan alanından fazlasıdır. Talep, mesajlaşma, rezervasyon ve teslimat doğrulaması tek bir akışta ilerler.</p></div></section>
-<section class="site-content-section"><div class="site-shell site-content-grid"><div><span class="site-eyebrow">İLAN VERENLER İÇİN</span><h2>Elindekini birkaç adımda ilana dönüştür.</h2></div><div class="site-steps-long"><article class="site-step-long"><span>01</span><div><h3>Ambalajlarını ekle</h3><p>PET, cam ve alüminyum adetlerini ayrı ayrı gir. Her malzeme için birim fiyatı belirle; fiyat 1 TL üst sınırını aşamaz.</p></div></article><article class="site-step-long"><span>02</span><div><h3>Teslimat konumunu seç</h3><p>Haritadan gerçek teslimat noktasını belirle veya kayıtlı adreslerinden birini kullan. Kesin adresin herkese açık gösterilmez.</p></div></article><article class="site-step-long"><span>03</span><div><h3>Talebi değerlendir</h3><p>İlanına gelen talepleri incele, uygun kullanıcıyı kabul et ve güvenli mesajlaşma üzerinden ayrıntıları konuş.</p></div></article><article class="site-step-long"><span>04</span><div><h3>Teslimatı doğrula</h3><p>Ambalajlar teslim edildiğinde alıcının teslimat koduyla işlemi tamamla; Döngü puanını ve değerlendirme hakkını kazan.</p></div></article></div></div></section>
-<section class="site-content-section site-materials"><div class="site-shell site-content-grid"><div><span class="site-eyebrow">ALICILAR İÇİN</span><h2>Yakınındaki fırsatı keşfet, teslimatı sen yönet.</h2></div><div class="site-content-prose"><p>Konum izni verdiğinde seçtiğin mesafe içindeki aktif ilanları görüntülersin. Malzeme türü, mesafe ve güncellik gibi seçeneklerle aradığını daha hızlı bulabilirsin.</p><p>İlgilendiğin ilana alım talebi gönderirsin. Satıcı talebini kabul ettiğinde ilan senin için rezerve edilir, kesin teslimat bilgisi ve teslimat kodu güvenli işlem alanında görünür.</p><p>Talep veya rezervasyon uygun değilse süreç kontrollü biçimde iptal edilebilir. Spam, sahte talep ve kötüye kullanımı azaltmak için kullanım sınırları uygulanır.</p><div class="site-notice"><strong>Güvenlik önce gelir.</strong><br>Teslimatı mümkün olduğunca aydınlık, bilinen ve kamusal bir noktada yap. Teslimat kodunu ambalajları görmeden paylaşma.</div></div></div></section>
+<section class="vision-subhero vision-subhero-flow">
+    <div class="vision-noise"></div>
+    <div class="site-shell vision-subhero-grid">
+        <div>
+            <span class="vision-kicker"><i></i> Nasıl çalışır?</span>
+            <h1>İlandan teslimata,<br><em>akış net ilerler.</em></h1>
+            <p>Döngü’de ambalaj paylaşmak ya da yakındaki bir ilana talep göndermek karmaşık değildir. İlan, talep, mesajlaşma ve teslimat kodu aynı güvenli akışta toplanır.</p>
+        </div>
+        <div class="vision-question-orbit vision-orbit-brandmark" aria-hidden="true">
+            <div class="vision-orbit-ring ring-one"></div>
+            <div class="vision-orbit-ring ring-two"></div>
+            <div class="vision-orbit-logo-mark"><img src="{{ asset('images/site/dongu-icon.png') }}" alt=""></div>
+            <b class="vision-orbit-chip chip-one">İlan</b>
+            <b class="vision-orbit-chip chip-two">Talep</b>
+            <b class="vision-orbit-chip chip-three">Teslimat</b>
+        </div>
+    </div>
+</section>
+
+<section class="vision-page-section">
+    <div class="site-shell vision-page-grid">
+        <div>
+            <span class="vision-section-kicker">İlan verenler için</span>
+            <h2>Elindeki ambalajlar görünür bir değere dönüşür.</h2>
+        </div>
+        <div class="vision-step-stack">
+            <article><span>01</span><div><h3>Ambalajlarını ekle</h3><p>PET, cam ve alüminyum adetlerini ayrı ayrı gir; her malzeme için birim fiyatı belirle.</p></div></article>
+            <article><span>02</span><div><h3>Teslimat adresini seç</h3><p>Kayıtlı teslimat adreslerinden birini kullan veya yeni teslimat adresi oluştur.</p></div></article>
+            <article><span>03</span><div><h3>Talebi değerlendir</h3><p>Gelen alım taleplerini incele, uygun kullanıcıyı kabul et ve mesajlaşmada ayrıntıları netleştir.</p></div></article>
+            <article><span>04</span><div><h3>Teslimatı doğrula</h3><p>Ambalajlar teslim edildiğinde alıcının teslimat koduyla işlemi tamamla.</p></div></article>
+        </div>
+    </div>
+</section>
+
+<section class="vision-page-section is-soft">
+    <div class="site-shell vision-page-grid">
+        <div>
+            <span class="vision-section-kicker">Alıcılar için</span>
+            <h2>Yakınındaki ilanı bul, talep gönder, teslimatı güvenle yönet.</h2>
+        </div>
+        <div class="vision-step-stack">
+            <article><span>01</span><div><h3>Yakındaki ilanları keşfet</h3><p>Konum ve mesafe seçimine göre yakınındaki aktif ilanları gör; malzeme türü, güncellik, mesafe ve favorilerle aradığın ilana daha hızlı ulaş.</p></div></article>
+            <article><span>02</span><div><h3>Satıcıyla iletişime geç</h3><p>İlgilendiğin ilana alım talebi gönderebilir veya satıcıya yazabilirsin. Böylece işlem başlamadan önce detayları netleştirirsin.</p></div></article>
+            <article><span>03</span><div><h3>Rezervasyonu takip et</h3><p>Satıcı talebini kabul ettiğinde süreç rezerve olur. İlgili teslimat bilgileri yalnızca işlem tarafları arasında görünür.</p></div></article>
+            <article><span>04</span><div><h3>Teslimatı güvenle tamamla</h3><p>Ambalajları görmeden teslimat kodunu paylaşma. Mümkün oldukça bilinen, aydınlık ve kamusal bir noktada buluş.</p></div></article>
+        </div>
+    </div>
+</section>
 @endsection

@@ -2,11 +2,9 @@
     <div class="vision-noise"></div>
     <div class="site-shell vision-hero-grid">
         <div class="vision-hero-copy">
-            <span class="vision-kicker"><i></i> Depozitolu ambalajların yeni hareketi</span>
-            <h1>Ambalaj biter.<br><em>Döngü devam eder.</em></h1>
-            <p>Yakınındaki ilanı gör. Talebini gönder. Teslimatı güvenle tamamla.</p>
-            <div class="vision-hero-actions"><a href="#akis" class="vision-primary">Döngüyü keşfet <b>↓</b></a><a href="#uygulama" class="vision-text-link">Uygulamayı gör <span>↗</span></a></div>
-            <div class="vision-platform-row"><span><b>▶</b><i>Android</i><small>Kapalı testte</small></span><span><b>●</b><i>iPhone</i><small>Hazırlanıyor</small></span></div>
+            <span class="vision-kicker"><i></i> Kullanıcılar arası depozitolu ambalaj pazarı</span>
+            <h1>Döngü ile ambalajlar<br><em>yeniden değere dönüşür.</em></h1>
+            <p>PET şişe, cam şişe ve alüminyum kutularını yakınındaki kullanıcılarla buluştur. İlan oluştur, talep gönder, mesajlaş ve teslimatı güvenli akışla tamamla.</p>
         </div>
         <div class="vision-orbit" aria-label="PET, cam ve alüminyum ambalajların Döngü içindeki hareketini gösteren animasyon">
             <div class="vision-orbit-ring ring-one"></div><div class="vision-orbit-ring ring-two"></div>
@@ -17,29 +15,91 @@
             <span class="vision-orbit-note note-one">İlan</span><span class="vision-orbit-note note-two">Talep</span><span class="vision-orbit-note note-three">Teslimat</span>
         </div>
     </div>
-    <a href="#akis" class="vision-scroll"><span></span>Kaydır</a>
 </section>
 
-<div class="vision-marquee" aria-hidden="true"><div>İLAN <i>●</i> TALEP <i>●</i> MESAJ <i>●</i> TESLİMAT <i>●</i> DEĞERLENDİRME <i>●</i> İLAN <i>●</i> TALEP <i>●</i> MESAJ <i>●</i> TESLİMAT</div></div>
-
-<section class="vision-flow" id="akis"><div class="site-shell">
-    <header class="vision-heading"><span>01 · AKIŞ</span><h2>Üç dokunuş.<br>Tek bir döngü.</h2><p>Kalabalık süreçler yerine net bir hareket.</p></header>
-    <div class="vision-flow-line"><i></i>
-        <article><b>01</b><span class="vision-flow-icon">＋</span><h3>İlanını oluştur</h3><p>Ambalajını, adedini ve teslimat bölgeni ekle.</p></article>
-        <article><b>02</b><span class="vision-flow-icon">↔</span><h3>Talebini eşleştir</h3><p>Yakınındaki kullanıcıyla konuş, talebi değerlendir.</p></article>
-        <article><b>03</b><span class="vision-flow-icon">✓</span><h3>Kodla tamamla</h3><p>Teslimat koduyla işlemi iki taraf için doğrula.</p></article>
+<section class="vision-what" aria-labelledby="dongu-nedir">
+    <div class="site-shell vision-what-grid">
+        <div class="vision-what-copy">
+            <span class="vision-kicker"><i></i> Döngü Uygulaması nedir?</span>
+            <h2 id="dongu-nedir">Depozitolu ambalajlar için<br><em>yerel bir buluşma alanı.</em></h2>
+            <p>Döngü; PET şişe, cam şişe ve alüminyum kutularını elinde bulunduran kullanıcılarla bu ambalajları almak isteyen kullanıcıları aynı akışta buluşturur.</p>
+        </div>
+        <div class="vision-what-phone" aria-label="Döngü uygulaması arayüz animasyonu">
+            <div class="vision-phone-glow"></div>
+            <div class="vision-phone-frame vision-app-shot-frame">
+                <img class="vision-app-shot-img" src="{{ asset('site/dongu-home-preview.png') }}" alt="Döngü uygulaması ana sayfa ekranı">
+                <div class="vision-app-header">
+                    <div>
+                        <small>KEŞFET</small>
+                        <strong>döngü<span>.</span></strong>
+                    </div>
+                    <span class="vision-app-bell">◇<i>2</i></span>
+                </div>
+                <div class="vision-app-hero-card">
+                    <div>
+                        <small>BOŞ DURMASIN</small>
+                        <b>Ambalajını<br>değere dönüştür.</b>
+                        <p>Yakınındaki ilanları keşfet,<br>topla ve değerlendir.</p>
+                    </div>
+                    <div class="vision-app-art" aria-hidden="true">
+                        <span class="bottle">♻</span>
+                        <span class="can">↻</span>
+                        <span class="coin one">₺</span>
+                        <span class="coin two">₺</span>
+                    </div>
+                </div>
+                <div class="vision-app-location">
+                    <div>
+                        <div class="vision-app-location-title"><small>Yakınımdaki ilanlar</small><em>CANLI KONUM</em></div>
+                        <strong>Çınarcık, Yalova</strong>
+                        <p>50 km çevresi · değiştirmek için dokun</p>
+                    </div>
+                    <span>⌖</span>
+                </div>
+                <div class="vision-app-section-head">
+                    <div>
+                        <strong>Yakınındaki ilanlar</strong>
+                        <small>18 ilan · 50 km içinde</small>
+                    </div>
+                    <em>Sırala</em>
+                </div>
+                <div class="vision-app-chips" aria-hidden="true">
+                    <span>Tümü</span><span>PET</span><span>Cam</span><span>Alüminyum</span>
+                </div>
+                <div class="vision-app-listings">
+                    <article class="vision-real-card">
+                        <div class="vision-card-top">
+                            <div class="vision-material-stack">
+                                <span class="vision-material-icon pet" aria-hidden="true">
+                                    <svg width="22" height="28" viewBox="0 0 24 32"><g fill="none" stroke="#0F4E32" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M9 2h6v4.5l2.1 3.1c.6.9.9 1.9.9 3V27a3 3 0 0 1-3 3H9a3 3 0 0 1-3-3V12.6c0-1.1.3-2.1.9-3L9 6.5V2Z"/><path d="M9 5h6"/><rect x="8" y="15" width="8" height="7" rx="1.2" opacity=".58"/></g></svg>
+                                </span>
+                            </div>
+                            <div class="vision-card-title-area">
+                                <div class="vision-title-line"><b>72 adet</b><i></i><small>Az önce</small></div>
+                                <p>PET</p>
+                            </div>
+                            <div class="vision-card-actions">
+                                <button aria-hidden="true">♡</button>
+                                <em>⌖ 1.8 km</em>
+                            </div>
+                        </div>
+                        <div class="vision-breakdown"><span><b>PET</b><small>72 × 0,50 TL</small></span></div>
+                        <div class="vision-location-row">●  Çınarcık</div>
+                        <div class="vision-money-row">
+                            <div><small>Toplam satış fiyatı</small><strong>₺36,00</strong></div>
+                            <div><small>Potansiyel brüt fark</small><strong>+₺36,00</strong></div>
+                        </div>
+                        <div class="vision-seller-row"><span>MP</span><div><b>Mustafa Polat</b><small>Yeni kullanıcı · Henüz teslimatı yok</small></div><strong>İncele ›</strong></div>
+                    </article>
+                </div>
+                <div class="vision-app-nav" aria-hidden="true">
+                    <span class="active"><i><svg width="22" height="22" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 10.5 12 3l8.5 7.5"/><path d="M5.5 9.4V21h13V9.4M9.2 21v-7h5.6v7"/></g></svg></i><b>Ana sayfa</b></span>
+                    <span><i class="ranking">♻</i><b>Sıralama</b></span>
+                    <span class="create"><i>＋</i><b>İlan ver</b></span>
+                    <span><i><svg width="22" height="22" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20.5 11.2a7.8 7.8 0 0 1-8.1 7.4 9.2 9.2 0 0 1-3.2-.7L4 20l1.5-4a7 7 0 0 1-2-4.8c0-4.1 3.8-7.4 8.5-7.4s8.5 3.3 8.5 7.4Z"/><path d="M8.2 10.9h.1m3.6 0h.1m3.6 0h.1" stroke-width="2.4"/></g></svg></i><b>Mesajlar</b></span>
+                    <span><i><svg width="22" height="22" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4.5 21c.6-4.2 3.3-6.5 7.5-6.5s6.9 2.3 7.5 6.5"/></g></svg></i><b>Profil</b></span>
+                </div>
+            </div>
+        </div>
     </div>
-</div></section>
-
-<section class="vision-product" id="uygulama"><div class="site-shell vision-product-grid">
-    <div class="vision-product-copy"><span>02 · UYGULAMA</span><h2>Döngü cebinde.<br><em>Bölgen hareket halinde.</em></h2><p>İlanlardan mesajlaşmaya, teslimattan değerlendirmeye kadar bütün akış tek yerde.</p><div class="vision-product-points"><span><b>01</b> Yakınındaki ilanları keşfet</span><span><b>02</b> Talep gönder ve mesajlaş</span><span><b>03</b> Güvenli kodla tamamla</span></div></div>
-    <div class="vision-screens">
-        <figure class="screen-one"><img src="{{ asset('images/site/app-home.png') }}" alt="Döngü ana sayfa ekranı"><figcaption>Yakınında</figcaption></figure>
-        <figure class="screen-two"><img src="{{ asset('images/site/app-listing.png') }}" alt="Döngü ilan ekranı"><figcaption>İlan ver</figcaption></figure>
-        <figure class="screen-three"><img src="{{ asset('images/site/app-ranking.png') }}" alt="Döngü sıralama ekranı"><figcaption>Döngüde yüksel</figcaption></figure>
-    </div>
-</div></section>
-
-<section class="vision-trust" id="guven"><div class="site-shell"><header class="vision-heading is-light"><span>03 · GÜVEN</span><h2>Adresin değil,<br><em>işlemin görünür.</em></h2></header><div class="vision-trust-grid"><article><b>≈</b><h3>Yaklaşık konum</h3><p>Kesin teslimat adresin herkese açık değildir.</p></article><article><b>•••</b><h3>Kontrollü iletişim</h3><p>Mesajlaşma ilgili ilan ve taraflar arasında ilerler.</p></article><article><b>#</b><h3>Teslimat kodu</h3><p>İşlem, tek kullanımlık kodla birlikte tamamlanır.</p></article></div></div></section>
-
-<section class="vision-stores" id="magazalar"><div class="site-shell vision-stores-inner"><div><span>ŞİMDİ TESTTE</span><h2>Döngüye<br>hazır mısın?</h2></div><div class="vision-store-cards"><div><b>▶</b><span><small>ANDROID</small>Google Play<strong>Kapalı test sürümü yayında</strong></span></div><div class="is-muted"><b>●</b><span><small>iOS</small>App Store<strong>Hazırlık süreci başladı</strong></span></div><a href="{{ route('marketing.contact') }}">Bize ulaş <span>↗</span></a></div></div></section>
+</section>
