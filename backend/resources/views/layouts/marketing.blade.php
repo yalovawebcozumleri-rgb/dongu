@@ -33,24 +33,24 @@
     <link rel="stylesheet" href="{{ asset('site/marketing-vision-responsive.css') }}?v=20260812-mobile-app">
     <title>@yield('title', 'Döngü')</title>
     <script type="application/ld+json">
-        {
-            "@context": "https://schema.org",
-            "@type": "WebSite",
-            "name": "Döngü",
-            "url": "{{ url('/') }}",
-            "description": "Depozitolu PET, cam ve alüminyum ambalajlar için yerel ilan, talep, mesajlaşma ve teslimat platformu.",
-            "publisher": {
-                "@type": "Organization",
-                "name": "Döngü",
-                "url": "{{ url('/') }}",
-                "logo": "{{ url('/images/site/dongu-icon.png') }}"
-            },
-            "potentialAction": {
-                "@type": "ViewAction",
-                "target": "{{ route('marketing.mobile-app') }}",
-                "name": "Döngü mobil uygulamasını indir"
-            }
-        }
+        {!! json_encode([
+            '@context' => 'https://schema.org',
+            '@type' => 'WebSite',
+            'name' => 'Döngü',
+            'url' => url('/'),
+            'description' => 'Depozitolu PET, cam ve alüminyum ambalajlar için yerel ilan, talep, mesajlaşma ve teslimat platformu.',
+            'publisher' => [
+                '@type' => 'Organization',
+                'name' => 'Döngü',
+                'url' => url('/'),
+                'logo' => url('/images/site/dongu-icon.png'),
+            ],
+            'potentialAction' => [
+                '@type' => 'ViewAction',
+                'target' => route('marketing.mobile-app'),
+                'name' => 'Döngü mobil uygulamasını indir',
+            ],
+        ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) !!}
     </script>
 </head>
 <body class="site-body">
