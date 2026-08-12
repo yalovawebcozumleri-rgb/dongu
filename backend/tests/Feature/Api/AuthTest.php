@@ -139,6 +139,34 @@ class AuthTest extends TestCase
         $this->assertDatabaseCount('personal_access_tokens', 2);
     }
 
+    public function test_app_store_review_account_can_reuse_its_configured_code_without_email(): void
+    {
+        Mail::fake();
+        config()->set('services.app_store_review', [
+            'enabled' => true,
+            'email' => 'appstorereview@yalovawebcozumleri.com',
+            'code_hash' => Hash::make('729184'),
+        ]);
+        $user = User::factory()->create([
+            'name' => 'App Store Review',
+            'email' => 'appstorereview@yalovawebcozumleri.com',
+            'role' => User::ROLE_USER,
+            'status' => 'active',
+            'email_verified_at' => now(),
+        ]);
+
+        $this->postJson('/api/v1/auth/code/request', [
+            'intent' => 'login', 'email' => $user->email,
+        ])->assertAccepted()->assertJsonPath('data.expires_in', null);
+        Mail::assertNothingSent();
+
+        $this->postJson('/api/v1/auth/code/verify', [
+            'email' => $user->email, 'code' => '729184', 'device_name' => 'App Store Review',
+        ])->assertOk()
+            ->assertJsonPath('data.user.id', $user->id)
+            ->assertJsonStructure(['data' => ['user', 'token']]);
+    }
+
     public function test_code_is_single_use_and_limited_to_five_wrong_attempts(): void
     {
         Mail::fake();

@@ -54,9 +54,9 @@ class AuthController extends Controller
         }
         if ($user) $sanctions->assertAccountAllowed($user);
 
-        if ($this->isGooglePlayReviewEmail($email)) {
+        if ($this->isStoreReviewEmail($email)) {
             return response()->json([
-                'message' => 'Google Play inceleme hesabı için yeniden kullanılabilir erişim kodunu gir.',
+                'message' => 'Mağaza inceleme hesabı için yeniden kullanılabilir erişim kodunu gir.',
                 'data' => ['email' => $email, 'expires_in' => null],
             ], 202);
         }
@@ -102,8 +102,8 @@ class AuthController extends Controller
         ]);
         $email = mb_strtolower(trim($validated['email']));
 
-        if ($this->isGooglePlayReviewEmail($email)) {
-            return $this->verifyGooglePlayReview($email, $validated['code'], $validated['device_name'], $sanctions);
+        if ($this->isStoreReviewEmail($email)) {
+            return $this->verifyStoreReview($email, $validated['code'], $validated['device_name'], $sanctions);
         }
 
         $loginCode = LoginCode::where('email', $email)->whereNull('consumed_at')->latest('id')->first();
@@ -195,27 +195,42 @@ class AuthController extends Controller
         return response()->json(['message' => 'Oturum kapatıldı.']);
     }
 
-    private function isGooglePlayReviewEmail(string $email): bool
+    private function isStoreReviewEmail(string $email): bool
     {
-        if (! config('services.google_play_review.enabled')) {
-            return false;
-        }
-
-        $reviewEmail = mb_strtolower(trim((string) config('services.google_play_review.email')));
-
-        return $reviewEmail !== '' && hash_equals($reviewEmail, $email);
+        return $this->storeReviewConfig($email) !== null;
     }
 
-    private function verifyGooglePlayReview(string $email, string $code, string $deviceName, ModerationSanctionService $sanctions): JsonResponse
+    private function storeReviewConfig(string $email): ?array
     {
-        $codeHash = (string) config('services.google_play_review.code_hash');
+        foreach (['google_play_review', 'app_store_review'] as $service) {
+            if (! config("services.{$service}.enabled")) {
+                continue;
+            }
+
+            $reviewEmail = mb_strtolower(trim((string) config("services.{$service}.email")));
+            if ($reviewEmail !== '' && hash_equals($reviewEmail, $email)) {
+                return [
+                    'service' => $service,
+                    'label' => $service === 'app_store_review' ? 'App Store' : 'Google Play',
+                    'code_hash' => (string) config("services.{$service}.code_hash"),
+                ];
+            }
+        }
+
+        return null;
+    }
+
+    private function verifyStoreReview(string $email, string $code, string $deviceName, ModerationSanctionService $sanctions): JsonResponse
+    {
+        $reviewConfig = $this->storeReviewConfig($email);
+        $codeHash = (string) ($reviewConfig['code_hash'] ?? '');
         if ($codeHash === '' || ! Hash::check($code, $codeHash)) {
             throw ValidationException::withMessages(['code' => 'Girdiğin kod hatalı.']);
         }
 
         $user = User::where('email', $email)->first();
         if (! $user || $user->role !== User::ROLE_USER) {
-            throw ValidationException::withMessages(['email' => 'Google Play inceleme hesabı kullanıma hazır değil.']);
+            throw ValidationException::withMessages(['email' => ($reviewConfig['label'] ?? 'Mağaza').' inceleme hesabı kullanıma hazır değil.']);
         }
 
         $sanctions->assertAccountAllowed($user);

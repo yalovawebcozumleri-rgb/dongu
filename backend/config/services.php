@@ -26,6 +26,12 @@ return [
         'code_hash' => env('GOOGLE_PLAY_REVIEW_CODE_HASH'),
     ],
 
+    'app_store_review' => [
+        'enabled' => filter_var(env('APP_STORE_REVIEW_ENABLED', false), FILTER_VALIDATE_BOOL),
+        'email' => env('APP_STORE_REVIEW_EMAIL'),
+        'code_hash' => env('APP_STORE_REVIEW_CODE_HASH'),
+    ],
+
     'postmark' => [
         'token' => env('POSTMARK_TOKEN'),
     ],
