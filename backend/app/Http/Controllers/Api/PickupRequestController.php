@@ -331,7 +331,18 @@ class PickupRequestController extends Controller
                     ->where('user_id', $recipientId)
                     ->update(['hidden_at' => null]);
             }
-            ConversationChanged::dispatch($recipientId, $pickupRequest->id, 'message');
+            ConversationChanged::dispatch($recipientId, $pickupRequest->id, 'message', [
+                'message' => [
+                    'id' => $message->id,
+                    'sender' => 'other',
+                    'text' => $message->moderated_at ? 'Bu mesaj topluluk kuralları nedeniyle kaldırıldı.' : $message->body,
+                    'time' => $message->created_at?->format('H:i'),
+                    'createdAt' => $message->created_at?->toIso8601String(),
+                    'readAt' => $message->read_at?->toIso8601String(),
+                    'clientId' => $message->client_id,
+                    'moderated' => $message->moderated_at !== null,
+                ],
+            ]);
             $this->notify(
                 $recipientId,
                 'new_message',
