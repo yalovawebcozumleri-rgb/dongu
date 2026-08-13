@@ -87,6 +87,8 @@ class AdvertisementTest extends TestCase
 
         $this->actingAs($admin)->from('/admin/advertisements')->patch("/admin/advertisement-placements/{$setting->id}", [
             'enabled' => true,
+            'androidEnabled' => true,
+            'iosEnabled' => true,
             'sourceOrder' => ['direct', 'admob', 'house'],
             'firstAfter' => 3,
             'repeatEvery' => 8,
@@ -142,6 +144,8 @@ class AdvertisementTest extends TestCase
 
         $this->actingAs($admin)->patch("/admin/advertisement-placements/{$setting->id}", [
             'enabled' => true,
+            'androidEnabled' => true,
+            'iosEnabled' => true,
             'sourceOrder' => ['admob'],
             'firstAfter' => 0,
             'repeatEvery' => 0,

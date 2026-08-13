@@ -102,8 +102,10 @@ export default function ProfileInfoModal({ visible, token, initialName, initialE
 
   const content = (
       <KeyboardAvoidingView style={x.screen} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <View style={[x.header, { paddingTop: embedded ? 10 : Math.max(insets.top, 10), minHeight: embedded ? 76 : 72 + Math.max(insets.top, 10) }] }><Pressable accessibilityRole="button" accessibilityLabel="Profil bilgilerini kapat" onPress={close} style={x.close}><Text style={x.closeText}>‹</Text></Pressable><View><Text style={x.eyebrow}>HESAP BİLGİLERİ</Text><Text style={x.title}>Profili düzenle</Text></View></View>
-        {loading ? <View style={x.loading}><ActivityIndicator color={C.green} /><Text style={x.loadingText}>Profil bilgilerin yükleniyor</Text></View> : (
+        {!avatarPickerOpen && <View style={[x.header, { paddingTop: embedded ? 10 : Math.max(insets.top, 10), minHeight: embedded ? 76 : 72 + Math.max(insets.top, 10) }] }><Pressable accessibilityRole="button" accessibilityLabel="Profil bilgilerini kapat" onPress={close} style={x.close}><Text style={x.closeText}>‹</Text></Pressable><View><Text style={x.eyebrow}>HESAP BİLGİLERİ</Text><Text style={x.title}>Profili düzenle</Text></View></View>}
+        {avatarPickerOpen ? (
+          <AvatarPickerModal embedded visible currentUri={profile?.avatar_url} saving={avatarSaving} close={() => { if (!avatarSaving) setAvatarPickerOpen(false); }} select={selectAvatar} />
+        ) : loading ? <View style={x.loading}><ActivityIndicator color={C.green} /><Text style={x.loadingText}>Profil bilgilerin yükleniyor</Text></View> : (
           <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={x.content}>
             {!!loadError && <View style={x.warning}><Text style={x.warningText}>{loadError} Temel bilgiler gösteriliyor.</Text></View>}
             <View style={x.identityCard}><UserAvatar uri={profile?.avatar_url} name={trimmedName || initialName} size={76} /><Text style={x.identityName}>{trimmedName || initialName}</Text><View style={x.verified}><Text style={x.verifiedText}>{profile?.email_verified === false ? 'E-posta doğrulanmadı' : 'E-posta doğrulandı'}</Text></View><View style={x.avatarActions}><Pressable disabled={avatarSaving} onPress={() => setAvatarPickerOpen(true)} style={x.avatarPrimary}>{avatarSaving ? <ActivityIndicator color={C.dark} /> : <Text style={x.avatarPrimaryText}>Avatarını seç</Text>}</Pressable></View><Text style={x.avatarPrivacy}>Hazır avatarlardan birini seç. Seçimin profilinde, ilanlarında, mesajlarında ve sıralamada görünür.</Text></View>
@@ -112,7 +114,6 @@ export default function ProfileInfoModal({ visible, token, initialName, initialE
             <View style={x.info}><Text style={x.infoTitle}>E-posta neden buradan değişmiyor?</Text><Text style={x.infoText}>E-posta giriş kimliğindir. Hesabın başkasının eline geçmemesi için e-posta değişikliği ayrıca doğrulama koduyla onaylanmalıdır.</Text></View>
           </ScrollView>
         )}
-        <AvatarPickerModal visible={avatarPickerOpen} currentUri={profile?.avatar_url} saving={avatarSaving} close={() => { if (!avatarSaving) setAvatarPickerOpen(false); }} select={selectAvatar} />
       </KeyboardAvoidingView>
   );
 

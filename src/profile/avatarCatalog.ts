@@ -5,16 +5,16 @@ export type AvatarKey =
   | 'avatar_06' | 'avatar_07' | 'avatar_08' | 'avatar_09' | 'avatar_10';
 
 export const AVATAR_OPTIONS: ReadonlyArray<{ key: AvatarKey; source: ImageSourcePropType }> = [
-  { key: 'avatar_01', source: require('../../assets/avatars/avatar-01.webp') },
   { key: 'avatar_02', source: require('../../assets/avatars/avatar-02.webp') },
-  { key: 'avatar_03', source: require('../../assets/avatars/avatar-03.webp') },
-  { key: 'avatar_04', source: require('../../assets/avatars/avatar-04.webp') },
   { key: 'avatar_05', source: require('../../assets/avatars/avatar-05.webp') },
-  { key: 'avatar_06', source: require('../../assets/avatars/avatar-06.webp') },
   { key: 'avatar_07', source: require('../../assets/avatars/avatar-07.webp') },
   { key: 'avatar_08', source: require('../../assets/avatars/avatar-08.webp') },
-  { key: 'avatar_09', source: require('../../assets/avatars/avatar-09.webp') },
   { key: 'avatar_10', source: require('../../assets/avatars/avatar-10.webp') },
+  { key: 'avatar_01', source: require('../../assets/avatars/avatar-01.webp') },
+  { key: 'avatar_03', source: require('../../assets/avatars/avatar-03.webp') },
+  { key: 'avatar_04', source: require('../../assets/avatars/avatar-04.webp') },
+  { key: 'avatar_06', source: require('../../assets/avatars/avatar-06.webp') },
+  { key: 'avatar_09', source: require('../../assets/avatars/avatar-09.webp') },
 ];
 
 const AVATAR_BY_KEY = Object.fromEntries(AVATAR_OPTIONS.map(option => [option.key, option.source])) as Record<AvatarKey, ImageSourcePropType>;

@@ -14,8 +14,11 @@ class AdvertisementPlacementSettingController extends Controller
     public function update(Request $request, AdvertisementPlacementSetting $setting): RedirectResponse
     {
         abort_if($setting->locked, 422, 'Bu Döngü reklam alanı sabittir ve kapatılamaz.');
+
         $base = $request->validate([
             'enabled' => ['required', 'boolean'],
+            'androidEnabled' => ['required', 'boolean'],
+            'iosEnabled' => ['required', 'boolean'],
             'sourceOrder' => ['required', 'array', 'min:1', 'max:2'],
             'sourceOrder.*' => ['required', 'string', 'distinct', Rule::in(AdvertisementPlacementSetting::NATIVE_SOURCES)],
             'firstAfter' => ['required', 'integer', 'min:0', 'max:1000'],
@@ -38,21 +41,30 @@ class AdvertisementPlacementSettingController extends Controller
             'adMobAndroidUnitId.regex' => 'Android reklam birimi kimliği ca-app-pub-…/… biçiminde olmalıdır.',
             'adMobIosUnitId.regex' => 'iOS reklam birimi kimliği ca-app-pub-…/… biçiminde olmalıdır.',
         ]);
+
+        $androidEnabled = (bool) $base['enabled'] && (bool) $base['androidEnabled'];
+        $iosEnabled = (bool) $base['enabled'] && (bool) $base['iosEnabled'];
+        abort_if((bool) $base['enabled'] && ! $androidEnabled && ! $iosEnabled, 422, 'Alan açıkken en az bir platform açık olmalıdır.');
+
         $sources = $base['sourceOrder'];
         if ($setting->kind === AdvertisementPlacementSetting::KIND_NATIVE) {
-            abort_if(in_array('admob', $sources, true) && empty($base['adMobAndroidUnitId']) && empty($base['adMobIosUnitId']), 422, 'AdMob kaynağı açıksa en az bir reklam birimi kimliği gereklidir.');
+            $hasEnabledAdMobUnit = (! empty($base['adMobAndroidUnitId']) && $androidEnabled) || (! empty($base['adMobIosUnitId']) && $iosEnabled);
+            abort_if(in_array(AdvertisementPlacementSetting::SOURCE_ADMOB, $sources, true) && ! $hasEnabledAdMobUnit, 422, 'AdMob kaynağı açıksa açık platformlardan en az biri için reklam birimi kimliği gereklidir.');
         } else {
-            $sources = ['admob'];
+            $sources = [AdvertisementPlacementSetting::SOURCE_ADMOB];
         }
+
         $extra = $setting->settings ?? [];
         if ($setting->key === 'listing_rewarded_boost') {
             $extra = ['boost_hours' => $base['boostHours'] ?? 24, 'daily_limit' => $base['dailyLimit'] ?? 3];
         }
+
         if ($setting->key === 'pickup_interstitial') {
             $ordinals = collect($base['ordinals'] ?? [2, 4])->map(fn ($value) => (int) $value)->sort()->values()->all();
             abort_if($ordinals === [], 422, 'En az bir alım talebi sırası seçmelisin.');
             $extra = ['ordinals' => $ordinals];
         }
+
         if ($setting->key === 'rewarded_extra_rights') {
             $submitted = collect($base['usageRewards'] ?? [])->keyBy('key');
             $rewardSettings = collect(RewardedUsageGrantService::DEFINITIONS)->mapWithKeys(function (array $definition, string $key) use ($submitted): array {
@@ -66,8 +78,11 @@ class AdvertisementPlacementSettingController extends Controller
             })->all();
             $extra = ['reward_item' => 'ek_hak', 'rewards' => $rewardSettings];
         }
+
         $setting->update([
             'enabled' => $base['enabled'],
+            'android_enabled' => $androidEnabled,
+            'ios_enabled' => $iosEnabled,
             'source_order' => $sources,
             'first_after' => $base['firstAfter'],
             'repeat_every' => $base['repeatEvery'],

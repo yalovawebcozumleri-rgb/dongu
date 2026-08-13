@@ -462,8 +462,19 @@ export default function AddressBookModal({
 
   const contentBottom = Math.max(insets.bottom, 18) + 36;
   const actionLabel = draft.id ? 'Değişiklikleri kaydet' : 'Teslimat adresi oluştur';
-  const regionPicker = (
-    <Modal visible={picker !== null} transparent animationType="fade" onRequestClose={() => setPicker(null)}>
+  const handleBack = () => {
+    if (picker) {
+      setPicker(null);
+      return;
+    }
+    if (editorOpen) {
+      setEditorOpen(false);
+      return;
+    }
+    onClose();
+  };
+  const regionPicker = picker ? (
+    <View style={a.pickerOverlay}>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={a.pickerBackdrop}>
         <Pressable style={StyleSheet.absoluteFill} onPress={() => setPicker(null)} />
         <View style={[a.pickerSheet, { paddingBottom: Math.max(insets.bottom, 16) }]}>
@@ -505,13 +516,13 @@ export default function AddressBookModal({
           </ScrollView>
         </View>
       </KeyboardAvoidingView>
-    </Modal>
-  );
+    </View>
+  ) : null;
 
   const content = (
       <KeyboardAvoidingView style={a.screen} behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={0}>
         <View style={[a.header, !embedded && a.modalHeader]}>
-          <Pressable onPress={editorOpen ? () => setEditorOpen(false) : onClose} style={a.back}>
+          <Pressable accessibilityRole="button" accessibilityLabel="Geri dön" hitSlop={10} onPress={handleBack} style={a.back}>
             <Text style={a.backText}>‹</Text>
           </Pressable>
           <View style={a.headerCopy}>
@@ -634,7 +645,7 @@ export default function AddressBookModal({
   );
 
   if (embedded) return visible ? content : null;
-  return <Modal visible={visible} animationType="slide" onRequestClose={onClose}>{content}</Modal>;
+  return <Modal visible={visible} animationType="slide" presentationStyle="fullScreen" onRequestClose={handleBack}>{content}</Modal>;
 }
 
 const a = StyleSheet.create({
@@ -701,6 +712,7 @@ const a = StyleSheet.create({
   emptyTitle: { color: C.ink, fontSize: 17, fontWeight: '900', marginTop: 10 },
   emptyText: { color: C.muted, fontSize: 12, lineHeight: 18, textAlign: 'center', marginTop: 5, maxWidth: 270 },
   pickerBackdrop: { flex: 1, backgroundColor: 'rgba(12, 30, 21, .45)', justifyContent: 'flex-end' },
+  pickerOverlay: { position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, zIndex: 30, elevation: 30 },
   pickerSheet: { maxHeight: '78%', borderTopLeftRadius: 26, borderTopRightRadius: 26, backgroundColor: C.white, paddingHorizontal: 18, paddingTop: 10 },
   pickerHandle: { width: 44, height: 5, borderRadius: 3, backgroundColor: '#CBD4CE', alignSelf: 'center', marginBottom: 15 },
   pickerHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },

@@ -10,8 +10,10 @@ class ExampleTest extends TestCase
     {
         $this->get('/')
             ->assertOk()
-            ->assertSee('Elindeki ambalajı')
-            ->assertSee('Döngü’yü keşfet')
-            ->assertSee('Üç ambalaj türü');
+            ->assertSee('Döngü ile ambalajlar')
+            ->assertSee('Döngü Uygulaması nedir?')
+            ->assertSee('Döngü cebinde, ambalajların değeri yanında.')
+            ->assertSee('https://schema.org', false)
+            ->assertDontSee('&lt;?php');
     }
 }

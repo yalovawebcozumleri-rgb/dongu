@@ -89,6 +89,7 @@ export const s = StyleSheet.create({
   tinyDot: { width: 4, height: 4, borderRadius: 2, backgroundColor: C.line },
   timeText: { color: C.muted, fontSize: 12 },
   boostedBadge: { minHeight: 22, borderRadius: 11, paddingHorizontal: 7, alignItems: 'center', justifyContent: 'center', backgroundColor: '#E8F4B8' },
+  boostedBadgeInline: { alignSelf: 'flex-start', minHeight: 22, borderRadius: 11, paddingHorizontal: 8, marginTop: 7, alignItems: 'center', justifyContent: 'center', backgroundColor: '#E8F4B8' },
   boostedBadgeText: { color: C.dark, fontSize: 10, fontWeight: '900', letterSpacing: 0.35 },
   materialText: { color: C.muted, fontSize: 12, marginTop: 3 },
   distancePill: { paddingHorizontal: 9, paddingVertical: 7, borderRadius: 14, backgroundColor: C.soft },

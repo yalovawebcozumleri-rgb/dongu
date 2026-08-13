@@ -37,7 +37,8 @@
     "ios": {
       "supportsTablet": true,
       "infoPlist": {
-        "NSLocationWhenInUseUsageDescription": "Yakındaki ilanları göstermek, adresini doğrulamak ve isteğinle mevcut konumunu kullanmak için konumuna erişmemize izin ver."
+        "NSLocationWhenInUseUsageDescription": "Yakındaki ilanları göstermek, adresini doğrulamak ve isteğinle mevcut konumunu kullanmak için konumuna erişmemize izin ver.",
+        "ITSAppUsesNonExemptEncryption": false
       },
       "bundleIdentifier": "com.yalovawebcozumleri.dongu",
       "buildNumber": "1"

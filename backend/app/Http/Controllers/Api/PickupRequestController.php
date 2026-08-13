@@ -237,6 +237,7 @@ class PickupRequestController extends Controller
         return (new PickupRequestResource($this->loadConversation($pickupRequest, $buyer)))->additional([
             'monetization' => [
                 'showInterstitial' => $interstitial->enabled
+                    && ($interstitial->platformEnabled('android') || $interstitial->platformEnabled('ios'))
                     && $notificationKind === 'pickup_request'
                     && in_array($dailyOrdinal, $interstitialOrdinals, true),
                 'adMobAndroidUnitId' => $interstitial->adMobUnitId('android', 'interstitial'),
@@ -376,7 +377,7 @@ class PickupRequestController extends Controller
     public function reportMessage(Request $request, PickupRequest $pickupRequest, ConversationMessage $message): JsonResponse
     {
         $this->ensureParticipant($request, $pickupRequest);
-        abort_unless($message->pickup_request_id === $pickupRequest->id, 404);
+        abort_unless($message->pickup_request_id === $pickupRequest->id, 422, 'Mesaj kimliği başka bir görüşmede kullanılmış.');
         abort_if($message->sender_id === null || $message->sender_id === $request->user()->id, 422, 'Yalnızca karşı taraftan gelen kullanıcı mesajları bildirilebilir.');
         $validated = $request->validate([
             'reason' => ['required', Rule::in(['spam', 'harassment', 'fraud', 'personal_data', 'other'])],
@@ -400,7 +401,7 @@ class PickupRequestController extends Controller
 
         $closedRequests = DB::transaction(function () use ($pickupRequest, $closures) {
             $listing = Listing::lockForUpdate()->findOrFail($pickupRequest->listing_id);
-            abort_unless($listing->status === Listing::STATUS_ACTIVE, 422, 'Bu ilan artık müsait değil.');
+        abort_unless($listing->status === Listing::STATUS_ACTIVE && (! $listing->expires_at || $listing->expires_at->isFuture()), 422, 'Bu ilan artık alım talebi kabul etmiyor.');
 
             $pickupRequest->update([
                 'status' => PickupRequest::ACCEPTED,

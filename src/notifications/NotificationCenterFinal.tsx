@@ -124,7 +124,9 @@ function SwipeNotificationRow({
   };
 
   const responder = useRef(PanResponder.create({
-    onMoveShouldSetPanResponder: (_, gesture) => gesture.dx < -12 && Math.abs(gesture.dx) > Math.abs(gesture.dy),
+    onMoveShouldSetPanResponder: (_, gesture) => gesture.dx < -8 && Math.abs(gesture.dx) > Math.abs(gesture.dy) * 1.15,
+    onMoveShouldSetPanResponderCapture: (_, gesture) => gesture.dx < -8 && Math.abs(gesture.dx) > Math.abs(gesture.dy) * 1.15,
+    onPanResponderGrant: () => translateX.stopAnimation(),
     onPanResponderMove: (_, gesture) => {
       const width = Math.max(widthRef.current, 280);
       translateX.setValue(Math.max(-width, Math.min(0, gesture.dx)));
@@ -138,10 +140,12 @@ function SwipeNotificationRow({
       animateTo(gesture.dx < -52 ? -104 : 0);
     },
     onPanResponderTerminate: () => animateTo(0),
+    onPanResponderTerminationRequest: () => false,
+    onShouldBlockNativeResponder: () => true,
   })).current;
 
   return (
-    <View style={x.swipeRow}>
+    <View style={x.swipeRow} {...responder.panHandlers}>
       <View style={x.deleteBackground} />
       <Pressable
         accessibilityRole="button"
@@ -154,7 +158,6 @@ function SwipeNotificationRow({
       <Animated.View
         onLayout={event => { widthRef.current = event.nativeEvent.layout.width; }}
         style={{ transform: [{ translateX }] }}
-        {...responder.panHandlers}
       >
         {children}
       </Animated.View>

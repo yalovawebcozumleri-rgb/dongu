@@ -34,7 +34,7 @@
     <title>@yield('title', 'Döngü')</title>
     <script type="application/ld+json">
         {!! json_encode([
-            '@context' => 'https://schema.org',
+            chr(64).'context' => 'https://schema.org',
             '@type' => 'WebSite',
             'name' => 'Döngü',
             'url' => url('/'),

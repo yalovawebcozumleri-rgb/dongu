@@ -40,6 +40,7 @@ export default function ConversationScreen({
   openProfile,
   openListing,
   refreshSignal,
+  realtimeMessage,
   bottomInset,
 }: {
   conversation: Conversation;
@@ -53,6 +54,7 @@ export default function ConversationScreen({
   openProfile: () => void;
   openListing: () => void;
   refreshSignal: number;
+  realtimeMessage?: { conversationId: number; message: ConversationMessage; nonce: number } | null;
   bottomInset: number;
 }) {
   const { showNotice, confirmNotice } = useNotice();
@@ -137,6 +139,17 @@ export default function ConversationScreen({
     return () => clearInterval(timer);
   }, [loadMessageQuota, loadMessages]);
   useEffect(() => { if (refreshSignal > 0) void loadMessages(true); }, [refreshSignal, loadMessages]);
+  useEffect(() => {
+    if (!realtimeMessage || realtimeMessage.conversationId !== conversation.id) return;
+    const incoming = realtimeMessage.message;
+    setMessages(current => {
+      const exists = current.some(item => String(item.id) === String(incoming.id) || (!!incoming.clientId && item.clientId === incoming.clientId));
+      if (exists) return current;
+      return [...current, incoming];
+    });
+    requestAnimationFrame(() => scrollRef.current?.scrollToEnd({ animated: true }));
+    void markRead([incoming]);
+  }, [conversation.id, markRead, realtimeMessage]);
   useEffect(() => {
     if (!messageRetryAt) return;
     const delay = new Date(messageRetryAt).getTime() - Date.now();
@@ -439,6 +452,33 @@ export default function ConversationScreen({
     : 'Mesajını yaz...';
   const conversationReadOnly = conversation.status === 'completed' || conversation.status === 'rejected' || conversation.status === 'cancelled' || conversation.status === 'closed' || conversation.isBlocked;
 
+  const activeSheet = userReportOpen
+    ? 'user-report'
+    : reportingMessage
+      ? 'message-report'
+      : actionMessage
+        ? 'message-menu'
+        : headerMenuOpen
+          ? 'chat-menu'
+          : null;
+
+  const closeActiveSheet = () => {
+    if (activeSheet === 'user-report') {
+      closeUserReport();
+      return;
+    }
+    if (activeSheet === 'message-report') {
+      setReportingMessage(null);
+      return;
+    }
+    if (activeSheet === 'message-menu') {
+      setActionMessage(null);
+      return;
+    }
+    if (activeSheet === 'chat-menu') {
+      setHeaderMenuOpen(false);
+    }
+  };
   return (
     <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={0} style={x.screen}>
       <View style={x.header}>
@@ -631,91 +671,94 @@ export default function ConversationScreen({
         </View>
       </View>
 
-      <Modal transparent visible={headerMenuOpen} animationType='fade' onRequestClose={() => setHeaderMenuOpen(false)}>
-        <Pressable onPress={() => setHeaderMenuOpen(false)} style={x.reportBackdrop}>
-          <Pressable style={x.reportSheet}>
-            <Text style={x.reportTitle}>Sohbet seçenekleri</Text>
-            <Text style={x.reportHelp}>{conversation.counterpart.name} ile ilgili yapmak istediğin işlemi seç.</Text>
-            <Pressable onPress={() => { setHeaderMenuOpen(false); openProfile(); }} style={x.reportOption}><Text style={x.reportOptionText}>Profili görüntüle</Text></Pressable>
-            <Pressable onPress={openUserReport} style={x.reportOption}><Text style={x.reportOptionText}>Kullanıcıyı bildir</Text></Pressable>
-            {(!conversation.isBlocked || conversation.blockedByMe) && (
-              <Pressable
-                disabled={busy || userActionPending}
-                onPress={() => { setHeaderMenuOpen(false); void toggleBlock(); }}
-                style={x.reportOption}
-              >
-                <Text style={conversation.blockedByMe ? x.reportOptionText : x.reportDangerText}>{conversation.blockedByMe ? 'Engeli kaldır' : 'Kullanıcıyı engelle'}</Text>
-              </Pressable>
-            )}
-            <Pressable onPress={() => setHeaderMenuOpen(false)} style={x.reportCancel}><Text style={x.reportCancelText}>Vazgeç</Text></Pressable>
-          </Pressable>
-        </Pressable>
-      </Modal>
+      <Modal transparent visible={!!activeSheet} animationType='fade' onRequestClose={closeActiveSheet}>
+        <Pressable onPress={closeActiveSheet} style={x.reportBackdrop}>
+          {activeSheet === 'chat-menu' && (
+            <Pressable style={x.reportSheet}>
+              <Text style={x.reportTitle}>{'Sohbet se\u00e7enekleri'}</Text>
+              <Text style={x.reportHelp}>{`${conversation.counterpart.name} ile ilgili yapmak istedi\u011fin i\u015flemi se\u00e7.`}</Text>
+              <Pressable onPress={() => { setHeaderMenuOpen(false); openProfile(); }} style={x.reportOption}><Text style={x.reportOptionText}>{'Profili g\u00f6r\u00fcnt\u00fcle'}</Text></Pressable>
+              <Pressable onPress={openUserReport} style={x.reportOption}><Text style={x.reportOptionText}>{'Kullan\u0131c\u0131y\u0131 bildir'}</Text></Pressable>
+              {(!conversation.isBlocked || conversation.blockedByMe) && (
+                <Pressable
+                  disabled={busy || userActionPending}
+                  onPress={() => { setHeaderMenuOpen(false); void toggleBlock(); }}
+                  style={x.reportOption}
+                >
+                  <Text style={conversation.blockedByMe ? x.reportOptionText : x.reportDangerText}>{conversation.blockedByMe ? 'Engeli kald\u0131r' : 'Kullan\u0131c\u0131y\u0131 engelle'}</Text>
+                </Pressable>
+              )}
+              <Pressable onPress={closeActiveSheet} style={x.reportCancel}><Text style={x.reportCancelText}>{'Vazge\u00e7'}</Text></Pressable>
+            </Pressable>
+          )}
 
-      <Modal transparent visible={userReportOpen} animationType='fade' onRequestClose={closeUserReport}>
-        <Pressable onPress={closeUserReport} style={x.reportBackdrop}>
-          <Pressable style={x.reportSheet}>
-            <Text style={x.reportTitle}>Bu kullanıcıyı neden bildiriyorsun?</Text>
-            <Text style={x.reportHelp}>Bir neden seç. Bildirim yalnızca güvenlik ekibi tarafından görülür ve onay vermeden gönderilmez.</Text>
-            <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} style={x.userReportScroll}>
-              <View style={x.userReasonList}>
-                {userReportReasons.map(([value, label]) => {
-                  const selected = userReportReason === value;
-                  return (
-                    <Pressable
-                      key={value}
-                      accessibilityRole='radio'
-                      accessibilityState={{ selected }}
-                      disabled={userActionPending}
-                      onPress={() => setUserReportReason(value)}
-                      style={[x.userReason, selected && x.userReasonSelected]}
-                    >
-                      <Text style={[x.userReasonText, selected && x.userReasonTextSelected]}>{label}</Text>
-                      {selected && <Text style={x.userReasonCheck}>✓</Text>}
-                    </Pressable>
-                  );
-                })}
+          {activeSheet === 'user-report' && (
+            <Pressable style={x.reportSheet}>
+              <Text style={x.reportTitle}>{'Bu kullan\u0131c\u0131y\u0131 neden bildiriyorsun?'}</Text>
+              <Text style={x.reportHelp}>{'Bir neden se\u00e7. Bildirim yaln\u0131zca g\u00fcvenlik ekibi taraf\u0131ndan g\u00f6r\u00fcl\u00fcr ve onay vermeden g\u00f6nderilmez.'}</Text>
+              <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} style={x.userReportScroll}>
+                <View style={x.userReasonList}>
+                  {userReportReasons.map(([value, label]) => {
+                    const selected = userReportReason === value;
+                    return (
+                      <Pressable
+                        key={value}
+                        accessibilityRole='radio'
+                        accessibilityState={{ selected }}
+                        disabled={userActionPending}
+                        onPress={() => setUserReportReason(value)}
+                        style={[x.userReason, selected && x.userReasonSelected]}
+                      >
+                        <Text style={[x.userReasonText, selected && x.userReasonTextSelected]}>{label}</Text>
+                        {selected && <Text style={x.userReasonCheck}>{'\u2713'}</Text>}
+                      </Pressable>
+                    );
+                  })}
+                </View>
+                <TextInput
+                  value={userReportDetails}
+                  onChangeText={setUserReportDetails}
+                  editable={!userActionPending}
+                  maxLength={500}
+                  multiline
+                  placeholder={'A\u00e7\u0131klama (iste\u011fe ba\u011fl\u0131)'}
+                  placeholderTextColor="#87948C"
+                  style={x.userReportInput}
+                />
+              </ScrollView>
+              <View style={x.userReportActions}>
+                <Pressable disabled={userActionPending} onPress={closeUserReport} style={x.userReportCancel}><Text style={x.userReportCancelText}>{'Vazge\u00e7'}</Text></Pressable>
+                <Pressable disabled={userActionPending || !userReportReason} onPress={() => void submitUserReport()} style={[x.userReportSubmit, (userActionPending || !userReportReason) && x.userReportSubmitDisabled]}>
+                  {userActionPending ? <ActivityIndicator size='small' color={C.white} /> : <Text style={x.userReportSubmitText}>{'Bildirimi g\u00f6nder'}</Text>}
+                </Pressable>
               </View>
-              <TextInput
-                value={userReportDetails}
-                onChangeText={setUserReportDetails}
-                editable={!userActionPending}
-                maxLength={500}
-                multiline
-                placeholder="Açıklama (isteğe bağlı)"
-                placeholderTextColor="#87948C"
-                style={x.userReportInput}
-              />
-            </ScrollView>
-            <View style={x.userReportActions}>
-              <Pressable disabled={userActionPending} onPress={closeUserReport} style={x.userReportCancel}><Text style={x.userReportCancelText}>Vazgeç</Text></Pressable>
-              <Pressable disabled={userActionPending || !userReportReason} onPress={() => void submitUserReport()} style={[x.userReportSubmit, (userActionPending || !userReportReason) && x.userReportSubmitDisabled]}>
-                {userActionPending ? <ActivityIndicator size='small' color={C.white} /> : <Text style={x.userReportSubmitText}>Bildirimi gönder</Text>}
-              </Pressable>
-            </View>
-          </Pressable>
-        </Pressable>
-      </Modal>
-      <Modal transparent visible={!!actionMessage} animationType='fade' onRequestClose={() => setActionMessage(null)}>
-        <Pressable onPress={() => setActionMessage(null)} style={x.reportBackdrop}>
-          <Pressable style={x.reportSheet}>
-            <Text style={x.reportTitle}>Mesaj seçenekleri</Text>
-            <Text style={x.reportHelp}>Bu mesaj için yapmak istediğin işlemi seç.</Text>
-            <Pressable onPress={() => void copyMessage()} style={x.reportOption}><Text style={x.reportOptionText}>Mesajı kopyala</Text></Pressable>
-            {actionMessage?.sender === 'other' && <Pressable onPress={chooseReportMessage} style={x.reportOption}><Text style={x.reportDangerText}>Mesajı bildir</Text></Pressable>}
-            <Pressable onPress={() => setActionMessage(null)} style={x.reportCancel}><Text style={x.reportCancelText}>Vazgeç</Text></Pressable>
-          </Pressable>
-        </Pressable>
-      </Modal>
+            </Pressable>
+          )}
 
-      <Modal transparent visible={!!reportingMessage} animationType='fade' onRequestClose={() => setReportingMessage(null)}>
-        <Pressable onPress={() => setReportingMessage(null)} style={x.reportBackdrop}>
-          <Pressable style={x.reportSheet}>
-            <Text style={x.reportTitle}>Bu mesajı neden bildiriyorsun?</Text>
-            <Text style={x.reportHelp}>Karşı tarafa bildirim gönderilmez.</Text>
-            {[['spam', 'Spam veya reklam'], ['harassment', 'Taciz veya hakaret'], ['fraud', 'Dolandırıcılık şüphesi'], ['personal_data', 'Kişisel bilgi paylaşımı'], ['other', 'Diğer']].map(([value, label]) => <Pressable key={value} onPress={() => void reportMessage(value)} style={x.reportOption}><Text style={x.reportOptionText}>{label}</Text></Pressable>)}
-            <Pressable onPress={() => setReportingMessage(null)} style={x.reportCancel}><Text style={x.reportCancelText}>Vazgeç</Text></Pressable>
-          </Pressable>
+          {activeSheet === 'message-menu' && (
+            <Pressable style={x.reportSheet}>
+              <Text style={x.reportTitle}>{'Mesaj se\u00e7enekleri'}</Text>
+              <Text style={x.reportHelp}>{'Bu mesaj i\u00e7in yapmak istedi\u011fin i\u015flemi se\u00e7.'}</Text>
+              <Pressable onPress={() => void copyMessage()} style={x.reportOption}><Text style={x.reportOptionText}>{'Mesaj\u0131 kopyala'}</Text></Pressable>
+              {actionMessage?.sender === 'other' && <Pressable onPress={chooseReportMessage} style={x.reportOption}><Text style={x.reportDangerText}>{'Mesaj\u0131 bildir'}</Text></Pressable>}
+              <Pressable onPress={closeActiveSheet} style={x.reportCancel}><Text style={x.reportCancelText}>{'Vazge\u00e7'}</Text></Pressable>
+            </Pressable>
+          )}
+
+          {activeSheet === 'message-report' && (
+            <Pressable style={x.reportSheet}>
+              <Text style={x.reportTitle}>{'Bu mesaj\u0131 neden bildiriyorsun?'}</Text>
+              <Text style={x.reportHelp}>{'Kar\u015f\u0131 tarafa bildirim g\u00f6nderilmez.'}</Text>
+              {[
+                ['spam', 'Spam veya reklam'],
+                ['harassment', 'Taciz veya hakaret'],
+                ['fraud', 'Doland\u0131r\u0131c\u0131l\u0131k \u015f\u00fcphesi'],
+                ['personal_data', 'Ki\u015fisel bilgi payla\u015f\u0131m\u0131'],
+                ['other', 'Di\u011fer'],
+              ].map(([value, label]) => <Pressable key={value} onPress={() => void reportMessage(value)} style={x.reportOption}><Text style={x.reportOptionText}>{label}</Text></Pressable>)}
+              <Pressable onPress={closeActiveSheet} style={x.reportCancel}><Text style={x.reportCancelText}>{'Vazge\u00e7'}</Text></Pressable>
+            </Pressable>
+          )}
         </Pressable>
       </Modal>
     </KeyboardAvoidingView>

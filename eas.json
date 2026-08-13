@@ -1,40 +1,49 @@
 {
-    "cli": {
-        "version": ">= 18.0.0",
-        "appVersionSource": "remote"
+  "cli": {
+    "version": ">= 18.0.0",
+    "appVersionSource": "remote"
+  },
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk"
+      },
+      "environment": "development",
+      "env": {
+        "APP_ENV": "development"
+      }
     },
-    "build": {
-        "development": {
-            "developmentClient": true,
-            "distribution": "internal",
-            "android": {
-                "buildType": "apk"
-            },
-            "environment": "development",
-            "env": {
-                "APP_ENV": "development"
-            }
-        },
-        "preview": {
-            "distribution": "internal",
-            "android": {
-                "buildType": "apk"
-            },
-            "environment": "preview",
-            "env": {
-                "APP_ENV": "preview"
-            }
-        },
-        "production": {
-            "environment": "production",
-            "autoIncrement": true,
-            "env": {
-                "APP_ENV": "production",
-                "EXPO_PROJECT_ID": "71e9dcc6-5139-46e9-a996-fcf819fb60ed"
-            },
-            "android": {
-                "buildType": "app-bundle"
-            }
-        }
+    "preview": {
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk"
+      },
+      "environment": "preview",
+      "env": {
+        "APP_ENV": "preview"
+      }
+    },
+    "production": {
+      "environment": "production",
+      "autoIncrement": true,
+      "env": {
+        "APP_ENV": "production",
+        "EXPO_PROJECT_ID": "71e9dcc6-5139-46e9-a996-fcf819fb60ed",
+        "EXPO_PUBLIC_ADMOB_ANDROID_APP_ID": "ca-app-pub-6681150378641816~3971591059",
+        "EXPO_PUBLIC_ADMOB_IOS_APP_ID": "ca-app-pub-6681150378641816~9731527070"
+      },
+      "android": {
+        "buildType": "app-bundle"
+      }
     }
+  },
+  "submit": {
+    "production": {
+      "ios": {
+        "ascAppId": "6800822946"
+      }
+    }
+  }
 }

@@ -55,6 +55,7 @@ function SwipeRow({ conversation, onHide, children }: { conversation: Conversati
   };
 
   const deleteWithAnimation = () => {
+    if (!canDeleteRef.current) return;
     const width = Math.max(widthRef.current, 280);
     Animated.timing(translateX, { toValue: -width, duration: 190, useNativeDriver: true }).start(({ finished }) => {
       if (finished) void commitDelete();
@@ -62,7 +63,9 @@ function SwipeRow({ conversation, onHide, children }: { conversation: Conversati
   };
 
   const responder = useRef(PanResponder.create({
-    onMoveShouldSetPanResponder: (_, gesture) => canDeleteRef.current && gesture.dx < -12 && Math.abs(gesture.dx) > Math.abs(gesture.dy),
+    onMoveShouldSetPanResponder: (_, gesture) => canDeleteRef.current && gesture.dx < -8 && Math.abs(gesture.dx) > Math.abs(gesture.dy) * 1.15,
+    onMoveShouldSetPanResponderCapture: (_, gesture) => canDeleteRef.current && gesture.dx < -8 && Math.abs(gesture.dx) > Math.abs(gesture.dy) * 1.15,
+    onPanResponderGrant: () => translateX.stopAnimation(),
     onPanResponderMove: (_, gesture) => {
       if (!canDeleteRef.current) return;
       const width = Math.max(widthRef.current, 280);
@@ -77,10 +80,12 @@ function SwipeRow({ conversation, onHide, children }: { conversation: Conversati
       animateTo(gesture.dx < -52 ? -104 : 0);
     },
     onPanResponderTerminate: () => animateTo(0),
+    onPanResponderTerminationRequest: () => false,
+    onShouldBlockNativeResponder: () => true,
   })).current;
 
   return (
-    <View style={x.swipeRow}>
+    <View style={x.swipeRow} {...responder.panHandlers}>
       <View style={x.deleteBackground} />
       <Pressable accessibilityRole="button" accessibilityLabel="Sohbeti sil" disabled={!canDelete} onPress={deleteWithAnimation} style={x.deleteAction}>
         <Text style={x.deleteActionText}>Sil</Text>
@@ -88,7 +93,6 @@ function SwipeRow({ conversation, onHide, children }: { conversation: Conversati
       <Animated.View
         onLayout={event => { widthRef.current = event.nativeEvent.layout.width; }}
         style={[x.swipeContent, { transform: [{ translateX }] }]}
-        {...responder.panHandlers}
       >
         {children}
       </Animated.View>
@@ -101,7 +105,7 @@ export default function ConversationList({ conversations, open, onHide }: { conv
   const listData = insertAdvertisementSlots(conversations, item => String(item.id), advertisementCollection?.meta);
 
   return (
-    <ScrollView style={x.screen} contentContainerStyle={x.content}>
+    <ScrollView style={x.screen} contentContainerStyle={x.content} directionalLockEnabled>
       <Text style={x.eyebrow}>GÖRÜŞMELER</Text>
       <Text style={x.title}>Mesajlar</Text>
       {!conversations.length ? (

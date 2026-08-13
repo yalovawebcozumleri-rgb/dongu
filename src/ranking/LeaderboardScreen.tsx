@@ -16,6 +16,7 @@ type Response = {
 };
 
 const LEADERBOARD_CACHE_PREFIX = '@dongu/leaderboard/v2/';
+const latestEarnedBadge = (badges: Badge[]) => badges.length ? [badges[badges.length - 1]] : [];
 
 export default function LeaderboardScreen({ token, userId, requireAuth }: { token?: string | null; userId?: string | null; requireAuth?: () => void }) {
   const [period, setPeriod] = useState<Period>('monthly');
@@ -93,7 +94,7 @@ export default function LeaderboardScreen({ token, userId, requireAuth }: { toke
 
           {token && own ? <View style={x.ownCard}>
             <View style={x.ownTop}><View style={x.ownIdentity}><UserAvatar uri={own.avatarUrl} name={own.name || 'Sen'} size={44} style={x.ownAvatar} /><View><Text style={x.ownEyebrow}>SENİN SIRAN</Text><Text style={x.ownRank}>{own.rank ? `#${own.rank}` : 'Henüz sıran yok'}</Text></View></View><View style={x.pointsPill}><Text style={x.pointsValue}>{own.points}</Text><Text style={x.pointsLabel}>PUAN</Text></View></View>
-            <Text style={x.ownMeta}>{own.deliveries} tamamlanan teslimat</Text><Badges badges={own.badges} />
+            <Text style={x.ownMeta}>{own.deliveries} tamamlanan teslimat</Text><Badges badges={latestEarnedBadge(own.badges)} />
           </View> : !token ? <Pressable onPress={requireAuth} style={x.joinCard}><Text style={x.joinTitle}>Kendi sıranı görmek ister misin?</Text><Text style={x.joinText}>Hesabına giriş yaparak puanını, sıranı ve rozetlerini takip edebilirsin.</Text><Text style={x.joinAction}>Döngü’ye katıl →</Text></Pressable> : null}
 
           <View style={x.ruleCard}><Text style={x.ruleTitle}>Puan nasıl hesaplanır?</Text><Text style={x.ruleText}>{meta?.pointsRule}</Text><Text style={x.ruleNote}>Teslim koduyla tamamlanmayan işlemler puan kazandırmaz. Döngü puanı ambalajı teslim eden satıcıya verilir.</Text></View>
@@ -110,11 +111,11 @@ function LeaderboardSkeleton() {
 
 function Podium({ row }: { row: RankRow }) {
   const colors = row.rank === 1 ? ['#FFF1B8', '#8B6611'] : row.rank === 2 ? ['#EAF0ED', '#5C6B63'] : ['#F4D8C2', '#8A5637'];
-  return <View style={[x.podiumCard, row.rank === 1 && x.podiumFirst, { backgroundColor: colors[0] }]}><Text style={x.medal}>{row.rank === 1 ? '🥇' : row.rank === 2 ? '🥈' : '🥉'}</Text><UserAvatar uri={row.avatarUrl} name={row.name || 'Döngü üyesi'} fallbackText={row.anonymous ? '♻' : undefined} size={row.rank === 1 ? 52 : 46} style={[x.podiumAvatar, { borderColor: colors[1] }]} /><Text style={x.podiumName} numberOfLines={1}>{row.name}</Text><Text style={x.podiumPoints}>{row.points} puan</Text><Text style={x.podiumDeliveries}>{row.deliveries} teslimat</Text><Badges badges={row.badges.slice(0, 2)} compact /></View>;
+  return <View style={[x.podiumCard, row.rank === 1 && x.podiumFirst, { backgroundColor: colors[0] }]}><Text style={x.medal}>{row.rank === 1 ? '🥇' : row.rank === 2 ? '🥈' : '🥉'}</Text><UserAvatar uri={row.avatarUrl} name={row.name || 'Döngü üyesi'} fallbackText={row.anonymous ? '♻' : undefined} size={row.rank === 1 ? 52 : 46} style={[x.podiumAvatar, { borderColor: colors[1] }]} /><Text style={x.podiumName} numberOfLines={1}>{row.name}</Text><Text style={x.podiumPoints}>{row.points} puan</Text><Text style={x.podiumDeliveries}>{row.deliveries} teslimat</Text><Badges badges={latestEarnedBadge(row.badges)} compact /></View>;
 }
 
 function RankItem({ row }: { row: RankRow }) {
-  return <View style={[x.rankRow, row.isOwn && x.rankRowOwn]}><Text style={x.rankNo}>{row.rank}</Text><UserAvatar uri={row.avatarUrl} name={row.name || 'Döngü üyesi'} fallbackText={row.anonymous ? '♻' : undefined} size={38} /><View style={x.rankCopy}><Text style={x.rankName} numberOfLines={1}>{row.name}{row.isOwn ? ' · Sen' : ''}</Text><Text style={x.rankMeta}>{row.deliveries} teslimat</Text><Badges badges={row.badges.slice(0, 3)} compact /></View><Text style={x.rankPoints}>{row.points}<Text style={x.rankPointsUnit}>{`\n`}puan</Text></Text></View>;
+  return <View style={[x.rankRow, row.isOwn && x.rankRowOwn]}><Text style={x.rankNo}>{row.rank}</Text><UserAvatar uri={row.avatarUrl} name={row.name || 'Döngü üyesi'} fallbackText={row.anonymous ? '♻' : undefined} size={38} /><View style={x.rankCopy}><Text style={x.rankName} numberOfLines={1}>{row.name}{row.isOwn ? ' · Sen' : ''}</Text><Text style={x.rankMeta}>{row.deliveries} teslimat</Text><Badges badges={latestEarnedBadge(row.badges)} compact /></View><Text style={x.rankPoints}>{row.points}<Text style={x.rankPointsUnit}>{`\n`}puan</Text></Text></View>;
 }
 
 function Badges({ badges, compact = false }: { badges: Badge[]; compact?: boolean }) {

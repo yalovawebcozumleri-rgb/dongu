@@ -125,6 +125,8 @@ class AdvertisementController extends Controller
                 'kind' => $setting->kind,
                 'locationLabel' => $setting->location_label,
                 'enabled' => $setting->enabled,
+                'androidEnabled' => $setting->android_enabled,
+                'iosEnabled' => $setting->ios_enabled,
                 'locked' => $setting->locked,
                 'sourceOrder' => $setting->source_order ?? [],
                 'firstAfter' => $setting->first_after,
@@ -210,9 +212,17 @@ class AdvertisementController extends Controller
             'targetUrl.url' => 'Yönlendirme bağlantısı http:// veya https:// ile başlayan geçerli bir adres olmalıdır.',
             'image.max' => 'Reklam görseli en fazla 4 MB olabilir.',
         ], [
-            'sponsorName' => 'Sponsor adı', 'headline' => 'Başlık', 'body' => 'Açıklama', 'format' => 'Reklam biçimi',
-            'image' => 'Reklam görseli', 'backgroundColor' => 'Arka plan rengi', 'priority' => 'Öncelik',
-            'isActive' => 'Kampanya durumu', 'placements' => 'Yayın alanları', 'endsAt' => 'Bitiş zamanı', 'targetUrl' => 'Yönlendirme bağlantısı',
+            'sponsorName' => 'Sponsor adı',
+            'headline' => 'Başlık',
+            'body' => 'Açıklama',
+            'format' => 'Reklam biçimi',
+            'image' => 'Reklam görseli',
+            'backgroundColor' => 'Arka plan rengi',
+            'priority' => 'Öncelik',
+            'isActive' => 'Kampanya durumu',
+            'placements' => 'Yayın alanları',
+            'endsAt' => 'Bitiş zamanı',
+            'targetUrl' => 'Yönlendirme bağlantısı',
         ]);
 
         $imagePath = $request->file('image')?->store('advertisements', 'public');

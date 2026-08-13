@@ -16,19 +16,28 @@ class AdvertisementController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
-        $filters = $request->validate(['placement' => ['required', 'string', Rule::in(Advertisement::PLACEMENTS)]]);
+        $filters = $request->validate([
+            'placement' => ['required', 'string', Rule::in(Advertisement::PLACEMENTS)],
+            'platform' => ['nullable', Rule::in(['android', 'ios'])],
+        ]);
+
         $placement = $filters['placement'];
+        $platform = $filters['platform'] ?? $this->platformFromRequest($request);
         $setting = AdvertisementPlacementSetting::forKey($placement);
+        $platformEnabled = $setting->platformEnabled($platform);
         $sources = collect($setting->source_order ?? [])
             ->filter(fn (string $source) => in_array($source, AdvertisementPlacementSetting::NATIVE_SOURCES, true))
             ->values()->all();
 
         $advertisements = collect();
-        if ($setting->enabled && in_array(AdvertisementPlacementSetting::SOURCE_DIRECT, $sources, true)) {
+        if ($platformEnabled && in_array(AdvertisementPlacementSetting::SOURCE_DIRECT, $sources, true)) {
             $advertisements = Advertisement::query()
                 ->currentlyActive()
                 ->whereHas('placements', fn ($query) => $query->where('placement', $placement))
-                ->orderByDesc('priority')->orderBy('id')->limit(10)->get();
+                ->orderByDesc('priority')
+                ->orderBy('id')
+                ->limit(10)
+                ->get();
         }
 
         return response()->json([
@@ -45,7 +54,7 @@ class AdvertisementController extends Controller
             ])->values(),
             'meta' => [
                 'placement' => $placement,
-                'enabled' => $setting->enabled,
+                'enabled' => $platformEnabled,
                 'sourceOrder' => $sources,
                 'firstAfter' => $setting->first_after,
                 'repeatEvery' => $setting->repeat_every,
@@ -53,6 +62,8 @@ class AdvertisementController extends Controller
                 'minItems' => $setting->min_items,
                 'adMobAndroidUnitId' => $setting->adMobUnitId('android', 'native'),
                 'adMobIosUnitId' => $setting->adMobUnitId('ios', 'native'),
+                'androidEnabled' => $setting->platformEnabled('android'),
+                'iosEnabled' => $setting->platformEnabled('ios'),
             ],
         ]);
     }
@@ -62,6 +73,7 @@ class AdvertisementController extends Controller
         abort_unless($advertisement->image_path, 404);
         $path = Storage::disk('public')->path($advertisement->image_path);
         abort_unless(is_file($path), 404);
+
         return response()->file($path, ['Cache-Control' => 'public, max-age=86400']);
     }
 
@@ -81,11 +93,14 @@ class AdvertisementController extends Controller
             'sessionKey' => ['required', 'string', 'min:16', 'max:80'],
             'placement' => ['required', 'string', Rule::in(Advertisement::PLACEMENTS)],
             'slotIndex' => ['required', 'integer', 'min:1', 'max:1000'],
+            'platform' => ['nullable', Rule::in(['android', 'ios'])],
         ]);
+
         $setting = AdvertisementPlacementSetting::forKey($validated['placement']);
+        $platform = $validated['platform'] ?? $this->platformFromRequest($request);
 
         abort_unless(
-            $setting->enabled
+            $setting->platformEnabled($platform)
             && $advertisement->is_active
             && ($advertisement->starts_at === null || $advertisement->starts_at->lte(now()))
             && ($advertisement->ends_at === null || $advertisement->ends_at->gt(now()))
@@ -100,8 +115,23 @@ class AdvertisementController extends Controller
             'slot_index' => $validated['slotIndex'],
         ], ['user_id' => $request->user('sanctum')?->id, 'viewed_at' => now()]);
 
-        if ($click && $impression->clicked_at === null) $impression->update(['clicked_at' => now()]);
+        if ($click && $impression->clicked_at === null) {
+            $impression->update(['clicked_at' => now()]);
+        }
 
         return response()->json(['data' => ['recorded' => true]]);
+    }
+
+    private function platformFromRequest(Request $request): ?string
+    {
+        $agent = strtolower($request->userAgent() ?? '');
+        if (str_contains($agent, 'iphone') || str_contains($agent, 'ipad') || str_contains($agent, 'ios')) {
+            return 'ios';
+        }
+        if (str_contains($agent, 'android') || str_contains($agent, 'okhttp')) {
+            return 'android';
+        }
+
+        return null;
     }
 }

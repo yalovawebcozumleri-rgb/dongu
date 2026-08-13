@@ -97,9 +97,9 @@ function ListingCard({
             <Text style={s.countText}>{count} adet</Text>
             <View style={s.tinyDot} />
             <Text style={s.timeText}>{item.time}</Text>
-            {item.isBoosted && !isOwn && <View style={s.boostedBadge}><Text style={s.boostedBadgeText}>ÖNE ÇIKAN</Text></View>}
           </View>
           <Text style={s.materialText}>{item.items.map(line => line.material).join(' · ')}</Text>
+          {item.isBoosted && !isOwn && <View style={s.boostedBadgeInline}><Text style={s.boostedBadgeText}>ÖNE ÇIKAN</Text></View>}
         </View>
         <View style={s.cardActions}>
           {isOwn ? (

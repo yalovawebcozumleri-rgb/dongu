@@ -1,5 +1,5 @@
-import React, { createContext, useCallback, useContext, useMemo, useState } from 'react';
-import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { Alert, Modal, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { C } from '../../styles';
 
 export type NoticeTone = 'info' | 'success' | 'warning' | 'error';
@@ -53,30 +53,50 @@ export function NoticeProvider({ children }: React.PropsWithChildren) {
   const value = useMemo(() => ({ showNotice, confirmNotice }), [confirmNotice, showNotice]);
   const tone = tones[active?.tone ?? 'info'];
 
+  useEffect(() => {
+    if (Platform.OS !== 'ios' || !active) return;
+
+    const buttons = active.confirm
+      ? [
+          { text: active.secondaryLabel ?? 'Vazgeç', style: 'cancel' as const, onPress: () => close(false) },
+          { text: active.primaryLabel ?? 'Onayla', onPress: () => close(true) },
+        ]
+      : [
+          { text: active.primaryLabel ?? 'Tamam', onPress: () => close(true) },
+        ];
+
+    Alert.alert(active.title, active.message, buttons, {
+      cancelable: true,
+      onDismiss: () => close(false),
+    });
+  }, [active, close]);
+
   return (
     <NoticeContext.Provider value={value}>
       {children}
-      <Modal visible={Boolean(active)} transparent animationType="fade" statusBarTranslucent onRequestClose={() => close(false)}>
-        <View style={n.backdrop}>
-          <View style={n.card}>
-            <View style={[n.glow, { backgroundColor: tone.soft }]} />
-            <View style={[n.icon, { backgroundColor: tone.accent, borderColor: tone.soft }]}>
-              <Text style={n.iconText}>{tone.icon}</Text>
-            </View>
-            <Text style={[n.eyebrow, { color: tone.accent }]}>{active?.eyebrow ?? tone.eyebrow}</Text>
-            <Text style={n.title}>{active?.title}</Text>
-            <Text style={n.message}>{active?.message}</Text>
-            <Pressable onPress={() => close(true)} style={[n.primary, { backgroundColor: tone.accent }]}>
-              <Text style={n.primaryText}>{active?.primaryLabel ?? (active?.confirm ? 'Onayla' : 'Tamam')}</Text>
-            </Pressable>
-            {!!active?.confirm && (
-              <Pressable onPress={() => close(false)} style={n.secondary}>
-                <Text style={[n.secondaryText, { color: tone.accent }]}>{active.secondaryLabel ?? 'Vazgeç'}</Text>
+      {Platform.OS !== 'ios' && (
+        <Modal visible={Boolean(active)} transparent animationType="fade" statusBarTranslucent onRequestClose={() => close(false)}>
+          <View style={n.backdrop}>
+            <View style={n.card}>
+              <View style={[n.glow, { backgroundColor: tone.soft }]} />
+              <View style={[n.icon, { backgroundColor: tone.accent, borderColor: tone.soft }]}>
+                <Text style={n.iconText}>{tone.icon}</Text>
+              </View>
+              <Text style={[n.eyebrow, { color: tone.accent }]}>{active?.eyebrow ?? tone.eyebrow}</Text>
+              <Text style={n.title}>{active?.title}</Text>
+              <Text style={n.message}>{active?.message}</Text>
+              <Pressable onPress={() => close(true)} style={[n.primary, { backgroundColor: tone.accent }]}>
+                <Text style={n.primaryText}>{active?.primaryLabel ?? (active?.confirm ? 'Onayla' : 'Tamam')}</Text>
               </Pressable>
-            )}
+              {!!active?.confirm && (
+                <Pressable onPress={() => close(false)} style={n.secondary}>
+                  <Text style={[n.secondaryText, { color: tone.accent }]}>{active.secondaryLabel ?? 'Vazgeç'}</Text>
+                </Pressable>
+              )}
+            </View>
           </View>
-        </View>
-      </Modal>
+        </Modal>
+      )}
     </NoticeContext.Provider>
   );
 }

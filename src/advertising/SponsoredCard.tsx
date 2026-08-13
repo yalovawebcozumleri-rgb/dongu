@@ -1,5 +1,5 @@
 import React, { memo, useEffect } from 'react';
-import { Image, Linking, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Image, Linking, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { C, s } from '../../styles';
 import { apiRequest } from '../lib/api';
 import { Advertisement, AdvertisementPlacement } from './types';
@@ -7,7 +7,8 @@ import { Advertisement, AdvertisementPlacement } from './types';
 const sessionKey = `mobile-${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}-${Math.random().toString(36).slice(2)}`;
 
 function SponsoredCard({ advertisement, placement, slotIndex, token }: { advertisement: Advertisement; placement: AdvertisementPlacement; slotIndex: number; token?: string | null; }) {
-  const record = (event: 'impressions' | 'clicks') => { void apiRequest(`/advertisements/${advertisement.id}/${event}`, { method: 'POST', token, body: { sessionKey, placement, slotIndex } }).catch(() => undefined); };
+  const platform = Platform.OS === 'ios' ? 'ios' : 'android';
+  const record = (event: 'impressions' | 'clicks') => { void apiRequest(`/advertisements/${advertisement.id}/${event}`, { method: 'POST', token, body: { sessionKey, placement, slotIndex, platform } }).catch(() => undefined); };
   useEffect(() => { record('impressions'); }, [advertisement.id, placement, slotIndex]);
   const open = () => { if (!advertisement.targetUrl) return; record('clicks'); void Linking.openURL(advertisement.targetUrl); };
   const content = <>

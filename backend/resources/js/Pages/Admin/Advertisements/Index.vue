@@ -86,21 +86,6 @@ const confirmDelete = () => deleteForm.delete(`/admin/advertisements/${deleteCan
   <AdminLayout eyebrow="Gelir" title="Reklam yönetimi" description="Döngü’ye ait kampanyaları ve AdMob reklam alanlarını tek merkezden yönet.">
     <main class="mx-auto max-w-[1600px] px-5 py-8 lg:px-8">
       <div v-if="flash" class="mb-5 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-900">{{ flash }}</div>
-
-      <section class="grid gap-4 xl:grid-cols-2">
-        <article class="rounded-2xl border border-emerald-200 bg-white p-5 shadow-sm">
-          <div class="flex items-start justify-between gap-3"><div><p class="text-xs font-semibold uppercase tracking-wide text-emerald-800">1. öncelik</p><h2 class="mt-1 text-lg font-semibold text-slate-950">Döngü kampanyaları</h2></div><span class="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-800">Bu panelden</span></div>
-          <p class="mt-3 text-sm leading-6 text-slate-600">Yalnızca sana ait marka, proje ve hizmetlerin tanıtımlarını burada oluşturursun. Uygun alanda AdMob’dan önce gösterilir.</p>
-        </article>
-        <article class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <div class="flex items-start justify-between gap-3"><div><p class="text-xs font-semibold uppercase tracking-wide text-slate-600">2. öncelik</p><h2 class="mt-1 text-lg font-semibold text-slate-950">Google AdMob</h2></div><span :class="['rounded-full px-2.5 py-1 text-xs font-semibold', adMob.earnsRevenue ? 'bg-emerald-50 text-emerald-800' : 'bg-amber-50 text-amber-900']">{{ adMob.modeLabel }}</span></div>
-          <p class="mt-3 text-sm leading-6 text-slate-600">AdMob reklamları bu tabloya kampanya olarak eklenmez; mobil uygulamadaki Google reklam birimleri tarafından otomatik doldurulur.</p>
-          <p v-if="!adMob.earnsRevenue" class="mt-3 rounded-xl bg-amber-50 px-3 py-2 text-xs font-semibold leading-5 text-amber-900">Test reklamları görünümü doğrular fakat gelir üretmez. Canlıya geçerken gerçek AdMob uygulama ve reklam birimi kimlikleri girilecek.</p>
-          <p v-if="adMob.coveredPlacementLabels.length" class="mt-3 rounded-xl border border-sky-200 bg-sky-50 px-3 py-2 text-xs font-semibold leading-5 text-sky-900">Şu anda {{ adMob.coveredPlacementLabels.join(', ') }} alanlarında Döngü kampanyası önce gösteriliyor. AdMob test reklamını görmek için bu alanları kullanan kampanyayı geçici olarak durdur.</p>
-          <p v-else class="mt-3 text-xs font-semibold leading-5 text-emerald-800">Döngü kampanyası bulunmayan geçerli yuvalarda AdMob reklamı denenir. AdMob da reklam vermezse yuva kapanır.</p>
-        </article>
-      </section>
-
       <PlacementSettings :settings="placementSettings" />
 
       <section class="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">

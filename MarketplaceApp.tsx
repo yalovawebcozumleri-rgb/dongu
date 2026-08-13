@@ -28,7 +28,7 @@ import { DeliveryAddress } from './src/address/types';
 import { useNotice } from './src/notice/NoticeProvider';
 import ConversationList from './src/chat/ConversationList';
 import ConversationScreen from './src/chat/ConversationScreen';
-import { subscribeToConversations } from './src/chat/realtime';
+import { ConversationRealtimeEvent, subscribeToConversations } from './src/chat/realtime';
 import ProfileMenuScreen from './src/profile/ProfileMenuScreen';
 import UsageLimitsScreen from './src/profile/UsageLimitsScreen';
 import AccountDeletionScreen from './src/profile/AccountDeletionScreen';
@@ -52,7 +52,7 @@ import { AppNotification } from './src/notifications/types';
 import { observeNotificationResponses } from './src/push/notificationObserver';
 import { configureForegroundNotificationHandling, setForegroundConversation } from './src/push/notifications';
 import LeaderboardScreen from './src/ranking/LeaderboardScreen';
-import { Conversation, ConversationCollectionResponse, ConversationResponse } from './src/chat/types';
+import { Conversation, ConversationCollectionResponse, ConversationMessage, ConversationResponse } from './src/chat/types';
 import {
   Coordinates,
   EMPTY_CENTER,
@@ -737,7 +737,7 @@ function ListingPublishedModal({
 }: {
   listing: Listing;
   close: () => void;
-  openListing: () => void;
+  openListing: (listing: Listing) => void;
   token: string;
   userId: string;
   onBoosted: (listing: Listing) => void;
@@ -768,7 +768,7 @@ function ListingPublishedModal({
           </View>
           <Text style={s.successHint}>Süresi dolmadan önce ilanını yenileyebilirsin.</Text>
           <RewardedListingBoostButton listing={listing} token={token} userId={userId} onBoosted={onBoosted} />
-          <Pressable onPress={openListing} style={s.successPrimary}>
+          <Pressable onPress={() => openListing(listing)} style={s.successPrimary}>
             <Text style={s.successPrimaryText}>İlanı görüntüle</Text>
           </Pressable>
           <Pressable onPress={close} style={s.successSecondary}>
@@ -784,7 +784,8 @@ function CreateModal({
   close,
   create,
   selectedAddress,
-  openAddressPicker,
+  onAddressSelected,
+  onAddressDeleted,
   bottomInset,
   token,
   userId,
@@ -795,7 +796,8 @@ function CreateModal({
   close: () => void;
   create: (listing: NewListing) => Promise<boolean>;
   selectedAddress: DeliveryAddress | null;
-  openAddressPicker: () => void;
+  onAddressSelected: (address: DeliveryAddress) => void;
+  onAddressDeleted: (addressId: number) => void;
   bottomInset: number;
   token: string;
   userId: string;
@@ -803,10 +805,15 @@ function CreateModal({
   onRewarded: () => void | Promise<void>;
 }) {
   const { showNotice } = useNotice();
+  const { height } = useWindowDimensions();
   const [lines, setLines] = useState(initialForm);
   const [note, setNote] = useState('');
   const [conditionConfirmed, setConditionConfirmed] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [addressPickerOpen, setAddressPickerOpen] = useState(false);
+  useEffect(() => {
+    if (!visible) setAddressPickerOpen(false);
+  }, [visible]);
   const updateLine = (material: Material, patch: Partial<FormLine>) =>
     setLines(current => ({ ...current, [material]: { ...current[material], ...patch } }));
   const selectedItems = MATERIALS
@@ -866,6 +873,24 @@ function CreateModal({
     <Modal visible={visible} animationType="slide" transparent onRequestClose={close}>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={s.modalBackdrop}>
         <View style={[s.modalSheet, { paddingBottom: Math.max(bottomInset, 14) + 10 }]}>
+          {addressPickerOpen ? (
+            <View style={{ height: Math.round(height * 0.9), marginHorizontal: -20, marginTop: -10, marginBottom: -Math.max(bottomInset, 14) - 10 }}>
+              <AddressBookModal
+                visible
+                embedded
+                token={token}
+                mode="select"
+                onClose={() => setAddressPickerOpen(false)}
+                selectedAddressId={selectedAddress?.id}
+                onDeleted={onAddressDeleted}
+                onSelect={address => {
+                  onAddressSelected(address);
+                  setAddressPickerOpen(false);
+                }}
+              />
+            </View>
+          ) : (
+            <>
           <View style={s.handle} />
           <View style={s.modalHeader}>
             <View><Text style={s.screenEyebrow}>YENİ İLAN</Text><Text style={s.modalTitle}>Ambalajlarını ilana koy</Text></View>
@@ -873,7 +898,7 @@ function CreateModal({
           </View>
           <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
             <Text style={s.inputLabel}>TESLİMAT ADRESİ</Text>
-            <Pressable onPress={openAddressPicker} style={s.deliveryAddressCard}>
+            <Pressable onPress={() => setAddressPickerOpen(true)} style={s.deliveryAddressCard}>
               <View style={s.deliveryAddressIcon}><Text style={s.deliveryAddressIconText}>⌖</Text></View>
               <View style={s.deliveryAddressCopy}>
                 <View style={s.deliveryAddressTitleRow}>
@@ -972,6 +997,8 @@ function CreateModal({
               {submitting ? <ActivityIndicator color="#FFFFFF" /> : <Text style={s.primaryText}>İlanı yayınla</Text>}
             </Pressable>
           </ScrollView>
+            </>
+          )}
         </View>
       </KeyboardAvoidingView>
     </Modal>
@@ -1002,12 +1029,19 @@ type NavigationIconName = 'home' | 'ranking' | 'messages' | 'profile';
 
 function NavigationIcon({ name, active }: { name: NavigationIconName; active: boolean }) {
   const color = active ? C.green : '#7F8D84';
+  const common = { fill: 'none', stroke: color, strokeWidth: 1.8, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const };
 
   if (name === 'ranking') {
-    return <Text style={[s.rankingNavIcon, active && s.navActive]}>♻</Text>;
+    return (
+      <Svg width={22} height={22} viewBox="0 0 24 24" accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+        <Path d="M7 19.5V12" {...common} />
+        <Path d="M12 19.5V7" {...common} />
+        <Path d="M17 19.5v-9" {...common} />
+        <Path d="M5.2 19.5h13.6" {...common} />
+        <Path d="M10.1 5.2 12 3.4l1.9 1.8" {...common} />
+      </Svg>
+    );
   }
-
-  const common = { fill: 'none', stroke: color, strokeWidth: 1.8, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const };
 
   return (
     <Svg width={22} height={22} viewBox="0 0 24 24" accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
@@ -1067,6 +1101,7 @@ function AppContent({ fullName, userEmail = '', userEmailVerified = false, userI
 
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [realtimeVersion, setRealtimeVersion] = useState(0);
+  const [realtimeMessage, setRealtimeMessage] = useState<{ conversationId: number; message: ConversationMessage; nonce: number } | null>(null);
   const [notificationRefreshSignal, setNotificationRefreshSignal] = useState(0);
   const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
   const [activeConversationId, setActiveConversationId] = useState<number | null>(null);
@@ -1083,7 +1118,6 @@ function AppContent({ fullName, userEmail = '', userEmailVerified = false, userI
   const [publishedListing, setPublishedListing] = useState<Listing | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [listingRewardOffer, setListingRewardOffer] = useState<RewardOffer | null>(null);
-  const [addressMode, setAddressMode] = useState<'select' | 'manage' | null>(null);
   const [selectedAddress, setSelectedAddress] = useState<DeliveryAddress | null>(null);
   const [locationOpen, setLocationOpen] = useState(false);
   const [requesting, setRequesting] = useState(false);
@@ -1291,7 +1325,10 @@ function AppContent({ fullName, userEmail = '', userEmailVerified = false, userI
         void loadNotificationCount();
       }
     });
-    const unsubscribe = userId ? subscribeToConversations(token, userId, () => {
+    const unsubscribe = userId ? subscribeToConversations(token, userId, (event: ConversationRealtimeEvent) => {
+      if (event.kind === 'message' && event.message) {
+        setRealtimeMessage({ conversationId: event.conversationId, message: event.message, nonce: Date.now() });
+      }
       setRealtimeVersion(version => version + 1);
       void loadConversations(true);
     }, event => {
@@ -1690,7 +1727,16 @@ function AppContent({ fullName, userEmail = '', userEmailVerified = false, userI
             email={userEmail}
             emailVerified={userEmailVerified}
             token={token}
-            openPublicProfile={() => { setPublicProfileUserId(Number(userId)); setPublicProfileBackRoute('profile'); setRoute('public-profile'); }}
+            openPublicProfile={() => {
+              const ownUserId = Number(userId);
+              if (!Number.isFinite(ownUserId) || ownUserId <= 0) {
+                showNotice({ tone: 'warning', title: 'Profil hazırlanıyor', message: 'Profil bilgilerin henüz tamamlanmadı. Birkaç saniye sonra yeniden dene.' });
+                return;
+              }
+              setPublicProfileUserId(ownUserId);
+              setPublicProfileBackRoute('profile');
+              setRoute('public-profile');
+            }}
             openEditProfile={() => setRoute('profile-edit')}
             openUsageLimits={() => setRoute('usage-limits')}
             openAddresses={() => setRoute('addresses')}
@@ -1816,6 +1862,7 @@ function AppContent({ fullName, userEmail = '', userEmailVerified = false, userI
               setRoute('detail');
             }}
             refreshSignal={realtimeVersion}
+            realtimeMessage={realtimeMessage?.conversationId === activeConversation.id ? realtimeMessage : null}
             bottomInset={insets.bottom}
           />
         )}
@@ -1849,10 +1896,12 @@ function AppContent({ fullName, userEmail = '', userEmailVerified = false, userI
           userId={userId!}
           onBoosted={boosted => {
             setPublishedListing(boosted);
-            setListings(current => current.map(item => item.id === boosted.id ? boosted : item));
+            setListings(current => [boosted, ...current.filter(item => item.id !== boosted.id)]);
           }}
-          openListing={() => {
-            setSelectedId(publishedListing.id);
+          openListing={listingToOpen => {
+            setListings(current => [listingToOpen, ...current.filter(item => item.id !== listingToOpen.id)]);
+            setDetailBackRoute('home');
+            setSelectedId(listingToOpen.id);
             setRoute('detail');
             setPublishedListing(null);
           }}
@@ -1880,25 +1929,16 @@ function AppContent({ fullName, userEmail = '', userEmailVerified = false, userI
         }}
         create={addListing}
         selectedAddress={selectedAddress}
-        openAddressPicker={() => setAddressMode('select')}
+        onAddressSelected={address => setSelectedAddress(address)}
+        onAddressDeleted={addressId => setSelectedAddress(current => current?.id === addressId ? null : current)}
         bottomInset={insets.bottom}
         token={token || ''}
         userId={userId || ''}
         rewardOffer={listingRewardOffer}
         onRewarded={() => setListingRewardOffer(null)}
       />
-      {!!token && (
-        <AddressBookModal
-          visible={addressMode === 'select'}
-          token={token}
-          mode="select"
-          initialCoordinates={locationReady ? center : null}
-          onClose={() => setAddressMode(null)}
-          selectedAddressId={selectedAddress?.id}
-          onDeleted={addressId => setSelectedAddress(current => current?.id === addressId ? null : current)}
-          onSelect={address => setSelectedAddress(address)}
-        />
-      )}
+
+
     </View>
   );
 }

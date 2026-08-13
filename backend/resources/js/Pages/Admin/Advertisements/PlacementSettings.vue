@@ -1,18 +1,32 @@
 <script setup>
 import { router } from '@inertiajs/vue3';
-import { computed, reactive, ref } from 'vue';
+import { computed, reactive, ref, watch } from 'vue';
 
 const props = defineProps({ settings: { type: Array, required: true } });
 const editing = ref(null);
 const pending = ref(false);
 const errors = ref({});
 const form = reactive({
-  enabled: false, sourceOrder: [], firstAfter: 0, repeatEvery: 0, maxPerSession: 1, minItems: 0,
-  adMobAndroidUnitId: '', adMobIosUnitId: '', boostHours: 24, dailyLimit: 3, ordinalsText: '2, 4', usageRewards: [],
+  enabled: false,
+  androidEnabled: true,
+  iosEnabled: true,
+  sourceOrder: [],
+  firstAfter: 0,
+  repeatEvery: 0,
+  maxPerSession: 1,
+  minItems: 0,
+  adMobAndroidUnitId: '',
+  adMobIosUnitId: '',
+  boostHours: 24,
+  dailyLimit: 3,
+  ordinalsText: '2, 4',
+  usageRewards: [],
 });
+
 const pageSettings = computed(() => props.settings.filter(item => item.kind === 'native'));
 const actionSettings = computed(() => props.settings.filter(item => ['interstitial', 'rewarded'].includes(item.kind)));
 const sourceLabels = { direct: 'Döngü kampanyası', admob: 'AdMob' };
+
 const displayRule = item => {
   if (item.key === 'rewarded_extra_rights') return `${item.usageRewards.filter(reward => reward.enabled).length}/${item.usageRewards.length} ek hak açık`;
   if (item.kind === 'rewarded') return `${item.boostHours} saat öne çıkarma · 24 saatte ${item.dailyLimit} kullanım`;
@@ -21,17 +35,50 @@ const displayRule = item => {
   if (item.firstAfter > 0) return `${item.firstAfter}. içerikten sonra tek reklam`;
   return item.locationLabel;
 };
+
 const sourcesLabel = item => item.sourceOrder.map(source => sourceLabels[source]).join(' → ');
+const unitLabel = value => value || 'Tanımlı değil';
+const platformLabel = item => {
+  if (!item.enabled) return 'Kapalı';
+  const platforms = [];
+  if (item.androidEnabled) platforms.push('Android');
+  if (item.iosEnabled) platforms.push('iOS');
+  return platforms.length ? platforms.join(' + ') : 'Platform kapalı';
+};
+
 const open = item => {
   editing.value = item;
   errors.value = {};
   Object.assign(form, {
-    enabled: item.enabled, sourceOrder: [...item.sourceOrder], firstAfter: item.firstAfter, repeatEvery: item.repeatEvery,
-    maxPerSession: item.maxPerSession, minItems: item.minItems, adMobAndroidUnitId: item.adMobAndroidUnitId || '',
-    adMobIosUnitId: item.adMobIosUnitId || '', boostHours: item.boostHours, dailyLimit: item.dailyLimit,
-    ordinalsText: (item.ordinals || []).join(', '), usageRewards: (item.usageRewards || []).map(reward => ({ ...reward })),
+    enabled: item.enabled,
+    androidEnabled: item.enabled ? Boolean(item.androidEnabled) : false,
+    iosEnabled: item.enabled ? Boolean(item.iosEnabled) : false,
+    sourceOrder: [...item.sourceOrder],
+    firstAfter: item.firstAfter,
+    repeatEvery: item.repeatEvery,
+    maxPerSession: item.maxPerSession,
+    minItems: item.minItems,
+    adMobAndroidUnitId: item.adMobAndroidUnitId || '',
+    adMobIosUnitId: item.adMobIosUnitId || '',
+    boostHours: item.boostHours,
+    dailyLimit: item.dailyLimit,
+    ordinalsText: (item.ordinals || []).join(', '),
+    usageRewards: (item.usageRewards || []).map(reward => ({ ...reward })),
   });
 };
+
+watch(() => form.enabled, enabled => {
+  if (!enabled) {
+    form.androidEnabled = false;
+    form.iosEnabled = false;
+    return;
+  }
+  if (!form.androidEnabled && !form.iosEnabled) {
+    form.androidEnabled = true;
+    form.iosEnabled = true;
+  }
+});
+
 const close = () => { if (!pending.value) editing.value = null; };
 const toggleSource = source => { const index = form.sourceOrder.indexOf(source); if (index >= 0) form.sourceOrder.splice(index, 1); else form.sourceOrder.push(source); };
 const move = (index, direction) => { const target = index + direction; if (target < 0 || target >= form.sourceOrder.length) return; [form.sourceOrder[index], form.sourceOrder[target]] = [form.sourceOrder[target], form.sourceOrder[index]]; };
@@ -55,16 +102,50 @@ const save = () => {
       <h2 class="text-lg font-semibold text-slate-950">Reklam alanları</h2>
       <p class="mt-1 text-sm text-slate-600">Uygulamadaki standart reklam kartlarını, kaynak sırasını ve gösterim yoğunluğunu tek yerden yönet.</p>
     </header>
-    <div class="overflow-x-auto"><table class="w-full min-w-[1100px] text-left text-sm"><thead class="border-b border-slate-200 bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-700"><tr><th class="px-5 py-3.5">Reklam alanı</th><th class="px-5 py-3.5">Durum</th><th class="px-5 py-3.5">Reklam sırası</th><th class="px-5 py-3.5">Gösterim düzeni</th><th class="px-5 py-3.5">AdMob Android</th><th class="px-5 py-3.5 text-right">İşlem</th></tr></thead>
-      <tbody class="divide-y divide-slate-100"><tr v-for="item in pageSettings" :key="item.key"><td class="px-5 py-4 font-semibold text-slate-950">{{ item.label }}</td><td class="px-5 py-4"><span :class="['rounded-full px-2.5 py-1 text-xs font-semibold', item.enabled ? 'bg-emerald-50 text-emerald-800' : 'bg-slate-100 text-slate-700']">{{ item.enabled ? 'Açık' : 'Kapalı' }}</span></td><td class="px-5 py-4 text-slate-700">{{ sourcesLabel(item) }}</td><td class="px-5 py-4 text-slate-700">{{ displayRule(item) }}</td><td class="px-5 py-4 font-mono text-xs text-slate-600">{{ item.adMobAndroidUnitId || '—' }}</td><td class="px-5 py-4 text-right"><button class="rounded-xl border border-slate-300 px-4 py-2 text-xs font-semibold text-slate-800 hover:border-emerald-500" @click="open(item)">Düzenle</button></td></tr></tbody>
-    </table></div>
+    <div class="overflow-x-auto">
+      <table class="w-full min-w-[1280px] text-left text-sm">
+        <thead class="border-b border-slate-200 bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-700">
+          <tr>
+            <th class="px-5 py-3.5">Reklam alanı</th>
+            <th class="px-5 py-3.5">Durum</th>
+            <th class="px-5 py-3.5">Platform</th>
+            <th class="px-5 py-3.5">Reklam sırası</th>
+            <th class="px-5 py-3.5">Gösterim düzeni</th>
+            <th class="px-5 py-3.5">AdMob birimleri</th>
+            <th class="px-5 py-3.5 text-right">İşlem</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100">
+          <tr v-for="item in pageSettings" :key="item.key">
+            <td class="px-5 py-4 font-semibold text-slate-950">{{ item.label }}</td>
+            <td class="px-5 py-4"><span :class="['rounded-full px-2.5 py-1 text-xs font-semibold', item.enabled ? 'bg-emerald-50 text-emerald-800' : 'bg-slate-100 text-slate-700']">{{ item.enabled ? 'Açık' : 'Kapalı' }}</span></td>
+            <td class="px-5 py-4 text-slate-700">{{ platformLabel(item) }}</td>
+            <td class="px-5 py-4 text-slate-700">{{ sourcesLabel(item) }}</td>
+            <td class="px-5 py-4 text-slate-700">{{ displayRule(item) }}</td>
+            <td class="px-5 py-4 text-xs text-slate-600"><div><span class="font-semibold text-slate-700">Android:</span> <span class="font-mono">{{ unitLabel(item.adMobAndroidUnitId) }}</span></div><div class="mt-1"><span class="font-semibold text-slate-700">iOS:</span> <span class="font-mono">{{ unitLabel(item.adMobIosUnitId) }}</span></div></td>
+            <td class="px-5 py-4 text-right"><button class="rounded-xl border border-slate-300 px-4 py-2 text-xs font-semibold text-slate-800 hover:border-emerald-500" @click="open(item)">Düzenle</button></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
   </section>
 
   <section class="mt-5">
     <article class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
       <h2 class="text-lg font-semibold text-slate-950">Sayfa dışı reklamlar</h2>
       <p class="mt-1 text-sm text-slate-600">Geçiş ve ödüllü video kurallarını yönet.</p>
-      <div class="mt-4 divide-y divide-slate-100"><div v-for="item in actionSettings" :key="item.key" class="flex items-center justify-between gap-4 py-3"><div><p class="font-semibold text-slate-950">{{ item.label }}</p><p class="text-xs text-slate-600">{{ displayRule(item) }}</p></div><div class="flex items-center gap-2"><span :class="['rounded-full px-2.5 py-1 text-xs font-semibold', item.enabled ? 'bg-emerald-50 text-emerald-800' : 'bg-slate-100 text-slate-700']">{{ item.enabled ? 'Açık' : 'Kapalı' }}</span><button class="rounded-xl border border-slate-300 px-3 py-2 text-xs font-semibold" @click="open(item)">Düzenle</button></div></div></div>
+      <div class="mt-4 divide-y divide-slate-100">
+        <div v-for="item in actionSettings" :key="item.key" class="flex items-center justify-between gap-4 py-3">
+          <div>
+            <p class="font-semibold text-slate-950">{{ item.label }}</p>
+            <p class="text-xs text-slate-600">{{ displayRule(item) }} · {{ platformLabel(item) }}</p>
+          </div>
+          <div class="flex items-center gap-2">
+            <span :class="['rounded-full px-2.5 py-1 text-xs font-semibold', item.enabled ? 'bg-emerald-50 text-emerald-800' : 'bg-slate-100 text-slate-700']">{{ item.enabled ? 'Açık' : 'Kapalı' }}</span>
+            <button class="rounded-xl border border-slate-300 px-3 py-2 text-xs font-semibold" @click="open(item)">Düzenle</button>
+          </div>
+        </div>
+      </div>
     </article>
   </section>
 
@@ -73,6 +154,12 @@ const save = () => {
       <header class="border-b border-slate-200 px-6 py-5"><h2 class="text-xl font-semibold text-slate-950">{{ editing.label }}</h2><p class="mt-1 text-sm text-slate-600">Değişiklikler kaydedildiğinde mobil uygulamaya doğrudan uygulanır.</p></header>
       <form class="overflow-y-auto p-6" @submit.prevent="save">
         <label class="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold"><span>Alan durumu</span><input v-model="form.enabled" type="checkbox" class="size-5" /></label>
+
+        <div class="mt-4 grid gap-3 sm:grid-cols-2">
+          <label :class="['flex items-center justify-between rounded-xl border px-4 py-3 text-sm font-semibold', form.enabled ? 'border-slate-200 bg-white' : 'border-slate-200 bg-slate-50 text-slate-400']"><span>Android’de yayınla</span><input v-model="form.androidEnabled" :disabled="!form.enabled" type="checkbox" class="size-5" /></label>
+          <label :class="['flex items-center justify-between rounded-xl border px-4 py-3 text-sm font-semibold', form.enabled ? 'border-slate-200 bg-white' : 'border-slate-200 bg-slate-50 text-slate-400']"><span>iOS’ta yayınla</span><input v-model="form.iosEnabled" :disabled="!form.enabled" type="checkbox" class="size-5" /></label>
+        </div>
+        <p class="mt-2 text-xs leading-5 text-slate-500">Alan durumu kapalıysa Android ve iOS şalterleri otomatik kapalı kaydedilir.</p>
 
         <template v-if="editing.kind === 'native'">
           <fieldset class="mt-5"><legend class="text-sm font-semibold text-slate-950">Reklam kaynakları ve sırası</legend><p class="mt-1 text-xs leading-5 text-slate-600">Döngü kampanyası yalnızca sana ait marka ve projeleri temsil eder. İki kaynak da reklam vermezse alan gösterilmez.</p><div class="mt-2 space-y-2"><div v-for="(source, index) in form.sourceOrder" :key="source" class="flex items-center justify-between rounded-xl border border-slate-200 px-4 py-3"><span class="text-sm font-semibold">{{ index + 1 }}. {{ sourceLabels[source] }}</span><div class="flex gap-1"><button type="button" class="rounded-lg border px-2 py-1" @click="move(index, -1)">↑</button><button type="button" class="rounded-lg border px-2 py-1" @click="move(index, 1)">↓</button><button type="button" class="rounded-lg border px-2 py-1 text-red-700" @click="toggleSource(source)">Kaldır</button></div></div></div><div class="mt-2 flex gap-2"><button v-for="source in ['direct','admob'].filter(value => !form.sourceOrder.includes(value))" :key="source" type="button" class="rounded-lg border border-emerald-300 px-3 py-2 text-xs font-semibold text-emerald-800" @click="toggleSource(source)">+ {{ sourceLabels[source] }}</button></div></fieldset>

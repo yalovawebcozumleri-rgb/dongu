@@ -1,18 +1,21 @@
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { C } from '../../styles';
 import { AVATAR_OPTIONS, AvatarKey, avatarKeyFromUri } from './avatarCatalog';
 import UserAvatar from './UserAvatar';
 
-export default function AvatarPickerModal({ visible, currentUri, saving, close, select }: {
+export default function AvatarPickerModal({ visible, currentUri, saving, close, select, embedded = false }: {
   visible: boolean;
   currentUri?: string | null;
   saving: boolean;
   close: () => void;
   select: (key: AvatarKey) => Promise<void>;
+  embedded?: boolean;
 }) {
   const insets = useSafeAreaInsets();
+  const { width } = useWindowDimensions();
+  const optionWidth = Math.floor((Math.min(width, 430) - 48) / 2);
   const currentKey = avatarKeyFromUri(currentUri);
   const [selectedKey, setSelectedKey] = useState<AvatarKey>(currentKey || 'avatar_01');
 
@@ -20,8 +23,8 @@ export default function AvatarPickerModal({ visible, currentUri, saving, close, 
     if (visible) setSelectedKey(currentKey || 'avatar_01');
   }, [currentKey, visible]);
 
-  return <Modal visible={visible} animationType="slide" onRequestClose={close}>
-    <View style={[x.screen, { paddingTop: Math.max(insets.top, 10) }]}>
+  const content = (
+    <View style={[x.screen, { paddingTop: embedded ? 0 : Math.max(insets.top, 10) }]}>
       <View style={x.header}>
         <Pressable accessibilityRole="button" accessibilityLabel="Avatar seçimini kapat" onPress={close} disabled={saving} style={x.close}><Text style={x.closeText}>‹</Text></Pressable>
         <View style={x.headerCopy}><Text style={x.eyebrow}>PROFİL GÖRÜNÜMÜ</Text><Text style={x.title}>Avatarını seç</Text></View>
@@ -36,11 +39,12 @@ export default function AvatarPickerModal({ visible, currentUri, saving, close, 
               accessibilityRole="radio"
               accessibilityState={{ selected }}
               accessibilityLabel={`Avatar ${index + 1}`}
+              hitSlop={8}
               onPress={() => setSelectedKey(option.key)}
-              style={[x.option, selected && x.optionSelected]}
+              style={[x.option, { width: optionWidth }, selected && x.optionSelected]}
             >
-              <UserAvatar uri={`preset://${option.key}`} name={`Avatar ${index + 1}`} size={104} />
-              <View style={[x.radio, selected && x.radioSelected]}>{selected && <Text style={x.check}>✓</Text>}</View>
+              <View pointerEvents="none"><UserAvatar uri={`preset://${option.key}`} name={`Avatar ${index + 1}`} size={104} /></View>
+              <View pointerEvents="none" style={[x.radio, selected && x.radioSelected]}>{selected && <Text style={x.check}>✓</Text>}</View>
             </Pressable>;
           })}
         </View>
@@ -49,7 +53,10 @@ export default function AvatarPickerModal({ visible, currentUri, saving, close, 
         </Pressable>
       </ScrollView>
     </View>
-  </Modal>;
+  );
+
+  if (embedded) return visible ? content : null;
+  return <Modal visible={visible} animationType="slide" presentationStyle="fullScreen" onRequestClose={close}>{content}</Modal>;
 }
 
 const x = StyleSheet.create({
@@ -62,8 +69,8 @@ const x = StyleSheet.create({
   title: { color: C.ink, fontSize: 21, fontWeight: '900', marginTop: 2 },
   content: { padding: 18 },
   lead: { color: C.muted, fontSize: 13, lineHeight: 20, textAlign: 'center', paddingHorizontal: 10, marginBottom: 18 },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
-  option: { width: '48%', minHeight: 142, borderRadius: 22, backgroundColor: C.white, borderWidth: 2, borderColor: C.line, alignItems: 'center', justifyContent: 'center', position: 'relative' },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', columnGap: 12, rowGap: 12, justifyContent: 'center' },
+  option: { minHeight: 142, borderRadius: 22, backgroundColor: C.white, borderWidth: 2, borderColor: C.line, alignItems: 'center', justifyContent: 'center', position: 'relative' },
   optionSelected: { borderColor: C.green, backgroundColor: '#F0F8F1' },
   radio: { position: 'absolute', right: 10, top: 10, width: 26, height: 26, borderRadius: 13, borderWidth: 2, borderColor: C.line, backgroundColor: C.white, alignItems: 'center', justifyContent: 'center' },
   radioSelected: { borderColor: C.green, backgroundColor: C.green },

@@ -16,21 +16,22 @@ export default function RewardedListingBoostButton({ listing, token, userId, onB
   const [busy, setBusy] = useState(false);
   const [boostHours, setBoostHours] = useState(24);
   const [enabled, setEnabled] = useState(true);
+  const platform = Platform.OS === 'ios' ? 'ios' : 'android';
 
   useEffect(() => {
-    void apiRequest<BoostStatus>(`/listings/${listing.id}/rewarded-boost/status`, { token })
+    void apiRequest<BoostStatus>(`/listings/${listing.id}/rewarded-boost/status?platform=${platform}`, { token })
       .then(status => {
         setEnabled(status.data.enabled);
         setBoostHours(status.data.boostHours);
       }).catch(() => undefined);
-  }, [listing.id, token]);
+  }, [listing.id, platform, token]);
   const earnedRef = useRef(false);
 
   const syncVerifiedReward = async () => {
     for (let attempt = 0; attempt < 6; attempt += 1) {
       await new Promise(resolve => setTimeout(resolve, 1500));
       try {
-        const status = await apiRequest<BoostStatus>(`/listings/${listing.id}/rewarded-boost/status`, { token });
+        const status = await apiRequest<BoostStatus>(`/listings/${listing.id}/rewarded-boost/status?platform=${platform}`, { token });
         if (status.data.isBoosted) {
           onBoosted({
             ...listing,
@@ -58,7 +59,7 @@ export default function RewardedListingBoostButton({ listing, token, userId, onB
     }
     setBusy(true);
     try {
-      const challenge = await apiRequest<Challenge>(`/listings/${listing.id}/rewarded-boost/challenge`, { method: 'POST', token, body: { platform: Platform.OS } });
+      const challenge = await apiRequest<Challenge>(`/listings/${listing.id}/rewarded-boost/challenge`, { method: 'POST', token, body: { platform } });
       let adsReady = false;
       setBoostHours(challenge.data.boostHours);
       const remoteUnitId = Platform.OS === 'ios' ? challenge.data.adMobIosUnitId : challenge.data.adMobAndroidUnitId;

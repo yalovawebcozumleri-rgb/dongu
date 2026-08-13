@@ -1,10 +1,17 @@
 import EchoModule from 'laravel-echo';
 import PusherModule from 'pusher-js/react-native';
+import { ConversationMessage } from './types';
+
+export type ConversationRealtimeEvent = {
+  conversationId: number;
+  kind: string;
+  message?: ConversationMessage;
+};
 
 export function subscribeToConversations(
   token: string,
   userId: string,
-  onChange: (event: { conversationId: number; kind: string }) => void,
+  onChange: (event: ConversationRealtimeEvent) => void,
   onNotification?: (event: { unreadCount: number }) => void,
 ) {
   const key = process.env.EXPO_PUBLIC_REVERB_APP_KEY;
@@ -29,7 +36,7 @@ export function subscribeToConversations(
     if (onNotification) channel.listen('.notification.changed', onNotification);
     return () => { echo.leave(`users.${userId}`); client.disconnect(); };
   } catch (error) {
-    console.warn('Gerçek zamanlı mesaj bağlantısı başlatılamadı.', error);
+    console.warn('Ger\u00e7ek zamanl\u0131 mesaj ba\u011flant\u0131s\u0131 ba\u015flat\u0131lamad\u0131.', error);
     return () => {};
   }
 }

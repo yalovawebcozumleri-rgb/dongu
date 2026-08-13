@@ -15,7 +15,7 @@ class AdvertisementPlacementSetting extends Model
     public const NATIVE_SOURCES = [self::SOURCE_DIRECT, self::SOURCE_ADMOB];
 
     protected $fillable = [
-        'key', 'label', 'kind', 'location_label', 'enabled', 'locked', 'source_order',
+        'key', 'label', 'kind', 'location_label', 'enabled', 'android_enabled', 'ios_enabled', 'locked', 'source_order',
         'first_after', 'repeat_every', 'max_per_session', 'min_items',
         'admob_android_unit_id', 'admob_ios_unit_id', 'settings',
     ];
@@ -34,8 +34,25 @@ class AdvertisementPlacementSetting extends Model
         ];
     }
 
+    public function platformEnabled(?string $platform): bool
+    {
+        if (! $this->enabled) {
+            return false;
+        }
+
+        return match ($platform) {
+            'android' => $this->android_enabled,
+            'ios' => $this->ios_enabled,
+            default => true,
+        };
+    }
+
     public function adMobUnitId(string $platform, string $format): ?string
     {
+        if (! $this->platformEnabled($platform)) {
+            return null;
+        }
+
         if (config('advertising.admob.mode') === 'test' && in_array($format, ['native', 'interstitial'], true)) {
             return config("advertising.admob.test_unit_ids.{$platform}.{$format}");
         }

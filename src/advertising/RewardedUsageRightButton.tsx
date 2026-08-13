@@ -32,12 +32,13 @@ export default function RewardedUsageRightButton({ offer, token, userId, onRewar
   const { showNotice } = useNotice();
   const [busy, setBusy] = useState(false);
   const earnedRef = useRef(false);
+  const platform = Platform.OS === 'ios' ? 'ios' : 'android';
 
   const waitForVerification = async (initialBonus: number) => {
     for (let attempt = 0; attempt < 6; attempt += 1) {
       await new Promise(resolve => setTimeout(resolve, 1500));
       try {
-        const response = await apiRequest<{ data: RewardOffer | null }>(`/rewarded-rights/${offer.rewardKey}/status`, { token, retry: false });
+        const response = await apiRequest<{ data: RewardOffer | null }>(`/rewarded-rights/${offer.rewardKey}/status?platform=${platform}`, { token, retry: false });
         if (response.data && response.data.activeBonus > initialBonus) {
           await onRewarded?.();
           showNotice({ tone: 'success', title: 'Ek hakkın tanımlandı', message: `+${offer.amount} ${offer.unit} hesabına eklendi.` });
@@ -58,7 +59,7 @@ export default function RewardedUsageRightButton({ offer, token, userId, onRewar
     }
     setBusy(true);
     try {
-      const challenge = await apiRequest<Challenge>(`/rewarded-rights/${offer.rewardKey}/challenge`, { method: 'POST', token, body: { platform: Platform.OS } });
+      const challenge = await apiRequest<Challenge>(`/rewarded-rights/${offer.rewardKey}/challenge`, { method: 'POST', token, body: { platform } });
       const remoteUnitId = Platform.OS === 'ios' ? challenge.data.adMobIosUnitId : challenge.data.adMobAndroidUnitId;
       const unitId = rewardedUnitId(remoteUnitId);
       if (!unitId) throw new Error('Reklam birimi bulunamadı');

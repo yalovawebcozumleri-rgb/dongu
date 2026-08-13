@@ -5,5 +5,5 @@ export type Advertisement = { id: number; sponsorName: string; headline: string;
 
 export type AdvertisementCollectionResponse = {
   data: Advertisement[];
-  meta: { placement: AdvertisementPlacement; enabled: boolean; sourceOrder: AdvertisementSource[]; firstAfter: number; repeatEvery: number; maxPerSession: number; minItems: number; adMobAndroidUnitId: string | null; adMobIosUnitId: string | null; };
+  meta: { placement: AdvertisementPlacement; enabled: boolean; sourceOrder: AdvertisementSource[]; firstAfter: number; repeatEvery: number; maxPerSession: number; minItems: number; adMobAndroidUnitId: string | null; adMobIosUnitId: string | null; androidEnabled?: boolean; iosEnabled?: boolean; };
 };
