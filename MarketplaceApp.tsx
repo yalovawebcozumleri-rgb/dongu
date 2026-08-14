@@ -173,8 +173,9 @@ function Home({
   token?: string | null;
 }) {
   const [sortOpen, setSortOpen] = useState(false);
-  const [activeAdSlots, setActiveAdSlots] = useState<Set<number>>(new Set());
+  const [activeAdSlots, setActiveAdSlots] = useState<Map<number, 'visible' | 'preload'>>(new Map());
   const feedDataRef = useRef<FeedItem[]>([]);
+  const lastVisibleFeedIndexRef = useRef(-1);
   const advertisementCollection = useAdvertisements('home_feed', token);
   const advertisementPolicy = advertisementCollection?.meta;
   const activeSortLabel = SORT_OPTIONS.find(option => option.value === sort)?.label || 'En yakın';
@@ -208,10 +209,13 @@ function Home({
     feedDataRef.current = feedData;
     const availableSlots = new Set(feedData.filter(item => item.kind === 'ad-slot').map(item => item.slotIndex));
     setActiveAdSlots(current => {
-      const preserved = [...current].filter(slot => availableSlots.has(slot)).slice(0, 2);
-      if (preserved.length) return new Set(preserved);
-      const firstAd = feedData.find(item => item.kind === 'ad-slot');
-      return firstAd?.kind === 'ad-slot' ? new Set([firstAd.slotIndex]) : new Set();
+      const preserved = [...current.entries()].filter(([slot]) => availableSlots.has(slot)).slice(0, 3);
+      if (preserved.length) return new Map(preserved);
+      const firstSlots = feedData
+        .filter((item): item is Extract<FeedItem, { kind: 'ad-slot' }> => item.kind === 'ad-slot')
+        .slice(0, 3)
+        .map(item => [item.slotIndex, 'preload'] as const);
+      return new Map(firstSlots);
     });
   }, [feedData]);
 
@@ -222,14 +226,26 @@ function Home({
       .filter(token => token.item.kind === 'ad-slot')
       .map(token => token.item.kind === 'ad-slot' ? token.item.slotIndex : 0)
       .filter(Boolean);
+    const firstVisibleIndex = visible.reduce((minimum, token) => Math.min(minimum, token.index ?? Number.MAX_SAFE_INTEGER), Number.MAX_SAFE_INTEGER);
     const lastVisibleIndex = visible.reduce((maximum, token) => Math.max(maximum, token.index ?? -1), -1);
-    const nextAd = data.slice(lastVisibleIndex + 1).find(item => item.kind === 'ad-slot');
-    const nextSlots = [...visibleAdSlots];
-    if (nextAd?.kind === 'ad-slot') nextSlots.push(nextAd.slotIndex);
-    const limitedSlots = new Set(nextSlots.slice(0, 2));
+    const scrollingUp = lastVisibleIndex >= 0 && lastVisibleFeedIndexRef.current >= 0 && lastVisibleIndex < lastVisibleFeedIndexRef.current;
+    if (lastVisibleIndex >= 0) lastVisibleFeedIndexRef.current = lastVisibleIndex;
+
+    const nearbyAds = scrollingUp
+      ? data.slice(0, firstVisibleIndex === Number.MAX_SAFE_INTEGER ? 0 : firstVisibleIndex).reverse()
+      : data.slice(lastVisibleIndex + 1);
+    const selectedSlots = [...new Set(visibleAdSlots)];
+    for (const item of nearbyAds) {
+      if (item.kind !== 'ad-slot' || selectedSlots.includes(item.slotIndex)) continue;
+      selectedSlots.push(item.slotIndex);
+      if (selectedSlots.length === 3) break;
+    }
+    const slotPriorities = new Map<number, 'visible' | 'preload'>(
+      selectedSlots.slice(0, 3).map(slot => [slot, visibleAdSlots.includes(slot) ? 'visible' : 'preload']),
+    );
     setActiveAdSlots(current => {
-      if (current.size === limitedSlots.size && [...current].every(slot => limitedSlots.has(slot))) return current;
-      return limitedSlots;
+      if (current.size === slotPriorities.size && [...current].every(([slot, priority]) => slotPriorities.get(slot) === priority)) return current;
+      return slotPriorities;
     });
   }).current;
   const feedViewabilityConfig = useRef({ itemVisiblePercentThreshold: 10, minimumViewTime: 80 }).current;
@@ -374,7 +390,13 @@ function Home({
           toggleFavorite={() => void toggleFavorite(item.listing)}
         />
       ) : (
-        <MonetizedAdSlot placement="home_feed" slotIndex={item.slotIndex} token={token} active={activeAdSlots.has(item.slotIndex)} />
+        <MonetizedAdSlot
+          placement="home_feed"
+          slotIndex={item.slotIndex}
+          token={token}
+          active={activeAdSlots.has(item.slotIndex)}
+          loadPriority={activeAdSlots.get(item.slotIndex) ?? 'preload'}
+        />
       )}
       ListHeaderComponent={header}
       ListEmptyComponent={empty}

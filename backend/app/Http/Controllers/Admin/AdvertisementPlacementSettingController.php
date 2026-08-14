@@ -49,7 +49,7 @@ class AdvertisementPlacementSettingController extends Controller
         $sources = $base['sourceOrder'];
         if ($setting->kind === AdvertisementPlacementSetting::KIND_NATIVE) {
             $hasEnabledAdMobUnit = (! empty($base['adMobAndroidUnitId']) && $androidEnabled) || (! empty($base['adMobIosUnitId']) && $iosEnabled);
-            abort_if(in_array(AdvertisementPlacementSetting::SOURCE_ADMOB, $sources, true) && ! $hasEnabledAdMobUnit, 422, 'AdMob kaynağı açıksa açık platformlardan en az biri için reklam birimi kimliği gereklidir.');
+            abort_if((bool) $base['enabled'] && in_array(AdvertisementPlacementSetting::SOURCE_ADMOB, $sources, true) && ! $hasEnabledAdMobUnit, 422, 'AdMob kaynağı açıksa açık platformlardan en az biri için reklam birimi kimliği gereklidir.');
         } else {
             $sources = [AdvertisementPlacementSetting::SOURCE_ADMOB];
         }

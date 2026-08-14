@@ -13,6 +13,7 @@ type NativeAdTask = {
   id: number;
   module: NativeAdModule;
   unitId: string;
+  priority: NativeAdPriority;
   cancelled: boolean;
   settled: boolean;
   resolve: (ad: NativeAdInstance | null) => void;
@@ -24,7 +25,9 @@ export type NativeAdLease = {
   release: () => void;
 };
 
-const MAX_ACTIVE_NATIVE_ADS = 2;
+export type NativeAdPriority = 'visible' | 'preload';
+
+const MAX_ACTIVE_NATIVE_ADS = 3;
 const queue: NativeAdTask[] = [];
 const activeAds = new Map<number, NativeAdInstance>();
 const destroyedAds = new WeakSet<object>();
@@ -56,7 +59,8 @@ function removeQueuedTask(taskId: number) {
 
 function processQueue() {
   if (inFlightTask || activeAds.size >= MAX_ACTIVE_NATIVE_ADS) return;
-  const task = queue.shift();
+  const visibleTaskIndex = queue.findIndex(task => !task.cancelled && task.priority === 'visible');
+  const task = visibleTaskIndex >= 0 ? queue.splice(visibleTaskIndex, 1)[0] : queue.shift();
   if (!task) return;
   if (task.cancelled) {
     settle(task, null);
@@ -85,7 +89,7 @@ function processQueue() {
     });
 }
 
-export function acquireNativeAd(module: NativeAdModule, unitId: string): NativeAdLease {
+export function acquireNativeAd(module: NativeAdModule, unitId: string, priority: NativeAdPriority = 'visible'): NativeAdLease {
   const id = nextTaskId++;
   let resolve!: (ad: NativeAdInstance | null) => void;
   let reject!: (error: unknown) => void;
@@ -93,7 +97,7 @@ export function acquireNativeAd(module: NativeAdModule, unitId: string): NativeA
     resolve = resolvePromise;
     reject = rejectPromise;
   });
-  const task: NativeAdTask = { id, module, unitId, cancelled: false, settled: false, resolve, reject };
+  const task: NativeAdTask = { id, module, unitId, priority, cancelled: false, settled: false, resolve, reject };
   queue.push(task);
   processQueue();
 

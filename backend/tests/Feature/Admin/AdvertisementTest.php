@@ -104,6 +104,33 @@ class AdvertisementTest extends TestCase
         $this->assertSame(['direct', 'admob'], $setting->fresh()->source_order);
     }
 
+    public function test_admin_can_disable_native_placement_and_both_platforms(): void
+    {
+        $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
+        $setting = AdvertisementPlacementSetting::forKey('home_feed');
+
+        $this->actingAs($admin)->patch("/admin/advertisement-placements/{$setting->id}", [
+            'enabled' => false,
+            'androidEnabled' => false,
+            'iosEnabled' => false,
+            'sourceOrder' => ['direct', 'admob'],
+            'firstAfter' => 3,
+            'repeatEvery' => 8,
+            'maxPerSession' => 1000,
+            'minItems' => 3,
+            'adMobAndroidUnitId' => 'ca-app-pub-6681150378641816/4910102351',
+            'adMobIosUnitId' => 'ca-app-pub-6681150378641816/7166691451',
+            'boostHours' => 24,
+            'dailyLimit' => 3,
+            'ordinals' => [2, 4],
+        ])->assertRedirect();
+
+        $fresh = $setting->fresh();
+        $this->assertFalse($fresh->enabled);
+        $this->assertFalse($fresh->android_enabled);
+        $this->assertFalse($fresh->ios_enabled);
+    }
+
     public function test_unknown_mobile_placement_cannot_be_added_to_a_campaign(): void
     {
         $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);

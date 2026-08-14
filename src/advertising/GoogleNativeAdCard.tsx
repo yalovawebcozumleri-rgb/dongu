@@ -1,16 +1,17 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { AppState, Image, InteractionManager, StyleSheet, Text, View } from 'react-native';
+import { AppState, Image, InteractionManager, Platform, StyleSheet, Text, View } from 'react-native';
 import { googleAds, initializeGoogleAds, nativeUnitId } from './googleMobileAds';
-import { acquireNativeAd, NativeAdLease } from './nativeAdManager';
+import { acquireNativeAd, NativeAdLease, NativeAdPriority } from './nativeAdManager';
 
 const LOAD_SETTLE_DELAY_MS = 350;
 const AD_REFRESH_MS = 55 * 60 * 1000;
 
-export default function GoogleNativeAdCard({ unitId: configuredUnitId, onUnavailable, active = true }: { unitId?: string | null; onUnavailable: () => void; active?: boolean }) {
+export default function GoogleNativeAdCard({ unitId: configuredUnitId, onUnavailable, active = true, loadPriority = 'visible' }: { unitId?: string | null; onUnavailable: () => void; active?: boolean; loadPriority?: NativeAdPriority }) {
   const [nativeAd, setNativeAd] = useState<any>(null);
   const [appIsActive, setAppIsActive] = useState(AppState.currentState === 'active');
   const [reloadKey, setReloadKey] = useState(0);
   const unavailableRef = useRef(onUnavailable);
+  const previousLoadPriorityRef = useRef(loadPriority);
   unavailableRef.current = onUnavailable;
   const module = googleAds();
   const unitId = nativeUnitId(configuredUnitId);
@@ -21,34 +22,48 @@ export default function GoogleNativeAdCard({ unitId: configuredUnitId, onUnavail
   }, []);
 
   useEffect(() => {
+    const becameVisible = previousLoadPriorityRef.current !== 'visible' && loadPriority === 'visible';
+    previousLoadPriorityRef.current = loadPriority;
+    if (becameVisible && !nativeAd) setReloadKey(current => current + 1);
+  }, [loadPriority, nativeAd]);
+
+  useEffect(() => {
     let mounted = true;
     let settleTimer: ReturnType<typeof setTimeout> | null = null;
     let refreshTimer: ReturnType<typeof setTimeout> | null = null;
     let lease: NativeAdLease | null = null;
-    const interaction = InteractionManager.runAfterInteractions(() => {
-      settleTimer = setTimeout(() => {
-        if (!mounted || !active || !appIsActive || !module || !unitId) return;
-        void initializeGoogleAds(unitId)
-          .then(ready => {
-            if (!ready) throw new Error('Ad consent is unavailable');
-            if (!mounted) return null;
-            lease = acquireNativeAd(module, unitId);
-            return lease.promise;
-          })
-          .then(ad => {
-            if (!mounted || !ad) return;
-            setNativeAd(ad);
-            refreshTimer = setTimeout(() => setReloadKey(current => current + 1), AD_REFRESH_MS);
-          })
-          .catch(() => {
-            if (mounted) unavailableRef.current();
-          });
-      }, LOAD_SETTLE_DELAY_MS);
-    });
+    let interaction: ReturnType<typeof InteractionManager.runAfterInteractions> | null = null;
+
+    const loadAd = () => {
+      if (!mounted || !active || !appIsActive || !module || !unitId) return;
+      void initializeGoogleAds(unitId)
+        .then(ready => {
+          if (!ready) throw new Error('Ad consent is unavailable');
+          if (!mounted) return null;
+          lease = acquireNativeAd(module, unitId, loadPriority);
+          return lease.promise;
+        })
+        .then(ad => {
+          if (!mounted || !ad) return;
+          setNativeAd(ad);
+          refreshTimer = setTimeout(() => setReloadKey(current => current + 1), AD_REFRESH_MS);
+        })
+        .catch(() => {
+          if (mounted) unavailableRef.current();
+        });
+    };
+
+    if (Platform.OS === 'android' || loadPriority === 'visible') {
+      loadAd();
+    } else {
+      interaction = InteractionManager.runAfterInteractions(() => {
+        settleTimer = setTimeout(loadAd, LOAD_SETTLE_DELAY_MS);
+      });
+    }
 
     return () => {
       mounted = false;
-      interaction.cancel();
+      interaction?.cancel();
       if (settleTimer) clearTimeout(settleTimer);
       if (refreshTimer) clearTimeout(refreshTimer);
       lease?.release();

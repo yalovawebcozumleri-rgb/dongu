@@ -24,6 +24,8 @@ class AdvertisementPlacementSetting extends Model
     {
         return [
             'enabled' => 'boolean',
+            'android_enabled' => 'boolean',
+            'ios_enabled' => 'boolean',
             'locked' => 'boolean',
             'source_order' => 'array',
             'settings' => 'array',
