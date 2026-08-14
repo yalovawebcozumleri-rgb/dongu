@@ -173,6 +173,8 @@ function Home({
   token?: string | null;
 }) {
   const [sortOpen, setSortOpen] = useState(false);
+  const [activeAdSlots, setActiveAdSlots] = useState<Set<number>>(new Set());
+  const feedDataRef = useRef<FeedItem[]>([]);
   const advertisementCollection = useAdvertisements('home_feed', token);
   const advertisementPolicy = advertisementCollection?.meta;
   const activeSortLabel = SORT_OPTIONS.find(option => option.value === sort)?.label || 'En yakın';
@@ -201,6 +203,36 @@ function Home({
     });
     return result;
   }, [advertisementPolicy, visibleListings]);
+
+  useEffect(() => {
+    feedDataRef.current = feedData;
+    const availableSlots = new Set(feedData.filter(item => item.kind === 'ad-slot').map(item => item.slotIndex));
+    setActiveAdSlots(current => {
+      const preserved = [...current].filter(slot => availableSlots.has(slot)).slice(0, 2);
+      if (preserved.length) return new Set(preserved);
+      const firstAd = feedData.find(item => item.kind === 'ad-slot');
+      return firstAd?.kind === 'ad-slot' ? new Set([firstAd.slotIndex]) : new Set();
+    });
+  }, [feedData]);
+
+  const onFeedViewableItemsChanged = useRef(({ viewableItems }: { viewableItems: Array<{ index: number | null; isViewable: boolean; item: FeedItem }> }) => {
+    const data = feedDataRef.current;
+    const visible = viewableItems.filter(token => token.isViewable && token.index !== null);
+    const visibleAdSlots = visible
+      .filter(token => token.item.kind === 'ad-slot')
+      .map(token => token.item.kind === 'ad-slot' ? token.item.slotIndex : 0)
+      .filter(Boolean);
+    const lastVisibleIndex = visible.reduce((maximum, token) => Math.max(maximum, token.index ?? -1), -1);
+    const nextAd = data.slice(lastVisibleIndex + 1).find(item => item.kind === 'ad-slot');
+    const nextSlots = [...visibleAdSlots];
+    if (nextAd?.kind === 'ad-slot') nextSlots.push(nextAd.slotIndex);
+    const limitedSlots = new Set(nextSlots.slice(0, 2));
+    setActiveAdSlots(current => {
+      if (current.size === limitedSlots.size && [...current].every(slot => limitedSlots.has(slot))) return current;
+      return limitedSlots;
+    });
+  }).current;
+  const feedViewabilityConfig = useRef({ itemVisiblePercentThreshold: 10, minimumViewTime: 80 }).current;
 
   const header = (
     <View>
@@ -342,7 +374,7 @@ function Home({
           toggleFavorite={() => void toggleFavorite(item.listing)}
         />
       ) : (
-        <MonetizedAdSlot placement="home_feed" slotIndex={item.slotIndex} token={token} />
+        <MonetizedAdSlot placement="home_feed" slotIndex={item.slotIndex} token={token} active={activeAdSlots.has(item.slotIndex)} />
       )}
       ListHeaderComponent={header}
       ListEmptyComponent={empty}
@@ -357,6 +389,8 @@ function Home({
       maxToRenderPerBatch={6}
       updateCellsBatchingPeriod={50}
       windowSize={7}
+      onViewableItemsChanged={onFeedViewableItemsChanged}
+      viewabilityConfig={feedViewabilityConfig}
       removeClippedSubviews={Platform.OS === 'android'}
     />
   );

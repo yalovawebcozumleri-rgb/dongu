@@ -5,8 +5,22 @@ import { C, s } from '../../styles';
 import { ApiError, apiRequest } from '../lib/api';
 import { useNotice } from '../notice/NoticeProvider';
 import { googleAds, initializeGoogleAds, rewardedUnitId } from './googleMobileAds';
+const completeWithRetry = async <T,>(request: () => Promise<T>): Promise<T> => {
+  let lastError: unknown;
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      return await request();
+    } catch (error) {
+      lastError = error;
+      const retryable = !(error instanceof ApiError) || error.status === 0 || error.status === 408 || error.status >= 500;
+      if (!retryable || attempt === 2) throw error;
+      await new Promise(resolve => setTimeout(resolve, 500 * (attempt + 1)));
+    }
+  }
+  throw lastError;
+};
 
-type Challenge = { data: { token: string; clientCompletionAllowed: boolean; testMode: boolean; boostHours: number; dailyLimit: number; adMobAndroidUnitId: string | null; adMobIosUnitId: string | null } };
+type Challenge = { data: { token: string; testMode: boolean; boostHours: number; dailyLimit: number; adMobAndroidUnitId: string | null; adMobIosUnitId: string | null } };
 type BoostStatus = { data: { isBoosted: boolean; boostedUntil: string | null; enabled: boolean; boostHours: number; dailyLimit: number } };
 
 export default function RewardedListingBoostButton({ listing, token, userId, onBoosted }: {
@@ -27,28 +41,6 @@ export default function RewardedListingBoostButton({ listing, token, userId, onB
   }, [listing.id, platform, token]);
   const earnedRef = useRef(false);
 
-  const syncVerifiedReward = async () => {
-    for (let attempt = 0; attempt < 6; attempt += 1) {
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      try {
-        const status = await apiRequest<BoostStatus>(`/listings/${listing.id}/rewarded-boost/status?platform=${platform}`, { token });
-        if (status.data.isBoosted) {
-          onBoosted({
-            ...listing,
-            isBoosted: true,
-            boostedUntil: status.data.boostedUntil,
-          });
-          setBoostHours(status.data.boostHours);
-          setEnabled(status.data.enabled);
-          showNotice({ tone: 'success', title: 'İlanın öne çıkarıldı', message: `İlanın ${status.data.boostHours} saat boyunca sonuçlarda daha görünür olacak.` });
-          return;
-        }
-      } catch {
-        // Google doğrulaması gecikirse ilan durumu bir sonraki yenilemede de alınabilir.
-      }
-    }
-    showNotice({ tone: 'info', title: 'Ödül doğrulanıyor', message: `Google doğrulaması tamamlandığında ilanın ${boostHours} saatlik öne çıkarılması otomatik başlayacak.` });
-  };
 
   const start = async () => {
     const module = googleAds();
@@ -77,12 +69,14 @@ export default function RewardedListingBoostButton({ listing, token, userId, onB
         ad.addAdEventListener(module.RewardedAdEventType.LOADED, () => void ad.show()),
         ad.addAdEventListener(module.RewardedAdEventType.EARNED_REWARD, async () => {
           earnedRef.current = true;
-          if (challenge.data.clientCompletionAllowed) {
-            const response = await apiRequest<{ data: Listing }>(`/listings/${listing.id}/rewarded-boost/complete`, { method: 'POST', token, body: { token: challenge.data.token } });
+          try {
+            const response = await completeWithRetry(() => apiRequest<{ data: Listing }>(`/listings/${listing.id}/rewarded-boost/complete`, { method: 'POST', token, body: { token: challenge.data.token } }));
             onBoosted(response.data);
             showNotice({ tone: 'success', title: 'İlanın öne çıkarıldı', message: `İlanın ${challenge.data.boostHours} saat boyunca sonuçlarda daha görünür olacak.` });
-          } else {
-            await syncVerifiedReward();
+          } catch (error) {
+            showNotice({ tone: 'error', title: 'Öne çıkarma hesabına işlenemedi', message: error instanceof ApiError ? error.message : 'Bağlantı kurulamadı. Lütfen yeniden dene.' });
+          } finally {
+            setBusy(false);
           }
         }),
         ad.addAdEventListener(module.AdEventType.CLOSED, () => {

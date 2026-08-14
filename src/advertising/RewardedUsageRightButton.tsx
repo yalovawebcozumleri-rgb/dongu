@@ -4,6 +4,20 @@ import { C, s } from '../../styles';
 import { ApiError, apiRequest, QuotaRewardOffer } from '../lib/api';
 import { useNotice } from '../notice/NoticeProvider';
 import { googleAds, initializeGoogleAds, rewardedUnitId } from './googleMobileAds';
+const completeWithRetry = async <T,>(request: () => Promise<T>): Promise<T> => {
+  let lastError: unknown;
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      return await request();
+    } catch (error) {
+      lastError = error;
+      const retryable = !(error instanceof ApiError) || error.status === 0 || error.status === 408 || error.status >= 500;
+      if (!retryable || attempt === 2) throw error;
+      await new Promise(resolve => setTimeout(resolve, 500 * (attempt + 1)));
+    }
+  }
+  throw lastError;
+};
 
 export type RewardOffer = QuotaRewardOffer;
 
@@ -11,7 +25,6 @@ type Challenge = { data: {
   token: string;
   offer: RewardOffer;
   testMode: boolean;
-  clientCompletionAllowed: boolean;
   adMobAndroidUnitId: string | null;
   adMobIosUnitId: string | null;
 } };
@@ -34,22 +47,6 @@ export default function RewardedUsageRightButton({ offer, token, userId, onRewar
   const earnedRef = useRef(false);
   const platform = Platform.OS === 'ios' ? 'ios' : 'android';
 
-  const waitForVerification = async (initialBonus: number) => {
-    for (let attempt = 0; attempt < 6; attempt += 1) {
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      try {
-        const response = await apiRequest<{ data: RewardOffer | null }>(`/rewarded-rights/${offer.rewardKey}/status?platform=${platform}`, { token, retry: false });
-        if (response.data && response.data.activeBonus > initialBonus) {
-          await onRewarded?.();
-          showNotice({ tone: 'success', title: 'Ek hakkın tanımlandı', message: `+${offer.amount} ${offer.unit} hesabına eklendi.` });
-          return;
-        }
-      } catch {
-        // SSV birkaç saniye gecikebilir; kısa süre boyunca yeniden kontrol edilir.
-      }
-    }
-    showNotice({ tone: 'info', title: 'Ödül doğrulanıyor', message: 'Google doğrulaması tamamlandığında ek hakkın otomatik olarak hesabına yansıyacak.' });
-  };
 
   const start = async () => {
     const module = googleAds();
@@ -75,12 +72,14 @@ export default function RewardedUsageRightButton({ offer, token, userId, onRewar
         ad.addAdEventListener(module.RewardedAdEventType.LOADED, () => void ad.show()),
         ad.addAdEventListener(module.RewardedAdEventType.EARNED_REWARD, async () => {
           earnedRef.current = true;
-          if (challenge.data.clientCompletionAllowed) {
-            await apiRequest(`/rewarded-rights/${offer.rewardKey}/complete`, { method: 'POST', token, body: { token: challenge.data.token } });
+          try {
+            await completeWithRetry(() => apiRequest(`/rewarded-rights/${offer.rewardKey}/complete`, { method: 'POST', token, body: { token: challenge.data.token } }));
             await onRewarded?.();
             showNotice({ tone: 'success', title: 'Ek hakkın tanımlandı', message: `+${offer.amount} ${offer.unit} hesabına eklendi.` });
-          } else {
-            await waitForVerification(challenge.data.offer.activeBonus);
+          } catch (error) {
+            showNotice({ tone: 'error', title: 'Ek hak hesabına eklenemedi', message: error instanceof ApiError ? error.message : 'Bağlantı kurulamadı. Lütfen yeniden dene.' });
+          } finally {
+            setBusy(false);
           }
         }),
         ad.addAdEventListener(module.AdEventType.CLOSED, () => {

@@ -121,10 +121,35 @@ class RewardedUsageGrantService
         return DB::transaction(function () use ($claim, $verified, $transactionId): RewardedUsageGrant {
             $locked = RewardedAdClaim::query()->lockForUpdate()->findOrFail($claim->id);
             $existing = RewardedUsageGrant::query()->where('rewarded_ad_claim_id', $locked->id)->first();
-            if ($existing) return $existing;
+            if ($existing) {
+                if ($verified && $locked->status !== RewardedAdClaim::VERIFIED) {
+                    $locked->update([
+                        'status' => RewardedAdClaim::VERIFIED,
+                        'transaction_id' => $transactionId ?: $locked->transaction_id,
+                        'verified_at' => now(),
+                    ]);
+                }
+
+                return $existing;
+            }
             // Once Google confirms the ad, a later admin toggle must not invalidate the earned reward.
             $config = $this->rewardConfig((string) $locked->reward_key, false);
             abort_unless($config, 422, 'Bu ek hak artık kullanılamıyor.');
+            // Serialize reward grants per user so parallel completions cannot bypass the admin daily cap.
+            User::query()->lockForUpdate()->findOrFail($locked->user_id);
+
+            $rewardedInLastDay = RewardedAdClaim::query()
+                ->where('user_id', $locked->user_id)
+                ->where('reward_key', $locked->reward_key)
+                ->where('id', '!=', $locked->id)
+                ->whereIn('status', [RewardedAdClaim::REWARDED, RewardedAdClaim::VERIFIED])
+                ->where('rewarded_at', '>', now()->subDay())
+                ->count();
+            abort_if(
+                $rewardedInLastDay >= $config['dailyLimit'],
+                429,
+                'Bu hak için son 24 saatte izleyebileceğin reklam sınırına ulaştın.',
+            );
             $locked->update([
                 'status' => $verified ? RewardedAdClaim::VERIFIED : RewardedAdClaim::REWARDED,
                 'transaction_id' => $transactionId ?: $locked->transaction_id,

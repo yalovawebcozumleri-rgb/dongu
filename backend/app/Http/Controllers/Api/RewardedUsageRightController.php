@@ -46,7 +46,8 @@ class RewardedUsageRightController extends Controller
             'token' => $token,
             'offer' => $offer,
             'testMode' => config('advertising.admob.mode') === 'test',
-            'clientCompletionAllowed' => app()->environment(['local', 'testing']),
+            // The SDK reward event is the user-facing completion point. AdMob SSV can verify the same claim later.
+            'clientCompletionAllowed' => true,
             'adMobAndroidUnitId' => $setting->adMobUnitId('android', 'rewarded'),
             'adMobIosUnitId' => $setting->adMobUnitId('ios', 'rewarded'),
         ]]);
@@ -54,7 +55,6 @@ class RewardedUsageRightController extends Controller
 
     public function complete(Request $request, string $rewardKey, RewardedUsageGrantService $rewards): JsonResponse
     {
-        abort_unless(app()->environment(['local', 'testing']), 403, 'Canlı ortamda reklam ödülü Google tarafından doğrulanır.');
 
         $validated = $request->validate(['token' => ['required', 'string', 'size:64']]);
         $claim = RewardedAdClaim::query()

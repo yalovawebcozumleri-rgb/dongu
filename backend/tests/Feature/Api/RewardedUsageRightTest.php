@@ -79,6 +79,22 @@ class RewardedUsageRightTest extends TestCase
             ->assertTooManyRequests();
     }
 
+    public function test_pending_challenges_cannot_be_completed_past_the_admin_daily_limit(): void
+    {
+        $user = User::factory()->create(['status' => 'active']);
+        Sanctum::actingAs($user, ['mobile']);
+
+        $tokens = collect(range(1, 3))->map(fn () => $this
+            ->postJson('/api/v1/rewarded-rights/listing_daily/challenge', ['platform' => 'android'])
+            ->assertOk()
+            ->json('data.token'));
+
+        $this->postJson('/api/v1/rewarded-rights/listing_daily/complete', ['token' => $tokens[0]])->assertOk();
+        $this->postJson('/api/v1/rewarded-rights/listing_daily/complete', ['token' => $tokens[1]])->assertOk();
+        $this->postJson('/api/v1/rewarded-rights/listing_daily/complete', ['token' => $tokens[2]])->assertTooManyRequests();
+
+        $this->assertDatabaseCount('rewarded_usage_grants', 2);
+    }
     public function test_extra_right_is_not_consumed_by_eligibility_check_and_is_consumed_once_by_real_action(): void
     {
         $user = User::factory()->create(['status' => 'active', 'created_at' => now()->subDay()]);

@@ -5,7 +5,7 @@ import SponsoredCard from './SponsoredCard';
 import { AdvertisementPlacement } from './types';
 import { useAdvertisements } from './useAdvertisements';
 
-export default function MonetizedAdSlot({ placement, token, slotIndex = 1, itemCount, style }: { placement: AdvertisementPlacement; token?: string | null; slotIndex?: number; itemCount?: number; style?: ViewStyle; }) {
+export default function MonetizedAdSlot({ placement, token, slotIndex = 1, itemCount, style, active = true }: { placement: AdvertisementPlacement; token?: string | null; slotIndex?: number; itemCount?: number; style?: ViewStyle; active?: boolean }) {
   const { width: screenWidth } = useWindowDimensions();
   const collection = useAdvertisements(placement, token);
   const [googleUnavailable, setGoogleUnavailable] = useState(false);
@@ -16,7 +16,7 @@ export default function MonetizedAdSlot({ placement, token, slotIndex = 1, itemC
   if (!source) return null;
   return <View style={[local.slot, { width: Math.min(screenWidth - 40, 560) }, style]}>
     {source === 'direct' && directAd ? <SponsoredCard advertisement={directAd} placement={placement} slotIndex={slotIndex} token={token} /> : null}
-    {source === 'admob' ? <GoogleNativeAdCard unitId={unitId} onUnavailable={() => setGoogleUnavailable(true)} /> : null}
+    {source === 'admob' ? <GoogleNativeAdCard unitId={unitId} active={active} onUnavailable={() => setGoogleUnavailable(true)} /> : null}
   </View>;
 }
 

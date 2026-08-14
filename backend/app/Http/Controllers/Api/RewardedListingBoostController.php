@@ -58,7 +58,8 @@ class RewardedListingBoostController extends Controller
         return response()->json(['data' => [
             'token' => $token,
             'expiresAt' => now()->addMinutes(30)->toIso8601String(),
-            'clientCompletionAllowed' => app()->environment(['local', 'testing']),
+            // Reward immediately after the SDK event; AdMob SSV verifies the same claim later.
+            'clientCompletionAllowed' => true,
             'testMode' => config('advertising.admob.mode') === 'test',
             'boostHours' => $boostHours,
             'dailyLimit' => $dailyLimit,
@@ -69,7 +70,6 @@ class RewardedListingBoostController extends Controller
 
     public function complete(Request $request, Listing $listing, RewardedListingBoostService $boosts): ListingResource
     {
-        abort_unless(app()->environment(['local', 'testing']), 403, 'Canlı ortamda reklam ödülü Google tarafından doğrulanır.');
         abort_unless($listing->user_id === $request->user()->id, 403);
 
         $validated = $request->validate(['token' => ['required', 'string', 'size:64']]);
