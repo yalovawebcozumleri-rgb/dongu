@@ -58,7 +58,9 @@ class AdvertisementController extends Controller
                 'sourceOrder' => $sources,
                 'firstAfter' => $setting->first_after,
                 'repeatEvery' => $setting->repeat_every,
-                'maxPerSession' => $setting->max_per_session,
+                'maxPerSession' => $setting->kind === AdvertisementPlacementSetting::KIND_NATIVE
+                    ? min($setting->max_per_session, $setting->nativeAdLimit())
+                    : $setting->max_per_session,
                 'minItems' => $setting->min_items,
                 'adMobAndroidUnitId' => $setting->adMobUnitId('android', 'native'),
                 'adMobIosUnitId' => $setting->adMobUnitId('ios', 'native'),

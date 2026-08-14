@@ -12,6 +12,16 @@ class AdvertisementPlacementSetting extends Model
 
     public const SOURCE_DIRECT = 'direct';
     public const SOURCE_ADMOB = 'admob';
+    public const MAX_NATIVE_ADS_PER_PAGE = 5;
+    public const SINGLE_NATIVE_PLACEMENTS = [
+        'leaderboard',
+        'listing_detail',
+        'public_profile',
+        'transaction_detail',
+        'profile_home',
+        'usage_limits',
+    ];
+
     public const NATIVE_SOURCES = [self::SOURCE_DIRECT, self::SOURCE_ADMOB];
 
     protected $fillable = [
@@ -63,6 +73,14 @@ class AdvertisementPlacementSetting extends Model
             ? $this->admob_ios_unit_id
             : $this->admob_android_unit_id;
     }
+
+    public function nativeAdLimit(): int
+    {
+        return in_array($this->key, self::SINGLE_NATIVE_PLACEMENTS, true)
+            ? 1
+            : self::MAX_NATIVE_ADS_PER_PAGE;
+    }
+
     public static function forKey(string $key): self
     {
         return static::query()->where('key', $key)->firstOrFail();

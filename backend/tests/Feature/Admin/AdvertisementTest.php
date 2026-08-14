@@ -92,7 +92,7 @@ class AdvertisementTest extends TestCase
             'sourceOrder' => ['direct', 'admob', 'house'],
             'firstAfter' => 3,
             'repeatEvery' => 8,
-            'maxPerSession' => 1000,
+            'maxPerSession' => 5,
             'minItems' => 3,
             'adMobAndroidUnitId' => 'ca-app-pub-6681150378641816/4910102351',
             'adMobIosUnitId' => null,
@@ -113,10 +113,9 @@ class AdvertisementTest extends TestCase
             'enabled' => false,
             'androidEnabled' => false,
             'iosEnabled' => false,
-            'sourceOrder' => ['direct', 'admob'],
             'firstAfter' => 3,
             'repeatEvery' => 8,
-            'maxPerSession' => 1000,
+            'maxPerSession' => 5,
             'minItems' => 3,
             'adMobAndroidUnitId' => 'ca-app-pub-6681150378641816/4910102351',
             'adMobIosUnitId' => 'ca-app-pub-6681150378641816/7166691451',
@@ -130,6 +129,28 @@ class AdvertisementTest extends TestCase
         $this->assertFalse($fresh->android_enabled);
         $this->assertFalse($fresh->ios_enabled);
     }
+    public function test_native_placement_rejects_more_than_five_ads(): void
+    {
+        $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
+        $setting = AdvertisementPlacementSetting::forKey('home_feed');
+
+        $this->actingAs($admin)->from('/admin/advertisements')->patch("/admin/advertisement-placements/{$setting->id}", [
+            'enabled' => true,
+            'androidEnabled' => true,
+            'iosEnabled' => true,
+            'sourceOrder' => ['direct', 'admob'],
+            'firstAfter' => 3,
+            'repeatEvery' => 5,
+            'maxPerSession' => 6,
+            'minItems' => 3,
+            'adMobAndroidUnitId' => 'ca-app-pub-6681150378641816/4910102351',
+            'adMobIosUnitId' => 'ca-app-pub-6681150378641816/7166691451',
+            'boostHours' => 24,
+            'dailyLimit' => 3,
+            'ordinals' => [2, 4],
+        ])->assertRedirect('/admin/advertisements')->assertSessionHasErrors('maxPerSession');
+    }
+
 
     public function test_unknown_mobile_placement_cannot_be_added_to_a_campaign(): void
     {

@@ -8,6 +8,7 @@ import MonetizedAdSlot from '../advertising/MonetizedAdSlot';
 
 import { insertAdvertisementSlots } from '../advertising/listSlots';
 import { useAdvertisements } from '../advertising/useAdvertisements';
+import { useNativeAdSessionKey, useNativeAdSessionPreload } from '../advertising/useNativeAdSession';
 type FavoriteResponse = {
   data: Listing[];
   meta: { current_page: number; last_page: number; total: number };
@@ -31,6 +32,7 @@ export default function FavoritesScreen({
   const [listings, setListings] = useState<Listing[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [adSessionGeneration, setAdSessionGeneration] = useState(0);
   const [loadingMore, setLoadingMore] = useState(false);
   const [page, setPage] = useState(0);
   const [lastPage, setLastPage] = useState(0);
@@ -71,6 +73,8 @@ export default function FavoritesScreen({
   useEffect(() => { void load(); }, [load]);
 
   const advertisementCollection = useAdvertisements('favorites', token);
+  const adSessionKey = useNativeAdSessionKey('favorites', adSessionGeneration);
+  useNativeAdSessionPreload(adSessionKey, advertisementCollection, listings.length);
   const listData = insertAdvertisementSlots(listings, item => String(item.id), advertisementCollection?.meta);
 
   const remove = async (listing: Listing) => {
@@ -95,7 +99,7 @@ export default function FavoritesScreen({
         data={listData}
         keyExtractor={item => item.key}
         renderItem={({ item }) => item.kind === 'advertisement'
-          ? <MonetizedAdSlot placement="favorites" token={token} slotIndex={item.slotIndex} itemCount={listings.length} style={x.adSlot} />
+          ? <MonetizedAdSlot placement="favorites" token={token} slotIndex={item.slotIndex} itemCount={listings.length} sessionKey={adSessionKey} style={x.adSlot} />
           : <ListingCard
               item={item.item}
               center={null}
@@ -107,7 +111,7 @@ export default function FavoritesScreen({
         }
         contentContainerStyle={listings.length ? x.list : x.emptyList}
         refreshing={refreshing}
-        onRefresh={() => void load(1, 'refresh')}
+        onRefresh={() => { setAdSessionGeneration(current => current + 1); void load(1, 'refresh'); }}
         onEndReached={() => {
           if (!loading && !refreshing && !loadingMore && page < lastPage) void load(page + 1, 'more');
         }}

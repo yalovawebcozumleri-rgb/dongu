@@ -10,6 +10,7 @@ import TransactionDetailScreen from './TransactionDetailScreen';
 import MonetizedAdSlot from '../advertising/MonetizedAdSlot';
 import { insertAdvertisementSlots } from '../advertising/listSlots';
 import { useAdvertisements } from '../advertising/useAdvertisements';
+import { useNativeAdSessionKey, useNativeAdSessionPreload } from '../advertising/useNativeAdSession';
 
 type Scope = 'active' | 'history';
 type Response = {
@@ -35,6 +36,7 @@ export default function PurchaseHistoryScreen({ token, back, openConversation }:
   const [summary, setSummary] = useState({ active: 0, history: 0 });
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [adSessionGeneration, setAdSessionGeneration] = useState(0);
   const [loadingMore, setLoadingMore] = useState(false);
   const [page, setPage] = useState(0);
   const [lastPage, setLastPage] = useState(0);
@@ -78,6 +80,8 @@ export default function PurchaseHistoryScreen({ token, back, openConversation }:
 
   const placement = scope === 'active' ? 'purchase_requests' : 'transaction_history';
   const advertisementCollection = useAdvertisements(placement, token);
+  const adSessionKey = useNativeAdSessionKey(placement, adSessionGeneration);
+  useNativeAdSessionPreload(adSessionKey, advertisementCollection, items.length);
   const listData = insertAdvertisementSlots(items, item => String(item.id), advertisementCollection?.meta);
 
   if (selected) {
@@ -109,11 +113,11 @@ export default function PurchaseHistoryScreen({ token, back, openConversation }:
         data={listData}
         keyExtractor={item => item.key}
         renderItem={({ item }) => item.kind === 'advertisement'
-          ? <MonetizedAdSlot placement={placement} token={token} slotIndex={item.slotIndex} itemCount={items.length} />
+          ? <MonetizedAdSlot placement={placement} token={token} slotIndex={item.slotIndex} itemCount={items.length} sessionKey={adSessionKey} />
           : <TransactionCard item={item.item} scope={scope} open={() => scope === 'active' ? openConversation(item.item) : setSelected(item.item)} />}
         contentContainerStyle={items.length ? x.list : x.emptyList}
         refreshing={refreshing}
-        onRefresh={() => void load(1, 'refresh')}
+        onRefresh={() => { setAdSessionGeneration(current => current + 1); void load(1, 'refresh'); }}
         onEndReached={() => { if (!loading && !refreshing && !loadingMore && page < lastPage) void load(page + 1, 'more'); }}
         onEndReachedThreshold={0.35}
         ListEmptyComponent={loading ? (

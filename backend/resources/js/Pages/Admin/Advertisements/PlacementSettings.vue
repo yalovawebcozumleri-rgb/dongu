@@ -24,6 +24,18 @@ const form = reactive({
 });
 
 const pageSettings = computed(() => props.settings.filter(item => item.kind === 'native'));
+const singleNativePlacements = new Set([
+  'leaderboard',
+  'listing_detail',
+  'public_profile',
+  'transaction_detail',
+  'profile_home',
+  'usage_limits',
+]);
+const nativeMaximum = item => singleNativePlacements.has(item?.key) ? 1 : 5;
+const maximumFor = item => item?.kind === 'native' ? nativeMaximum(item) : 1000;
+const isSingleNativePlacement = item => item?.kind === 'native' && nativeMaximum(item) === 1;
+
 const actionSettings = computed(() => props.settings.filter(item => ['interstitial', 'rewarded'].includes(item.kind)));
 const sourceLabels = { direct: 'Döngü kampanyası', admob: 'AdMob' };
 
@@ -56,7 +68,7 @@ const open = item => {
     sourceOrder: [...item.sourceOrder],
     firstAfter: item.firstAfter,
     repeatEvery: item.repeatEvery,
-    maxPerSession: item.maxPerSession,
+    maxPerSession: Math.min(item.maxPerSession, maximumFor(item)),
     minItems: item.minItems,
     adMobAndroidUnitId: item.adMobAndroidUnitId || '',
     adMobIosUnitId: item.adMobIosUnitId || '',
@@ -76,6 +88,14 @@ watch(() => form.enabled, enabled => {
   if (!form.androidEnabled && !form.iosEnabled) {
     form.androidEnabled = true;
     form.iosEnabled = true;
+  }
+});
+
+watch(() => form.maxPerSession, value => {
+  if (!editing.value) return;
+  const maximum = maximumFor(editing.value);
+  if (isSingleNativePlacement(editing.value) || Number(value) > maximum) {
+    form.maxPerSession = maximum;
   }
 });
 

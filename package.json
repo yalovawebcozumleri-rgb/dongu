@@ -40,7 +40,8 @@
     "eas-build-pre-install": "node scripts/validate-production-env.mjs",
     "test:slow-network": "node --no-warnings --experimental-strip-types scripts/api-slow-network-test.mjs",
     "test:typography": "node scripts/check-mobile-typography.mjs",
-    "postinstall": "patch-package"
+    "postinstall": "patch-package",
+    "test:native-ads": "node --no-warnings --experimental-strip-types scripts/native-ad-session-cache-test.mjs"
   },
   "private": true
 }

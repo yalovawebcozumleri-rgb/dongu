@@ -7,6 +7,7 @@ import UserAvatar from '../profile/UserAvatar';
 import MonetizedAdSlot from '../advertising/MonetizedAdSlot';
 import { insertAdvertisementSlots } from '../advertising/listSlots';
 import { useAdvertisements } from '../advertising/useAdvertisements';
+import { useNativeAdSessionKey, useNativeAdSessionPreload } from '../advertising/useNativeAdSession';
 import { formatLocalMessageTime } from './time';
 
 const statusLabel: Record<Conversation['status'], string> = {
@@ -102,6 +103,8 @@ function SwipeRow({ conversation, onHide, children }: { conversation: Conversati
 
 export default function ConversationList({ conversations, open, onHide }: { conversations: Conversation[]; open: (conversation: Conversation) => void; onHide?: HideConversation }) {
   const advertisementCollection = useAdvertisements('messages_list');
+  const adSessionKey = useNativeAdSessionKey('messages_list');
+  useNativeAdSessionPreload(adSessionKey, advertisementCollection, conversations.length);
   const listData = insertAdvertisementSlots(conversations, item => String(item.id), advertisementCollection?.meta);
 
   return (
@@ -115,7 +118,7 @@ export default function ConversationList({ conversations, open, onHide }: { conv
           <Text style={x.emptyText}>Bir ilan hakkında yazdığında veya alım talebi aldığında konuşma burada görünecek.</Text>
         </View>
       ) : listData.map(row => row.kind === 'advertisement'
-        ? <MonetizedAdSlot key={row.key} placement="messages_list" slotIndex={row.slotIndex} itemCount={conversations.length} /> : ((conversation: Conversation) => (
+        ? <MonetizedAdSlot key={row.key} placement="messages_list" slotIndex={row.slotIndex} itemCount={conversations.length} sessionKey={adSessionKey} /> : ((conversation: Conversation) => (
         <SwipeRow key={conversation.id} conversation={conversation} onHide={onHide}>
           <Pressable onPress={() => open(conversation)} style={x.card}>
             <UserAvatar uri={conversation.counterpart.avatarUrl} name={conversation.counterpart.name} size={48} style={{ marginRight: 12 }} />

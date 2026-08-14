@@ -47,6 +47,8 @@ import RewardedListingBoostButton from './src/advertising/RewardedListingBoostBu
 import RewardedUsageRightButton, { RewardOffer } from './src/advertising/RewardedUsageRightButton';
 import { usePickupInterstitial } from './src/advertising/usePickupInterstitial';
 import { useAdvertisements } from './src/advertising/useAdvertisements';
+import { MAX_NATIVE_ADS_PER_PAGE } from './src/advertising/nativeAdManager';
+import { useNativeAdSessionKey, useNativeAdSessionPreload } from './src/advertising/useNativeAdSession';
 import NotificationCenter from './src/notifications/NotificationCenterFinal';
 import { AppNotification } from './src/notifications/types';
 import { observeNotificationResponses } from './src/push/notificationObserver';
@@ -173,9 +175,7 @@ function Home({
   token?: string | null;
 }) {
   const [sortOpen, setSortOpen] = useState(false);
-  const [activeAdSlots, setActiveAdSlots] = useState<Map<number, 'visible' | 'preload'>>(new Map());
-  const feedDataRef = useRef<FeedItem[]>([]);
-  const lastVisibleFeedIndexRef = useRef(-1);
+  const [adSessionGeneration, setAdSessionGeneration] = useState(0);
   const advertisementCollection = useAdvertisements('home_feed', token);
   const advertisementPolicy = advertisementCollection?.meta;
   const activeSortLabel = SORT_OPTIONS.find(option => option.value === sort)?.label || 'En yakın';
@@ -190,7 +190,7 @@ function Home({
     const firstAfter = advertisementPolicy?.firstAfter ?? 3;
     const repeatEvery = advertisementPolicy?.repeatEvery ?? 8;
     const minItems = advertisementPolicy?.minItems ?? 3;
-    const maxPerSession = advertisementPolicy?.maxPerSession ?? 1000;
+    const maxPerSession = Math.min(advertisementPolicy?.maxPerSession ?? MAX_NATIVE_ADS_PER_PAGE, MAX_NATIVE_ADS_PER_PAGE);
     visibleListings.forEach((listing, index) => {
       result.push({ kind: 'listing', listing });
       const itemNumber = index + 1;
@@ -205,50 +205,12 @@ function Home({
     return result;
   }, [advertisementPolicy, visibleListings]);
 
-  useEffect(() => {
-    feedDataRef.current = feedData;
-    const availableSlots = new Set(feedData.filter(item => item.kind === 'ad-slot').map(item => item.slotIndex));
-    setActiveAdSlots(current => {
-      const preserved = [...current.entries()].filter(([slot]) => availableSlots.has(slot)).slice(0, 3);
-      if (preserved.length) return new Map(preserved);
-      const firstSlots = feedData
-        .filter((item): item is Extract<FeedItem, { kind: 'ad-slot' }> => item.kind === 'ad-slot')
-        .slice(0, 3)
-        .map(item => [item.slotIndex, 'preload'] as const);
-      return new Map(firstSlots);
-    });
-  }, [feedData]);
-
-  const onFeedViewableItemsChanged = useRef(({ viewableItems }: { viewableItems: Array<{ index: number | null; isViewable: boolean; item: FeedItem }> }) => {
-    const data = feedDataRef.current;
-    const visible = viewableItems.filter(token => token.isViewable && token.index !== null);
-    const visibleAdSlots = visible
-      .filter(token => token.item.kind === 'ad-slot')
-      .map(token => token.item.kind === 'ad-slot' ? token.item.slotIndex : 0)
-      .filter(Boolean);
-    const firstVisibleIndex = visible.reduce((minimum, token) => Math.min(minimum, token.index ?? Number.MAX_SAFE_INTEGER), Number.MAX_SAFE_INTEGER);
-    const lastVisibleIndex = visible.reduce((maximum, token) => Math.max(maximum, token.index ?? -1), -1);
-    const scrollingUp = lastVisibleIndex >= 0 && lastVisibleFeedIndexRef.current >= 0 && lastVisibleIndex < lastVisibleFeedIndexRef.current;
-    if (lastVisibleIndex >= 0) lastVisibleFeedIndexRef.current = lastVisibleIndex;
-
-    const nearbyAds = scrollingUp
-      ? data.slice(0, firstVisibleIndex === Number.MAX_SAFE_INTEGER ? 0 : firstVisibleIndex).reverse()
-      : data.slice(lastVisibleIndex + 1);
-    const selectedSlots = [...new Set(visibleAdSlots)];
-    for (const item of nearbyAds) {
-      if (item.kind !== 'ad-slot' || selectedSlots.includes(item.slotIndex)) continue;
-      selectedSlots.push(item.slotIndex);
-      if (selectedSlots.length === 3) break;
-    }
-    const slotPriorities = new Map<number, 'visible' | 'preload'>(
-      selectedSlots.slice(0, 3).map(slot => [slot, visibleAdSlots.includes(slot) ? 'visible' : 'preload']),
-    );
-    setActiveAdSlots(current => {
-      if (current.size === slotPriorities.size && [...current].every(([slot, priority]) => slotPriorities.get(slot) === priority)) return current;
-      return slotPriorities;
-    });
-  }).current;
-  const feedViewabilityConfig = useRef({ itemVisiblePercentThreshold: 10, minimumViewTime: 80 }).current;
+  const adSessionKey = useNativeAdSessionKey('home_feed', adSessionGeneration);
+  useNativeAdSessionPreload(adSessionKey, advertisementCollection, visibleListings.length);
+  const refreshWithNewAds = useCallback(() => {
+    setAdSessionGeneration(current => current + 1);
+    refresh();
+  }, [refresh]);
 
   const header = (
     <View>
@@ -393,9 +355,9 @@ function Home({
         <MonetizedAdSlot
           placement="home_feed"
           slotIndex={item.slotIndex}
+          itemCount={visibleListings.length}
           token={token}
-          active={activeAdSlots.has(item.slotIndex)}
-          loadPriority={activeAdSlots.get(item.slotIndex) ?? 'preload'}
+          sessionKey={adSessionKey}
         />
       )}
       ListHeaderComponent={header}
@@ -404,15 +366,13 @@ function Home({
       contentContainerStyle={[s.pageBottom, { paddingBottom: 124 }]}
       showsVerticalScrollIndicator={false}
       refreshing={refreshing}
-      onRefresh={locationReady ? refresh : undefined}
+      onRefresh={locationReady ? refreshWithNewAds : undefined}
       onEndReached={hasMore && !loading && !refreshing && !loadingMore ? loadMore : undefined}
       onEndReachedThreshold={0.35}
       initialNumToRender={6}
       maxToRenderPerBatch={6}
       updateCellsBatchingPeriod={50}
       windowSize={7}
-      onViewableItemsChanged={onFeedViewableItemsChanged}
-      viewabilityConfig={feedViewabilityConfig}
       removeClippedSubviews={Platform.OS === 'android'}
     />
   );

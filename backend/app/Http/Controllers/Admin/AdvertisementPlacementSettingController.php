@@ -14,16 +14,20 @@ class AdvertisementPlacementSettingController extends Controller
     public function update(Request $request, AdvertisementPlacementSetting $setting): RedirectResponse
     {
         abort_if($setting->locked, 422, 'Bu Döngü reklam alanı sabittir ve kapatılamaz.');
+        $maxPerSession = $setting->kind === AdvertisementPlacementSetting::KIND_NATIVE
+            ? $setting->nativeAdLimit()
+            : 1000;
+
 
         $base = $request->validate([
             'enabled' => ['required', 'boolean'],
             'androidEnabled' => ['required', 'boolean'],
             'iosEnabled' => ['required', 'boolean'],
-            'sourceOrder' => ['required', 'array', 'min:1', 'max:2'],
+            'sourceOrder' => [Rule::requiredIf($request->boolean('enabled') && $setting->kind === AdvertisementPlacementSetting::KIND_NATIVE), 'nullable', 'array', 'max:2'],
             'sourceOrder.*' => ['required', 'string', 'distinct', Rule::in(AdvertisementPlacementSetting::NATIVE_SOURCES)],
             'firstAfter' => ['required', 'integer', 'min:0', 'max:1000'],
             'repeatEvery' => ['required', 'integer', 'min:0', 'max:1000'],
-            'maxPerSession' => ['required', 'integer', 'min:1', 'max:1000'],
+            'maxPerSession' => ['required', 'integer', 'min:1', 'max:'.$maxPerSession],
             'minItems' => ['required', 'integer', 'min:0', 'max:1000'],
             'adMobAndroidUnitId' => ['nullable', 'string', 'max:80', 'regex:/^ca-app-pub-\d+\/\d+$/'],
             'adMobIosUnitId' => ['nullable', 'string', 'max:80', 'regex:/^ca-app-pub-\d+\/\d+$/'],
@@ -46,7 +50,7 @@ class AdvertisementPlacementSettingController extends Controller
         $iosEnabled = (bool) $base['enabled'] && (bool) $base['iosEnabled'];
         abort_if((bool) $base['enabled'] && ! $androidEnabled && ! $iosEnabled, 422, 'Alan açıkken en az bir platform açık olmalıdır.');
 
-        $sources = $base['sourceOrder'];
+        $sources = $base['sourceOrder'] ?? $setting->source_order ?? [AdvertisementPlacementSetting::SOURCE_ADMOB];
         if ($setting->kind === AdvertisementPlacementSetting::KIND_NATIVE) {
             $hasEnabledAdMobUnit = (! empty($base['adMobAndroidUnitId']) && $androidEnabled) || (! empty($base['adMobIosUnitId']) && $iosEnabled);
             abort_if((bool) $base['enabled'] && in_array(AdvertisementPlacementSetting::SOURCE_ADMOB, $sources, true) && ! $hasEnabledAdMobUnit, 422, 'AdMob kaynağı açıksa açık platformlardan en az biri için reklam birimi kimliği gereklidir.');

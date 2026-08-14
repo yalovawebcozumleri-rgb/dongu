@@ -8,6 +8,7 @@ import RewardedListingBoostButton from '../advertising/RewardedListingBoostButto
 import MonetizedAdSlot from '../advertising/MonetizedAdSlot';
 import { insertAdvertisementSlots } from '../advertising/listSlots';
 import { useAdvertisements } from '../advertising/useAdvertisements';
+import { useNativeAdSessionKey, useNativeAdSessionPreload } from '../advertising/useNativeAdSession';
 
 type Scope = 'active' | 'history';
 type ListingCollectionResponse = {
@@ -40,6 +41,7 @@ export default function MyListingsScreen({ token, userId, back, openListing, cre
   const [listings, setListings] = useState<Listing[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [adSessionGeneration, setAdSessionGeneration] = useState(0);
   const [loadingMore, setLoadingMore] = useState(false);
   const [pendingIds, setPendingIds] = useState<Set<number>>(new Set());
   const [page, setPage] = useState(0);
@@ -130,6 +132,8 @@ export default function MyListingsScreen({ token, userId, back, openListing, cre
   };
 
   const advertisementCollection = useAdvertisements('my_listings', token);
+  const adSessionKey = useNativeAdSessionKey('my_listings', adSessionGeneration);
+  useNativeAdSessionPreload(adSessionKey, advertisementCollection, listings.length);
   const listData = insertAdvertisementSlots(listings, item => String(item.id), advertisementCollection?.meta);
 
   return (
@@ -147,7 +151,7 @@ export default function MyListingsScreen({ token, userId, back, openListing, cre
         data={listData}
         keyExtractor={item => item.key}
         renderItem={({ item }) => item.kind === 'advertisement'
-          ? <MonetizedAdSlot placement="my_listings" token={token} slotIndex={item.slotIndex} itemCount={listings.length} />
+          ? <MonetizedAdSlot placement="my_listings" token={token} slotIndex={item.slotIndex} itemCount={listings.length} sessionKey={adSessionKey} />
           : (
           <MyListingCard
             listing={item.item}
@@ -165,7 +169,7 @@ export default function MyListingsScreen({ token, userId, back, openListing, cre
         )}
         contentContainerStyle={listings.length ? x.list : x.emptyList}
         refreshing={refreshing}
-        onRefresh={() => void load(1, 'refresh')}
+        onRefresh={() => { setAdSessionGeneration(current => current + 1); void load(1, 'refresh'); }}
         onEndReached={() => { if (!loading && !refreshing && !loadingMore && page < lastPage) void load(page + 1, 'more'); }}
         onEndReachedThreshold={0.35}
         ListEmptyComponent={loading ? (

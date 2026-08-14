@@ -25,8 +25,26 @@ class AdvertisementTest extends TestCase
 
         $this->getJson('/api/v1/advertisements?placement=home_feed')->assertOk()->assertJsonCount(1, 'data')
             ->assertJsonPath('data.0.id', $active->id)->assertJsonPath('meta.firstAfter', 3)
-            ->assertJsonPath('meta.repeatEvery', 8)->assertJsonPath('meta.maxPerSession', 1000);
+            ->assertJsonPath('meta.repeatEvery', 8)->assertJsonPath('meta.maxPerSession', 5);
         $this->getJson('/api/v1/advertisements?placement=leaderboard')->assertOk()->assertJsonCount(0, 'data');
+    }
+
+    public function test_native_api_applies_panel_value_with_hard_safety_cap(): void
+    {
+        AdvertisementPlacementSetting::forKey('home_feed')->update(['max_per_session' => 4]);
+        $this->getJson('/api/v1/advertisements?placement=home_feed')
+            ->assertOk()
+            ->assertJsonPath('meta.maxPerSession', 4);
+
+        AdvertisementPlacementSetting::forKey('home_feed')->update(['max_per_session' => 20]);
+        $this->getJson('/api/v1/advertisements?placement=home_feed')
+            ->assertOk()
+            ->assertJsonPath('meta.maxPerSession', 5);
+
+        AdvertisementPlacementSetting::forKey('listing_detail')->update(['max_per_session' => 5]);
+        $this->getJson('/api/v1/advertisements?placement=listing_detail')
+            ->assertOk()
+            ->assertJsonPath('meta.maxPerSession', 1);
     }
 
     public function test_native_api_never_exposes_house_fallback_source(): void

@@ -9,13 +9,18 @@ type NativeAdModule = {
   };
 };
 
-type NativeAdTask = {
-  id: number;
+type NativeAdEntry = {
+  key: string;
+  sessionKey: string;
+  slotIndex: number;
   module: NativeAdModule;
   unitId: string;
   priority: NativeAdPriority;
   cancelled: boolean;
   settled: boolean;
+  state: 'queued' | 'loading' | 'ready' | 'failed';
+  ad: NativeAdInstance | null;
+  promise: Promise<NativeAdInstance | null>;
   resolve: (ad: NativeAdInstance | null) => void;
   reject: (error: unknown) => void;
 };
@@ -26,13 +31,17 @@ export type NativeAdLease = {
 };
 
 export type NativeAdPriority = 'visible' | 'preload';
+export const MAX_NATIVE_ADS_PER_PAGE = 5;
 
-const MAX_ACTIVE_NATIVE_ADS = 3;
-const queue: NativeAdTask[] = [];
-const activeAds = new Map<number, NativeAdInstance>();
+const queue: NativeAdEntry[] = [];
+const entries = new Map<string, NativeAdEntry>();
+const sessionEntries = new Map<string, Set<string>>();
 const destroyedAds = new WeakSet<object>();
-let nextTaskId = 1;
-let inFlightTask: NativeAdTask | null = null;
+let inFlightEntry: NativeAdEntry | null = null;
+
+function cacheKey(sessionKey: string, unitId: string, slotIndex: number) {
+  return `${sessionKey}::${unitId}::${slotIndex}`;
+}
 
 function destroyOnce(ad: NativeAdInstance | null | undefined) {
   if (!ad || destroyedAds.has(ad as object)) return;
@@ -40,88 +49,131 @@ function destroyOnce(ad: NativeAdInstance | null | undefined) {
   try { ad.destroy(); } catch { /* Native SDK cleanup must never crash navigation. */ }
 }
 
-function settle(task: NativeAdTask, value: NativeAdInstance | null) {
-  if (task.settled) return;
-  task.settled = true;
-  task.resolve(value);
+function settle(entry: NativeAdEntry, value: NativeAdInstance | null) {
+  if (entry.settled) return;
+  entry.settled = true;
+  entry.resolve(value);
 }
 
-function fail(task: NativeAdTask, error: unknown) {
-  if (task.settled) return;
-  task.settled = true;
-  task.reject(error);
+function fail(entry: NativeAdEntry, error: unknown) {
+  if (entry.settled) return;
+  entry.settled = true;
+  entry.reject(error);
 }
 
-function removeQueuedTask(taskId: number) {
-  const index = queue.findIndex(task => task.id === taskId);
+function removeQueuedEntry(key: string) {
+  const index = queue.findIndex(entry => entry.key === key);
   if (index >= 0) queue.splice(index, 1);
 }
 
 function processQueue() {
-  if (inFlightTask || activeAds.size >= MAX_ACTIVE_NATIVE_ADS) return;
-  const visibleTaskIndex = queue.findIndex(task => !task.cancelled && task.priority === 'visible');
-  const task = visibleTaskIndex >= 0 ? queue.splice(visibleTaskIndex, 1)[0] : queue.shift();
-  if (!task) return;
-  if (task.cancelled) {
-    settle(task, null);
+  if (inFlightEntry) return;
+  const visibleIndex = queue.findIndex(entry => !entry.cancelled && entry.priority === 'visible');
+  const entry = visibleIndex >= 0 ? queue.splice(visibleIndex, 1)[0] : queue.shift();
+  if (!entry) return;
+  if (entry.cancelled) {
+    settle(entry, null);
     processQueue();
     return;
   }
 
-  inFlightTask = task;
-  void task.module.NativeAd.createForAdRequest(task.unitId, { requestNonPersonalizedAdsOnly: true })
+  inFlightEntry = entry;
+  entry.state = 'loading';
+  void entry.module.NativeAd.createForAdRequest(entry.unitId, { requestNonPersonalizedAdsOnly: true })
     .then(ad => {
-      if (task.cancelled) {
+      if (entry.cancelled || entries.get(entry.key) !== entry) {
         destroyOnce(ad);
-        settle(task, null);
+        settle(entry, null);
         return;
       }
-      activeAds.set(task.id, ad);
-      settle(task, ad);
+      entry.ad = ad;
+      entry.state = 'ready';
+      settle(entry, ad);
     })
     .catch(error => {
-      if (task.cancelled) settle(task, null);
-      else fail(task, error);
+      if (entry.cancelled) settle(entry, null);
+      else {
+        entry.state = 'failed';
+        fail(entry, error);
+      }
     })
     .finally(() => {
-      if (inFlightTask?.id === task.id) inFlightTask = null;
+      if (inFlightEntry === entry) inFlightEntry = null;
       processQueue();
     });
 }
 
-export function acquireNativeAd(module: NativeAdModule, unitId: string, priority: NativeAdPriority = 'visible'): NativeAdLease {
-  const id = nextTaskId++;
+function getOrCreateEntry(module: NativeAdModule, unitId: string, sessionKey: string, slotIndex: number, priority: NativeAdPriority) {
+  const key = cacheKey(sessionKey, unitId, slotIndex);
+  const existing = entries.get(key);
+  if (existing) {
+    if (priority === 'visible' && existing.priority !== 'visible') existing.priority = 'visible';
+    return existing;
+  }
   let resolve!: (ad: NativeAdInstance | null) => void;
   let reject!: (error: unknown) => void;
   const promise = new Promise<NativeAdInstance | null>((resolvePromise, rejectPromise) => {
     resolve = resolvePromise;
     reject = rejectPromise;
   });
-  const task: NativeAdTask = { id, module, unitId, priority, cancelled: false, settled: false, resolve, reject };
-  queue.push(task);
-  processQueue();
-
-  return {
-    promise,
-    release: () => {
-      if (task.cancelled) return;
-      task.cancelled = true;
-      removeQueuedTask(id);
-      const activeAd = activeAds.get(id);
-      if (activeAd) {
-        activeAds.delete(id);
-        destroyOnce(activeAd);
-      }
-      settle(task, null);
-      processQueue();
-    },
+  void promise.catch(() => undefined);
+  const entry: NativeAdEntry = {
+    key, sessionKey, slotIndex, module, unitId, priority,
+    cancelled: false, settled: false, state: 'queued', ad: null, promise, resolve, reject,
   };
+  entries.set(key, entry);
+  const keys = sessionEntries.get(sessionKey) ?? new Set<string>();
+  keys.add(key);
+  sessionEntries.set(sessionKey, keys);
+  queue.push(entry);
+  processQueue();
+  return entry;
+}
+
+export function prepareNativeAdSession(module: NativeAdModule, unitId: string, sessionKey: string, slotCount: number) {
+  const safeCount = Math.max(0, Math.min(MAX_NATIVE_ADS_PER_PAGE, Math.floor(slotCount)));
+  for (let slotIndex = 1; slotIndex <= safeCount; slotIndex += 1) {
+    getOrCreateEntry(module, unitId, sessionKey, slotIndex, 'preload');
+  }
+}
+
+export function acquireNativeAd(module: NativeAdModule, unitId: string, sessionKey: string, slotIndex: number, priority: NativeAdPriority = 'visible'): NativeAdLease {
+  const entry = getOrCreateEntry(module, unitId, sessionKey, slotIndex, priority);
+  processQueue();
+  return {
+    promise: entry.promise,
+    // FlatList may unmount a visual cell while its page session remains active.
+    // The session, not the cell, owns and eventually destroys the cached ad.
+    release: () => undefined,
+  };
+}
+
+export function peekNativeAd(sessionKey: string, unitId: string, slotIndex: number) {
+  return entries.get(cacheKey(sessionKey, unitId, slotIndex))?.ad ?? null;
+}
+
+export function releaseNativeAdSession(sessionKey: string) {
+  const keys = sessionEntries.get(sessionKey);
+  if (!keys) return;
+  for (const key of keys) {
+    const entry = entries.get(key);
+    if (!entry) continue;
+    entry.cancelled = true;
+    removeQueuedEntry(key);
+    destroyOnce(entry.ad);
+    entry.ad = null;
+    settle(entry, null);
+    entries.delete(key);
+  }
+  sessionEntries.delete(sessionKey);
+  processQueue();
 }
 
 export function nativeAdManagerSnapshot() {
   return {
-    active: activeAds.size,
-    queued: queue.filter(task => !task.cancelled).length,
-    loading: inFlightTask ? 1 : 0,
+    active: [...entries.values()].filter(entry => entry.state === 'ready').length,
+    queued: queue.filter(entry => !entry.cancelled).length,
+    loading: inFlightEntry ? 1 : 0,
+    sessions: sessionEntries.size,
   };
 }

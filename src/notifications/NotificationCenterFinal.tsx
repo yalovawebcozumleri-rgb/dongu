@@ -18,6 +18,7 @@ import { AppNotification } from './types';
 import MonetizedAdSlot from '../advertising/MonetizedAdSlot';
 import { insertAdvertisementSlots } from '../advertising/listSlots';
 import { useAdvertisements } from '../advertising/useAdvertisements';
+import { useNativeAdSessionKey, useNativeAdSessionPreload } from '../advertising/useNativeAdSession';
 
 type NotificationCategory = 'all' | 'listings' | 'messages' | 'announcements';
 
@@ -184,6 +185,7 @@ export default function NotificationCenterFinal({
   const [counts, setCounts] = useState<Record<NotificationCategory, number>>({ all: 0, listings: 0, messages: 0, announcements: 0 });
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [adSessionGeneration, setAdSessionGeneration] = useState(0);
   const [loadingMore, setLoadingMore] = useState(false);
   const [page, setPage] = useState(0);
   const [lastPage, setLastPage] = useState(0);
@@ -330,6 +332,8 @@ export default function NotificationCenterFinal({
     : emptyCopy[category];
 
   const advertisementCollection = useAdvertisements('notifications', token);
+  const adSessionKey = useNativeAdSessionKey('notifications', adSessionGeneration);
+  useNativeAdSessionPreload(adSessionKey, advertisementCollection, items.length);
   const listData = insertAdvertisementSlots(items, item => String(item.id), advertisementCollection?.meta);
 
   return (
@@ -382,7 +386,7 @@ export default function NotificationCenterFinal({
         keyExtractor={item => item.key}
         contentContainerStyle={items.length ? x.list : x.emptyList}
         renderItem={({ item: row }) => row.kind === 'advertisement'
-          ? <MonetizedAdSlot placement="notifications" token={token} slotIndex={row.slotIndex} itemCount={items.length} /> : ((item: AppNotification) => (
+          ? <MonetizedAdSlot placement="notifications" token={token} slotIndex={row.slotIndex} itemCount={items.length} sessionKey={adSessionKey} /> : ((item: AppNotification) => (
           <SwipeNotificationRow notification={item} onDelete={removeNotification}>
             <Pressable onPress={() => void open(item)} style={({ pressed }) => [x.row, !item.read && x.rowUnread, pressed && x.pressed]}>
               <View style={[x.icon, !item.read && x.iconUnread]}>
@@ -401,7 +405,7 @@ export default function NotificationCenterFinal({
           </SwipeNotificationRow>
         ))(row.item)}
         refreshing={refreshing}
-        onRefresh={() => void load(1, 'refresh')}
+        onRefresh={() => { setAdSessionGeneration(current => current + 1); void load(1, 'refresh'); }}
         onEndReached={() => {
           if (!loading && !refreshing && !loadingMore && page < lastPage) void load(page + 1, 'more');
         }}
