@@ -29,6 +29,12 @@ class ProfileAvatarTest extends TestCase
             ->assertJsonPath('data.user.avatar_url', 'preset://avatar_09');
 
         $this->assertSame('avatar_09', $user->fresh()->avatar_key);
+
+        $this->postJson('/api/v1/auth/profile/avatar', ['avatar_key' => 'avatar_15'])
+            ->assertOk()
+            ->assertJsonPath('data.user.avatar_url', 'preset://avatar_15');
+
+        $this->assertSame('avatar_15', $user->fresh()->avatar_key);
     }
 
     public function test_avatar_requires_authentication_and_an_allowed_preset_key(): void
