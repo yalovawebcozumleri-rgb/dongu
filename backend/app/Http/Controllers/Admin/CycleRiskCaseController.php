@@ -7,6 +7,7 @@ use App\Models\CycleRiskCase;
 use App\Services\CyclePointModerationService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -103,6 +104,23 @@ class CycleRiskCaseController extends Controller
         ]);
         $moderation->resolve($cycleRiskCase, $validated['action'], trim($validated['reason']), $request->user(), $request);
         return back()->with('success', 'Puan inceleme kararı ve yönetici kaydı oluşturuldu.');
+    }
+
+    public function destroy(CycleRiskCase $cycleRiskCase): RedirectResponse
+    {
+        DB::transaction(function () use ($cycleRiskCase): void {
+            $case = CycleRiskCase::query()->lockForUpdate()->findOrFail($cycleRiskCase->id);
+            abort_if(
+                $case->status === CycleRiskCase::PENDING,
+                422,
+                'İncelenmesi tamamlanmamış puan denetimi kaydı silinemez.'
+            );
+
+            $case->audits()->delete();
+            $case->delete();
+        });
+
+        return back()->with('success', 'Sonuçlandırılmış puan denetimi kaydı kalıcı olarak silindi. Kullanıcı puanları değiştirilmedi.');
     }
 
     private function summary(CycleRiskCase $case): array

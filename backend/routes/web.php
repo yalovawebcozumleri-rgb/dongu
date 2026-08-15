@@ -57,6 +57,7 @@ Route::prefix('admin')->middleware(['auth', 'admin'])->group(function () {
     Route::get('/cycle-risk-cases', [CycleRiskCaseController::class, 'index'])->name('admin.cycle-risk-cases.index');
     Route::get('/cycle-risk-cases/{cycleRiskCase}', [CycleRiskCaseController::class, 'show'])->name('admin.cycle-risk-cases.show');
     Route::patch('/cycle-risk-cases/{cycleRiskCase}', [CycleRiskCaseController::class, 'update'])->name('admin.cycle-risk-cases.update');
+    Route::delete('/cycle-risk-cases/{cycleRiskCase}', [CycleRiskCaseController::class, 'destroy'])->name('admin.cycle-risk-cases.destroy');
     Route::get('/message-reports', [MessageReportController::class, 'index'])->name('admin.message-reports.index');
     Route::get('/listing-reports', [ListingReportController::class, 'index'])->name('admin.listing-reports.index');
     Route::patch('/listing-reports/{listingReport}', [ListingReportController::class, 'update'])->name('admin.listing-reports.update');

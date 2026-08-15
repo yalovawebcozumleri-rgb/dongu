@@ -85,6 +85,44 @@ class CycleRiskCaseTest extends TestCase
         $this->assertDatabaseCount('cycle_admin_audits', 0);
     }
 
+    public function test_only_resolved_risk_cases_can_be_deleted_without_changing_points(): void
+    {
+        $seller = User::factory()->create(['status' => 'active']);
+        $buyer = User::factory()->create(['status' => 'active']);
+        $pickup = $this->completedPickup($seller, $buyer, 700, now()->subMinutes(5));
+        app(CyclePointService::class)->awardDelivery($pickup);
+        $case = CycleRiskCase::where('pickup_request_id', $pickup->id)->firstOrFail();
+        $admin = User::factory()->create(['role' => User::ROLE_ADMIN, 'status' => 'active']);
+
+        $this->actingAs($admin)->delete("/admin/cycle-risk-cases/{$case->id}")->assertStatus(422);
+        $this->assertDatabaseHas('cycle_risk_cases', ['id' => $case->id, 'status' => CycleRiskCase::PENDING]);
+
+        $this->patch("/admin/cycle-risk-cases/{$case->id}", [
+            'action' => 'clear',
+            'reason' => 'İşlem kanıtları gerçek teslimatı doğruladığı için puan onaylandı.',
+        ])->assertSessionHasNoErrors();
+
+        $entry = CyclePointEntry::where('pickup_request_id', $pickup->id)->firstOrFail();
+        $summary = CycleScoreSummary::where('user_id', $seller->id)->where('period_key', 'all')->firstOrFail();
+        $this->assertDatabaseHas('cycle_admin_audits', ['cycle_risk_case_id' => $case->id, 'action' => 'clear']);
+
+        $this->delete("/admin/cycle-risk-cases/{$case->id}")
+            ->assertRedirect()
+            ->assertSessionHas('success');
+
+        $this->assertDatabaseMissing('cycle_risk_cases', ['id' => $case->id]);
+        $this->assertDatabaseMissing('cycle_admin_audits', ['cycle_risk_case_id' => $case->id]);
+        $this->assertDatabaseHas('cycle_point_entries', [
+            'id' => $entry->id,
+            'status' => CyclePointEntry::ACTIVE,
+            'points' => 500,
+        ]);
+        $this->assertDatabaseHas('cycle_score_summaries', [
+            'id' => $summary->id,
+            'points' => 500,
+            'deliveries' => 1,
+        ]);
+    }
     private function completedPickup(User $seller, User $buyer, int $quantity, $completedAt): PickupRequest
     {
         return PickupRequest::create([
