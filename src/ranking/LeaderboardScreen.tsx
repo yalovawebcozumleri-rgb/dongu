@@ -4,6 +4,7 @@ import { C } from '../../styles';
 import { ApiError, apiRequest } from '../lib/api';
 import { readStaleCache, writeStaleCache } from '../lib/staleCache';
 import MonetizedAdSlot from '../advertising/MonetizedAdSlot';
+import { useNativeAdSessionKey } from '../advertising/useNativeAdSession';
 import UserAvatar from '../profile/UserAvatar';
 
 type Badge = { code: string; name: string; icon: string };
@@ -25,6 +26,7 @@ export default function LeaderboardScreen({ token, userId, requireAuth }: { toke
   const [meta, setMeta] = useState<Response['meta'] | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [adSessionGeneration, setAdSessionGeneration] = useState(0);
   const [error, setError] = useState('');
   const [privacySaving, setPrivacySaving] = useState(false);
   const requestSequence = useRef(0);
@@ -74,8 +76,13 @@ export default function LeaderboardScreen({ token, userId, requireAuth }: { toke
   const firstThree = rows.slice(0, 3);
   const podium = [firstThree[1], firstThree[0], firstThree[2]].filter((row): row is RankRow => !!row);
   const rest = rows.slice(3);
+  const adSessionKey = useNativeAdSessionKey('leaderboard', adSessionGeneration);
+  const refreshLeaderboard = () => {
+    setAdSessionGeneration(current => current + 1);
+    void load(true);
+  };
   return (
-    <ScrollView style={x.screen} contentContainerStyle={x.content} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void load(true)} tintColor={C.green} />}>
+    <ScrollView style={x.screen} contentContainerStyle={x.content} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refreshLeaderboard} tintColor={C.green} />}>
       <Text style={x.eyebrow}>DOĞAYA KATKI</Text><Text style={x.title}>Döngü sıralaması</Text>
       <View style={x.tabs}>
         <Pressable onPress={() => setPeriod('monthly')} style={[x.tab, period === 'monthly' && x.tabActive]}><Text style={[x.tabText, period === 'monthly' && x.tabTextActive]}>Bu ay</Text></Pressable>
@@ -89,7 +96,7 @@ export default function LeaderboardScreen({ token, userId, requireAuth }: { toke
           <View style={x.periodRow}><Text style={x.periodLabel}>{meta?.periodLabel}</Text><Text style={x.participants}>{meta?.totalParticipants ?? 0} katılımcı</Text></View>
           {podium.length ? <View style={x.podium}>{podium.map(row => <Podium key={row.userId} row={row} />)}</View> : <View style={x.empty}><Text style={x.emptyTitle}>İlk puanı sen kazan</Text><Text style={x.emptyText}>Bu dönemde tamamlanan bir teslimat henüz yok.</Text></View>}
           {!!rest.length && <View style={x.list}>{rest.slice(0, 7).map(row => <RankItem key={row.userId} row={row} />)}</View>}
-          <MonetizedAdSlot placement="leaderboard" token={token} itemCount={rows.length} style={x.adSlot} />
+          <MonetizedAdSlot placement="leaderboard" token={token} itemCount={rows.length} sessionKey={adSessionKey} style={x.adSlot} />
           {rest.length > 7 && <View style={x.list}>{rest.slice(7).map(row => <RankItem key={row.userId} row={row} />)}</View>}
 
           {token && own ? <View style={x.ownCard}>

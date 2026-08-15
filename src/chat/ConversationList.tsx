@@ -1,5 +1,5 @@
-import React, { useRef } from 'react';
-import { Animated, PanResponder, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import React, { useRef, useState } from 'react';
+import { Animated, PanResponder, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { C } from '../../styles';
 import { money } from '../../marketplace';
 import { Conversation } from './types';
@@ -101,14 +101,32 @@ function SwipeRow({ conversation, onHide, children }: { conversation: Conversati
   );
 }
 
-export default function ConversationList({ conversations, open, onHide }: { conversations: Conversation[]; open: (conversation: Conversation) => void; onHide?: HideConversation }) {
+export default function ConversationList({ conversations, open, onHide, onRefresh }: { conversations: Conversation[]; open: (conversation: Conversation) => void; onHide?: HideConversation; onRefresh?: () => Promise<void> }) {
+  const [refreshing, setRefreshing] = useState(false);
+  const [adSessionGeneration, setAdSessionGeneration] = useState(0);
   const advertisementCollection = useAdvertisements('messages_list');
-  const adSessionKey = useNativeAdSessionKey('messages_list');
+  const adSessionKey = useNativeAdSessionKey('messages_list', adSessionGeneration);
   useNativeAdSessionPreload(adSessionKey, advertisementCollection, conversations.length);
   const listData = insertAdvertisementSlots(conversations, item => String(item.id), advertisementCollection?.meta);
 
+  const refreshConversations = async () => {
+    if (refreshing || !onRefresh) return;
+    setRefreshing(true);
+    setAdSessionGeneration(current => current + 1);
+    try {
+      await onRefresh();
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
   return (
-    <ScrollView style={x.screen} contentContainerStyle={x.content} directionalLockEnabled>
+    <ScrollView
+      style={x.screen}
+      contentContainerStyle={x.content}
+      directionalLockEnabled
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void refreshConversations()} tintColor={C.green} />}
+    >
       <Text style={x.eyebrow}>GÖRÜŞMELER</Text>
       <Text style={x.title}>Mesajlar</Text>
       {!conversations.length ? (

@@ -1735,7 +1735,7 @@ function AppContent({ fullName, userEmail = '', userEmailVerified = false, userI
           />
         )}
         {route === 'ranking' && <LeaderboardScreen token={token} userId={userId} requireAuth={onRequireAuth} />}
-        {route === 'messages' && <ConversationList conversations={conversations} open={conversation => openConversation(conversation, 'messages')} onHide={hideConversationFromList} />}
+        {route === 'messages' && <ConversationList conversations={conversations} open={conversation => openConversation(conversation, 'messages')} onHide={hideConversationFromList} onRefresh={() => loadConversations()} />}
         {route === 'profile' && (token ?
           <ProfileMenuScreen
             fullName={fullName}
