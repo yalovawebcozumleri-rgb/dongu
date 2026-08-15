@@ -11,6 +11,7 @@ use App\Models\RewardedAdClaim;
 use App\Models\RewardedUsageGrant;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\RateLimiter;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
@@ -135,6 +136,43 @@ class RewardedUsageRightTest extends TestCase
             ->assertOk()
             ->assertJsonPath('data.adsUsed', 0)
             ->assertJsonPath('data.adsRemaining', 2);
+    }
+
+    public function test_rewarded_and_usage_policy_rate_limits_are_isolated_by_operation(): void
+    {
+        $user = User::factory()->create(['status' => 'active']);
+        Sanctum::actingAs($user, ['mobile']);
+
+        $identifier = sha1((string) $user->getAuthIdentifier());
+        $legacyKey = $identifier;
+        $challengeKey = 'rewarded-challenges:'.$identifier;
+        $completionKey = 'rewarded-completions:'.$identifier;
+        $statusKey = 'rewarded-status:'.$identifier;
+        $usagePolicyKey = 'usage-policy:'.$identifier;
+
+        foreach ([$legacyKey, $challengeKey, $completionKey, $statusKey, $usagePolicyKey] as $key) {
+            RateLimiter::clear($key);
+        }
+
+        for ($attempt = 0; $attempt < 60; $attempt++) {
+            RateLimiter::hit($legacyKey, 3600);
+        }
+
+        $this->getJson('/api/v1/usage-policy')->assertOk();
+
+        $token = $this->postJson('/api/v1/rewarded-rights/listing_daily/challenge', ['platform' => 'android'])
+            ->assertOk()
+            ->json('data.token');
+
+        for ($attempt = 1; $attempt < 60; $attempt++) {
+            RateLimiter::hit($challengeKey, 3600);
+        }
+
+        $this->postJson('/api/v1/rewarded-rights/listing_daily/challenge', ['platform' => 'android'])
+            ->assertTooManyRequests();
+
+        $this->getJson('/api/v1/rewarded-rights/listing_daily/status')->assertOk();
+        $this->postJson('/api/v1/rewarded-rights/listing_daily/complete', ['token' => $token])->assertOk();
     }
 
     public function test_invalid_platform_and_unknown_reward_are_rejected(): void

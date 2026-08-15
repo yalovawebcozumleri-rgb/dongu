@@ -46,7 +46,7 @@ Route::prefix('v1')->group(function () {
         Route::patch('/auth/profile', [AuthController::class, 'updateProfile'])->middleware('throttle:20,1');
         Route::post('/auth/profile/avatar', [ProfileAvatarController::class, 'store'])->middleware('throttle:10,10');
         Route::get('/profile/impact', ProfileImpactController::class)->middleware('throttle:60,1');
-        Route::get('/usage-policy', UsagePolicyController::class)->middleware('throttle:60,1');
+        Route::get('/usage-policy', UsagePolicyController::class)->middleware('throttle:60,1,usage-policy:');
         Route::post('/auth/logout', [AuthController::class, 'logout']);
         Route::delete('/auth/account', [AuthController::class, 'destroyAccount'])->middleware('throttle:3,60');
 
@@ -88,12 +88,12 @@ Route::prefix('v1')->group(function () {
         Route::get('/my/listings', [ListingController::class, 'mine']);
         Route::post('/listings', [ListingController::class, 'store'])->middleware('throttle:100,1');
         Route::post('/listings/{listing}/renew', [ListingController::class, 'renew'])->middleware('throttle:10,1');
-        Route::post('/listings/{listing}/rewarded-boost/challenge', [RewardedListingBoostController::class, 'challenge'])->middleware('throttle:60,60');
-        Route::post('/listings/{listing}/rewarded-boost/complete', [RewardedListingBoostController::class, 'complete'])->middleware('throttle:60,60');
-        Route::get('/listings/{listing}/rewarded-boost/status', [RewardedListingBoostController::class, 'status'])->middleware('throttle:30,1');
-        Route::post('/rewarded-rights/{rewardKey}/challenge', [RewardedUsageRightController::class, 'challenge'])->middleware('throttle:60,60');
-        Route::post('/rewarded-rights/{rewardKey}/complete', [RewardedUsageRightController::class, 'complete'])->middleware('throttle:60,60');
-        Route::get('/rewarded-rights/{rewardKey}/status', [RewardedUsageRightController::class, 'status'])->middleware('throttle:60,1');
+        Route::post('/listings/{listing}/rewarded-boost/challenge', [RewardedListingBoostController::class, 'challenge'])->middleware('throttle:60,60,rewarded-challenges:');
+        Route::post('/listings/{listing}/rewarded-boost/complete', [RewardedListingBoostController::class, 'complete'])->middleware('throttle:60,60,rewarded-completions:');
+        Route::get('/listings/{listing}/rewarded-boost/status', [RewardedListingBoostController::class, 'status'])->middleware('throttle:60,1,rewarded-status:');
+        Route::post('/rewarded-rights/{rewardKey}/challenge', [RewardedUsageRightController::class, 'challenge'])->middleware('throttle:60,60,rewarded-challenges:');
+        Route::post('/rewarded-rights/{rewardKey}/complete', [RewardedUsageRightController::class, 'complete'])->middleware('throttle:60,60,rewarded-completions:');
+        Route::get('/rewarded-rights/{rewardKey}/status', [RewardedUsageRightController::class, 'status'])->middleware('throttle:60,1,rewarded-status:');
         Route::delete('/listings/{listing}', [ListingController::class, 'destroy']);
     });
 });
