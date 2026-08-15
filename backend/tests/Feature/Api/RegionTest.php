@@ -33,7 +33,7 @@ class RegionTest extends TestCase
             'province_id' => 77,
             'district_id' => 1103,
             'neighborhood' => 'Karpuzdere',
-            'full_address' => 'Kemer 2. Sokak No: 3/1 Daire: 27',
+            'full_address' => 'Örnek Mahallesi Test Sokak No: 10',
             'latitude' => 40.617,
             'longitude' => 29.111,
             'is_default' => true,

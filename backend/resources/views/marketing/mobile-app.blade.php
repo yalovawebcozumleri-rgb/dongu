@@ -9,18 +9,15 @@
             <span class="vision-kicker"><i></i> Mobil uygulama</span>
             <h1>Döngü cebinde,<br><em>değer yanında.</em></h1>
             <p>Yakındaki depozitolu ambalaj ilanlarını keşfetmek, talep göndermek, mesajlaşmak ve teslimatı güvenli akışla tamamlamak için Döngü uygulamasını indir.</p>
-            <div class="vision-mobile-app-actions">
-                <a href="https://play.google.com/store/apps/details?id=com.yalovawebcozumleri.dongu" target="_blank" rel="noopener" aria-label="Döngü uygulamasını Google Play'de aç"><img src="{{ asset('site/download-google-play.webp') }}" alt="Google Play'den indir"></a>
-                <a href="https://apps.apple.com/tr/search?term=D%C3%B6ng%C3%BC" target="_blank" rel="noopener" aria-label="Döngü uygulamasını App Store'da ara"><img src="{{ asset('site/download-app-store.png') }}" alt="App Store'dan indirin"></a>
-            </div>
+            <x-store-badges class="store-badges-mobile-hero" />
         </div>
         <div class="vision-question-orbit vision-orbit-brandmark vision-orbit-store-links">
             <div class="vision-orbit-ring ring-one"></div>
             <div class="vision-orbit-ring ring-two"></div>
             <div class="vision-orbit-logo-mark"><img src="{{ asset('images/site/dongu-icon.png') }}" alt=""></div>
             <b class="vision-orbit-chip chip-one">Döngü</b>
-            <a class="vision-orbit-chip chip-two" href="https://apps.apple.com/tr/search?term=D%C3%B6ng%C3%BC" target="_blank" rel="noopener" aria-label="Döngü uygulamasını App Store'da aç">App Store</a>
-            <a class="vision-orbit-chip chip-three" href="https://play.google.com/store/apps/details?id=com.yalovawebcozumleri.dongu" target="_blank" rel="noopener" aria-label="Döngü uygulamasını Google Play'de aç">Play Store</a>
+            <a class="vision-orbit-chip chip-two" href="{{ config('stores.app_store_url') }}" target="_blank" rel="noopener" aria-label="Döngü uygulamasını App Store'da aç">App Store</a>
+            <a class="vision-orbit-chip chip-three" href="{{ config('stores.google_play_url') }}" target="_blank" rel="noopener" aria-label="Döngü uygulamasını Google Play'de aç">Play Store</a>
         </div>
     </div>
 </section>
@@ -34,19 +31,19 @@
         <div class="vision-store-download-list">
             <article>
                 <div>
-                    <small>Android kullanıcıları için</small>
-                    <h3>Google Play’den indir</h3>
-                    <p>Android telefonunda Döngü’yü açarak yakındaki ilanları keşfedebilir, alım talebi gönderebilir, mesajlaşabilir ve teslimat sürecini uygulama içinden takip edebilirsin.</p>
-                </div>
-                <a href="https://play.google.com/store/apps/details?id=com.yalovawebcozumleri.dongu" target="_blank" rel="noopener" aria-label="Döngü uygulamasını Google Play'de aç"><img src="{{ asset('site/download-google-play.webp') }}" alt="Google Play'den indir"></a>
-            </article>
-            <article>
-                <div>
                     <small>iPhone kullanıcıları için</small>
                     <h3>App Store’dan indirin</h3>
                     <p>iPhone’da Döngü ile yakındaki ilanları keşfedebilir, alım talebi gönderebilir, mesajlaşabilir ve teslimat sürecini güvenli akışla tamamlayabilirsin.</p>
                 </div>
-                <a href="https://apps.apple.com/tr/search?term=D%C3%B6ng%C3%BC" target="_blank" rel="noopener" aria-label="Döngü uygulamasını App Store'da ara"><img src="{{ asset('site/download-app-store.png') }}" alt="App Store'dan indirin"></a>
+                <x-store-badges class="store-badges-single" store="app-store" />
+            </article>
+            <article>
+                <div>
+                    <small>Android kullanıcıları için</small>
+                    <h3>Google Play’den indir</h3>
+                    <p>Android telefonunda Döngü’yü açarak yakındaki ilanları keşfedebilir, alım talebi gönderebilir, mesajlaşabilir ve teslimat sürecini uygulama içinden takip edebilirsin.</p>
+                </div>
+                <x-store-badges class="store-badges-single" store="google-play" />
             </article>
         </div>
     </div>

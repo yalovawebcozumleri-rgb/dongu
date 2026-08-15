@@ -25,6 +25,7 @@ class LegalDocumentTest extends TestCase
             ->assertJsonPath('data.version', '2026-08-05.2')
             ->assertJsonFragment(['title' => 'KVKK Aydınlatma Metni ve Gizlilik Politikası'])
             ->assertJsonPath('data.operator.name', 'Mustafa Polat (Yalova Web Çözümleri)')
+            ->assertJsonPath('data.operator.address', 'Karpuzdere Mahallesi, Kemer 2 Sokak, Çınarcık/Yalova')
             ->assertJsonPath('data.operator.phone', '+90 541 334 22 19')
             ->assertJsonCount(12, 'data.sections');
 

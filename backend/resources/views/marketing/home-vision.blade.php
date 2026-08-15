@@ -24,82 +24,119 @@
             <h2 id="dongu-nedir">Depozitolu ambalajlar için<br><em>yerel bir buluşma alanı.</em></h2>
             <p>Döngü; PET şişe, cam şişe ve alüminyum kutularını elinde bulunduran kullanıcılarla bu ambalajları almak isteyen kullanıcıları aynı akışta buluşturur.</p>
         </div>
-        <div class="vision-what-phone" aria-label="Döngü uygulaması arayüz animasyonu">
-            <div class="vision-phone-glow"></div>
-            <div class="vision-phone-frame vision-app-shot-frame">
-                <img class="vision-app-shot-img" src="{{ asset('site/dongu-home-preview.png') }}" alt="Döngü uygulaması ana sayfa ekranı">
-                <div class="vision-app-header">
-                    <div>
-                        <small>KEŞFET</small>
-                        <strong>döngü<span>.</span></strong>
+
+        <div class="vision-app-carousel" data-app-carousel aria-label="Döngü uygulamasından altı ekran">
+            <div class="vision-app-carousel-glow" aria-hidden="true"></div>
+            <div class="vision-app-carousel-stage">
+                <button class="vision-app-carousel-arrow is-prev" type="button" data-carousel-prev aria-label="Önceki uygulama görseli">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m14.5 5-7 7 7 7"/></svg>
+                </button>
+
+                <div class="vision-app-carousel-viewport" data-carousel-viewport tabindex="0" role="region" aria-roledescription="carousel" aria-label="Döngü uygulaması ekranları">
+                    <div class="vision-app-carousel-track" data-carousel-track>
+                        <figure class="vision-app-carousel-slide" data-carousel-slide data-title="Yakınındaki ilanları keşfet" aria-hidden="false">
+                            <img src="{{ asset('site/app-showcase/01-home.png') }}" width="1242" height="2688" alt="Döngü ana sayfasında yakındaki ilanları keşfetme ekranı" loading="eager" fetchpriority="high" decoding="async">
+                        </figure>
+                        <figure class="vision-app-carousel-slide" data-carousel-slide data-title="Ambalajlarını kolayca ilana koy" aria-hidden="true">
+                            <img src="{{ asset('site/app-showcase/02-create-listing.png') }}" width="1242" height="2688" alt="Döngü uygulamasında yeni ilan oluşturma ekranı" loading="lazy" decoding="async">
+                        </figure>
+                        <figure class="vision-app-carousel-slide" data-carousel-slide data-title="İlan ayrıntılarını incele" aria-hidden="true">
+                            <img src="{{ asset('site/app-showcase/03-listing-detail.png') }}" width="1242" height="2688" alt="Döngü uygulamasında ilan ayrıntıları ekranı" loading="lazy" decoding="async">
+                        </figure>
+                        <figure class="vision-app-carousel-slide" data-carousel-slide data-title="Talep gönder, mesajlaş" aria-hidden="true">
+                            <img src="{{ asset('site/app-showcase/04-messaging.png') }}" width="1242" height="2688" alt="Döngü uygulamasında talep ve mesajlaşma ekranı" loading="lazy" decoding="async">
+                        </figure>
+                        <figure class="vision-app-carousel-slide" data-carousel-slide data-title="Teslimatı güvenli akışla tamamla" aria-hidden="true">
+                            <img src="{{ asset('site/app-showcase/05-delivery.png') }}" width="1242" height="2688" alt="Döngü uygulamasında teslimat kodu ve teslimat ekranı" loading="lazy" decoding="async">
+                        </figure>
+                        <figure class="vision-app-carousel-slide" data-carousel-slide data-title="Döngü sıralamasında yerini al" aria-hidden="true">
+                            <img src="{{ asset('site/app-showcase/06-ranking.png') }}" width="1242" height="2688" alt="Döngü puanı ve kullanıcı sıralaması ekranı" loading="lazy" decoding="async">
+                        </figure>
                     </div>
-                    <span class="vision-app-bell">◇<i>2</i></span>
                 </div>
-                <div class="vision-app-hero-card">
-                    <div>
-                        <small>BOŞ DURMASIN</small>
-                        <b>Ambalajını<br>değere dönüştür.</b>
-                        <p>Yakınındaki ilanları keşfet,<br>topla ve değerlendir.</p>
-                    </div>
-                    <div class="vision-app-art" aria-hidden="true">
-                        <span class="bottle">♻</span>
-                        <span class="can">↻</span>
-                        <span class="coin one">₺</span>
-                        <span class="coin two">₺</span>
-                    </div>
+
+                <button class="vision-app-carousel-arrow is-next" type="button" data-carousel-next aria-label="Sonraki uygulama görseli">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9.5 5 7 7-7 7"/></svg>
+                </button>
+            </div>
+
+            <div class="vision-app-carousel-meta">
+                <div class="vision-app-carousel-caption" aria-live="polite">
+                    <strong data-carousel-title>Yakınındaki ilanları keşfet</strong>
+                    <span data-carousel-counter>1 / 6</span>
                 </div>
-                <div class="vision-app-location">
-                    <div>
-                        <div class="vision-app-location-title"><small>Yakınımdaki ilanlar</small><em>CANLI KONUM</em></div>
-                        <strong>Çınarcık, Yalova</strong>
-                        <p>50 km çevresi · değiştirmek için dokun</p>
-                    </div>
-                    <span>⌖</span>
-                </div>
-                <div class="vision-app-section-head">
-                    <div>
-                        <strong>Yakınındaki ilanlar</strong>
-                        <small>18 ilan · 50 km içinde</small>
-                    </div>
-                    <em>Sırala</em>
-                </div>
-                <div class="vision-app-chips" aria-hidden="true">
-                    <span>Tümü</span><span>PET</span><span>Cam</span><span>Alüminyum</span>
-                </div>
-                <div class="vision-app-listings">
-                    <article class="vision-real-card">
-                        <div class="vision-card-top">
-                            <div class="vision-material-stack">
-                                <span class="vision-material-icon pet" aria-hidden="true">
-                                    <svg width="22" height="28" viewBox="0 0 24 32"><g fill="none" stroke="#0F4E32" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M9 2h6v4.5l2.1 3.1c.6.9.9 1.9.9 3V27a3 3 0 0 1-3 3H9a3 3 0 0 1-3-3V12.6c0-1.1.3-2.1.9-3L9 6.5V2Z"/><path d="M9 5h6"/><rect x="8" y="15" width="8" height="7" rx="1.2" opacity=".58"/></g></svg>
-                                </span>
-                            </div>
-                            <div class="vision-card-title-area">
-                                <div class="vision-title-line"><b>72 adet</b><i></i><small>Az önce</small></div>
-                                <p>PET</p>
-                            </div>
-                            <div class="vision-card-actions">
-                                <button aria-hidden="true">♡</button>
-                                <em>⌖ 1.8 km</em>
-                            </div>
-                        </div>
-                        <div class="vision-breakdown"><span><b>PET</b><small>72 × 0,50 TL</small></span></div>
-                        <div class="vision-location-row">●  Çınarcık</div>
-                        <div class="vision-money-row">
-                            <div><small>Toplam satış fiyatı</small><strong>₺36,00</strong></div>
-                            <div><small>Potansiyel brüt fark</small><strong>+₺36,00</strong></div>
-                        </div>
-                        <div class="vision-seller-row"><span>MP</span><div><b>Mustafa Polat</b><small>Yeni kullanıcı · Henüz teslimatı yok</small></div><strong>İncele ›</strong></div>
-                    </article>
-                </div>
-                <div class="vision-app-nav" aria-hidden="true">
-                    <span class="active"><i><svg width="22" height="22" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 10.5 12 3l8.5 7.5"/><path d="M5.5 9.4V21h13V9.4M9.2 21v-7h5.6v7"/></g></svg></i><b>Ana sayfa</b></span>
-                    <span><i class="ranking">♻</i><b>Sıralama</b></span>
-                    <span class="create"><i>＋</i><b>İlan ver</b></span>
-                    <span><i><svg width="22" height="22" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20.5 11.2a7.8 7.8 0 0 1-8.1 7.4 9.2 9.2 0 0 1-3.2-.7L4 20l1.5-4a7 7 0 0 1-2-4.8c0-4.1 3.8-7.4 8.5-7.4s8.5 3.3 8.5 7.4Z"/><path d="M8.2 10.9h.1m3.6 0h.1m3.6 0h.1" stroke-width="2.4"/></g></svg></i><b>Mesajlar</b></span>
-                    <span><i><svg width="22" height="22" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4.5 21c.6-4.2 3.3-6.5 7.5-6.5s6.9 2.3 7.5 6.5"/></g></svg></i><b>Profil</b></span>
+                <div class="vision-app-carousel-dots" data-carousel-dots role="tablist" aria-label="Uygulama görselini seç">
+                    <button type="button" role="tab" aria-selected="true" aria-label="1. görsel: Yakınındaki ilanları keşfet" data-carousel-dot="0"></button>
+                    <button type="button" role="tab" aria-selected="false" aria-label="2. görsel: Ambalajlarını kolayca ilana koy" data-carousel-dot="1"></button>
+                    <button type="button" role="tab" aria-selected="false" aria-label="3. görsel: İlan ayrıntılarını incele" data-carousel-dot="2"></button>
+                    <button type="button" role="tab" aria-selected="false" aria-label="4. görsel: Talep gönder, mesajlaş" data-carousel-dot="3"></button>
+                    <button type="button" role="tab" aria-selected="false" aria-label="5. görsel: Teslimatı güvenli akışla tamamla" data-carousel-dot="4"></button>
+                    <button type="button" role="tab" aria-selected="false" aria-label="6. görsel: Döngü sıralamasında yerini al" data-carousel-dot="5"></button>
                 </div>
             </div>
         </div>
     </div>
 </section>
+
+<script>
+(() => {
+    const carousel = document.querySelector('[data-app-carousel]');
+    if (!carousel) return;
+
+    const track = carousel.querySelector('[data-carousel-track]');
+    const viewport = carousel.querySelector('[data-carousel-viewport]');
+    const slides = [...carousel.querySelectorAll('[data-carousel-slide]')];
+    const dots = [...carousel.querySelectorAll('[data-carousel-dot]')];
+    const title = carousel.querySelector('[data-carousel-title]');
+    const counter = carousel.querySelector('[data-carousel-counter]');
+    let activeIndex = 0;
+    let touchStartX = null;
+    let touchStartY = null;
+
+    const render = () => {
+        track.style.transform = `translate3d(-${activeIndex * 100}%, 0, 0)`;
+        slides.forEach((slide, index) => slide.setAttribute('aria-hidden', index === activeIndex ? 'false' : 'true'));
+        dots.forEach((dot, index) => dot.setAttribute('aria-selected', index === activeIndex ? 'true' : 'false'));
+        title.textContent = slides[activeIndex].dataset.title;
+        counter.textContent = `${activeIndex + 1} / ${slides.length}`;
+    };
+
+    const show = index => {
+        activeIndex = (index + slides.length) % slides.length;
+        render();
+    };
+
+    carousel.querySelector('[data-carousel-prev]').addEventListener('click', () => show(activeIndex - 1));
+    carousel.querySelector('[data-carousel-next]').addEventListener('click', () => show(activeIndex + 1));
+    dots.forEach((dot, index) => dot.addEventListener('click', () => show(index)));
+
+    viewport.addEventListener('keydown', event => {
+        if (event.key === 'ArrowLeft') {
+            event.preventDefault();
+            show(activeIndex - 1);
+        }
+        if (event.key === 'ArrowRight') {
+            event.preventDefault();
+            show(activeIndex + 1);
+        }
+    });
+
+    viewport.addEventListener('touchstart', event => {
+        touchStartX = event.changedTouches[0].clientX;
+        touchStartY = event.changedTouches[0].clientY;
+    }, { passive: true });
+
+    viewport.addEventListener('touchend', event => {
+        if (touchStartX === null || touchStartY === null) return;
+        const deltaX = event.changedTouches[0].clientX - touchStartX;
+        const deltaY = event.changedTouches[0].clientY - touchStartY;
+        touchStartX = null;
+        touchStartY = null;
+
+        if (Math.abs(deltaX) < 45 || Math.abs(deltaX) <= Math.abs(deltaY)) return;
+        show(activeIndex + (deltaX < 0 ? 1 : -1));
+    }, { passive: true });
+
+    render();
+})();
+</script>

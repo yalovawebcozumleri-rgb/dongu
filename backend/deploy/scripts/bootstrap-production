@@ -92,7 +92,7 @@ LOGIN_CODE_RETENTION_DAYS=7
 ADMIN_SESSION_RETENTION_DAYS=30
 
 LEGAL_OPERATOR_NAME="Mustafa Polat (Yalova Web Çözümleri)"
-LEGAL_OPERATOR_ADDRESS="Karpuzdere Mahallesi, Kemer 2 Sokak, No: 3/1, Daire: 27, Çınarcık/Yalova"
+LEGAL_PUBLIC_OPERATOR_ADDRESS="Karpuzdere Mahallesi, Kemer 2 Sokak, Çınarcık/Yalova"
 LEGAL_CONTACT_EMAIL=yalovawebcozumleri@gmail.com
 LEGAL_CONTACT_PHONE="+90 541 334 22 19"
 LEGAL_CONTACT_PHONE_URI=+905413342219

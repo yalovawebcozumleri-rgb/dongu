@@ -31,6 +31,8 @@
     <link rel="stylesheet" href="{{ asset('site/marketing-mobile-fix.css') }}">
     <link rel="stylesheet" href="{{ asset('site/marketing-vision.css') }}?v=20260812-mobile-app">
     <link rel="stylesheet" href="{{ asset('site/marketing-vision-responsive.css') }}?v=20260812-mobile-app">
+    <link rel="stylesheet" href="{{ asset('site/marketing-app-carousel.css') }}?v=20260815-app-carousel">
+    <link rel="stylesheet" href="{{ asset('site/store-badges.css') }}?v=20260815-official-badges">
     <title>@yield('title', 'Döngü')</title>
     <script type="application/ld+json">
         {!! json_encode([
@@ -92,9 +94,15 @@
             <h2 id="download-dongu-title">Döngü cebinde, ambalajların değeri yanında.</h2>
             <p>Yakındaki ilanları keşfetmek, talep göndermek, mesajlaşmak ve teslimatı güvenli akışla tamamlamak için Döngü uygulamasını indir.</p>
         </div>
-        <div class="site-download-actions">
-            <a href="https://play.google.com/store/apps/details?id=com.yalovawebcozumleri.dongu" target="_blank" rel="noopener" aria-label="Döngü uygulamasını Google Play'de aç"><img src="{{ asset('site/download-google-play.webp') }}" alt="Google Play'den indir"></a>
-            <a href="https://apps.apple.com/tr/search?term=D%C3%B6ng%C3%BC" target="_blank" rel="noopener" aria-label="Döngü uygulamasını App Store'da ara"><img src="{{ asset('site/download-app-store.png') }}" alt="App Store'dan indirin"></a>
+        <div class="download-app-card">
+            <div class="download-app-card-heading">
+                <img src="{{ asset('images/site/dongu-icon.png') }}" alt="" width="54" height="54">
+                <div>
+                    <strong>Döngü mobil uygulaması</strong>
+                    <span>iPhone ve Android için</span>
+                </div>
+            </div>
+            <x-store-badges class="store-badges-download-band" />
         </div>
     </div>
 </section>

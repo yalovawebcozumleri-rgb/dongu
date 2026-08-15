@@ -2,7 +2,10 @@
 
 return [
     'operator_name' => env('LEGAL_OPERATOR_NAME', 'Mustafa Polat (Yalova Web Çözümleri)'),
-    'operator_address' => env('LEGAL_OPERATOR_ADDRESS'),
+    'operator_address' => env(
+        'LEGAL_PUBLIC_OPERATOR_ADDRESS',
+        'Karpuzdere Mahallesi, Kemer 2 Sokak, Çınarcık/Yalova'
+    ),
     'contact_email' => env('LEGAL_CONTACT_EMAIL', 'yalovawebcozumleri@gmail.com'),
     'contact_phone' => env('LEGAL_CONTACT_PHONE', '+90 541 334 22 19'),
     'contact_phone_uri' => env('LEGAL_CONTACT_PHONE_URI', '+905413342219'),
@@ -105,7 +108,7 @@ return [
             'sections' => [
                 ['title' => '1. KVKK aydınlatması: veri sorumlusu ve iletişim', 'paragraphs' => [
                     '6698 sayılı Kişisel Verilerin Korunması Kanunu (“KVKK”) kapsamında kişisel verilerin işleme amaç ve vasıtalarını belirleyen veri sorumlusu :operator_name olup Döngü platformu kişisel olarak Mustafa Polat tarafından işletilmektedir. “Yalova Web Çözümleri” hizmet ve iletişim adıdır. Döngü; Türkiye Çevre Ajansı, Depozito Yönetim Sistemi ve DOA’dan ayrı ve bağımsız bir platformdur.',
-                    'Kişisel verilerinle ilgili sorularını ve KVKK kapsamındaki başvurularını :contact_email adresine veya :contact_phone numaralı telefona iletebilirsin. Veri sorumlusunun tebligata elverişli adresi: :operator_address.',
+                    'Kişisel verilerinle ilgili sorularını ve KVKK kapsamındaki başvurularını :contact_email adresine veya :contact_phone numaralı telefona iletebilirsin. Veri sorumlusunun iletişim adresi: :operator_address.',
                 ]],
                 ['title' => '2. İşlediğimiz kişisel veri kategorileri', 'paragraphs' => [
                     'Kimlik ve hesap: ad-soyad/görünen ad, isteğe bağlı profil fotoğrafı, hesap numarası, üyelik tarihi, hesap durumu, doğrulama ve kabul kayıtları. Profil fotoğrafı herkese açık profil, ilan ve mesajlaşma alanlarında; sıralama görünürlüğü açıksa Döngü sıralamasında gösterilir; kimlik doğrulaması veya biyometrik tanıma amacıyla kullanılmaz.',

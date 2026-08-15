@@ -52,7 +52,7 @@ class UserAddressTest extends TestCase
         $this->postJson('/api/v1/addresses', [
             'label' => 'Eski sürüm adresi',
             'public_area' => 'Karpuzdere, Yalova',
-            'full_address' => 'Kemer 2. Sokak No: 3/1 Daire: 27',
+            'full_address' => 'Örnek Mahallesi Test Sokak No: 10',
             'latitude' => 40.617,
             'longitude' => 29.111,
             'is_default' => true,
