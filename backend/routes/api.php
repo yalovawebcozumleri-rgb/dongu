@@ -88,12 +88,12 @@ Route::prefix('v1')->group(function () {
         Route::get('/my/listings', [ListingController::class, 'mine']);
         Route::post('/listings', [ListingController::class, 'store'])->middleware('throttle:100,1');
         Route::post('/listings/{listing}/renew', [ListingController::class, 'renew'])->middleware('throttle:10,1');
-        Route::post('/listings/{listing}/rewarded-boost/challenge', [RewardedListingBoostController::class, 'challenge'])->middleware('throttle:60,60,rewarded-challenges:');
-        Route::post('/listings/{listing}/rewarded-boost/complete', [RewardedListingBoostController::class, 'complete'])->middleware('throttle:60,60,rewarded-completions:');
-        Route::get('/listings/{listing}/rewarded-boost/status', [RewardedListingBoostController::class, 'status'])->middleware('throttle:60,1,rewarded-status:');
-        Route::post('/rewarded-rights/{rewardKey}/challenge', [RewardedUsageRightController::class, 'challenge'])->middleware('throttle:60,60,rewarded-challenges:');
-        Route::post('/rewarded-rights/{rewardKey}/complete', [RewardedUsageRightController::class, 'complete'])->middleware('throttle:60,60,rewarded-completions:');
-        Route::get('/rewarded-rights/{rewardKey}/status', [RewardedUsageRightController::class, 'status'])->middleware('throttle:60,1,rewarded-status:');
+        Route::post('/listings/{listing}/rewarded-boost/challenge', [RewardedListingBoostController::class, 'challenge'])->middleware('throttle:rewarded-challenges');
+        Route::post('/listings/{listing}/rewarded-boost/complete', [RewardedListingBoostController::class, 'complete'])->middleware('throttle:rewarded-completions');
+        Route::get('/listings/{listing}/rewarded-boost/status', [RewardedListingBoostController::class, 'status'])->middleware('throttle:rewarded-status');
+        Route::post('/rewarded-rights/{rewardKey}/challenge', [RewardedUsageRightController::class, 'challenge'])->middleware('throttle:rewarded-challenges');
+        Route::post('/rewarded-rights/{rewardKey}/complete', [RewardedUsageRightController::class, 'complete'])->middleware('throttle:rewarded-completions');
+        Route::get('/rewarded-rights/{rewardKey}/status', [RewardedUsageRightController::class, 'status'])->middleware('throttle:rewarded-status');
         Route::delete('/listings/{listing}', [ListingController::class, 'destroy']);
     });
 });

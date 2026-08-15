@@ -145,12 +145,9 @@ class RewardedUsageRightTest extends TestCase
 
         $identifier = sha1((string) $user->getAuthIdentifier());
         $legacyKey = $identifier;
-        $challengeKey = 'rewarded-challenges:'.$identifier;
-        $completionKey = 'rewarded-completions:'.$identifier;
-        $statusKey = 'rewarded-status:'.$identifier;
         $usagePolicyKey = 'usage-policy:'.$identifier;
 
-        foreach ([$legacyKey, $challengeKey, $completionKey, $statusKey, $usagePolicyKey] as $key) {
+        foreach ([$legacyKey, $usagePolicyKey] as $key) {
             RateLimiter::clear($key);
         }
 
@@ -165,11 +162,15 @@ class RewardedUsageRightTest extends TestCase
             ->json('data.token');
 
         for ($attempt = 1; $attempt < 60; $attempt++) {
-            RateLimiter::hit($challengeKey, 3600);
+            $this->postJson('/api/v1/rewarded-rights/listing_daily/challenge', ['platform' => 'web'])
+                ->assertUnprocessable();
         }
 
         $this->postJson('/api/v1/rewarded-rights/listing_daily/challenge', ['platform' => 'android'])
             ->assertTooManyRequests();
+
+        $this->postJson('/api/v1/rewarded-rights/pickup_daily/challenge', ['platform' => 'android'])
+            ->assertOk();
 
         $this->getJson('/api/v1/rewarded-rights/listing_daily/status')->assertOk();
         $this->postJson('/api/v1/rewarded-rights/listing_daily/complete', ['token' => $token])->assertOk();
