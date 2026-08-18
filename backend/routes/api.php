@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\AdvertisementController;
+use App\Http\Controllers\Api\AdMobClientEventController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\FavoriteController;
 use App\Http\Controllers\Api\LeaderboardController;
@@ -36,6 +37,7 @@ Route::prefix('v1')->group(function () {
     Route::post('/advertisements/{advertisement}/clicks', [AdvertisementController::class, 'click'])->middleware('throttle:30,1');
     Route::get('/leaderboard', [LeaderboardController::class, 'index'])->middleware('throttle:60,1');
     Route::get('/admob/rewarded/callback', RewardedAdCallbackController::class)->middleware('throttle:120,1');
+    Route::post('/admob/client-events', AdMobClientEventController::class)->middleware('throttle:30,1');
     Route::get('/users/{user}/public-profile', [PublicUserProfileController::class, 'show'])->middleware('throttle:60,1');
     Route::get('/users/{user}/reviews', [PublicUserProfileController::class, 'reviews'])->middleware('throttle:60,1');
     Route::get('/regions/provinces', [RegionController::class, 'provinces'])->middleware('throttle:60,1');

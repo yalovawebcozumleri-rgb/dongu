@@ -8,14 +8,20 @@ return [
     ],
     'admob' => [
         'mode' => env('ADMOB_MODE', 'test'),
+        'modes' => [
+            'android' => env('ADMOB_ANDROID_MODE', env('ADMOB_MODE', 'test')),
+            'ios' => env('ADMOB_IOS_MODE', env('ADMOB_MODE', 'test')),
+        ],
         'test_unit_ids' => [
             'android' => [
                 'native' => 'ca-app-pub-3940256099942544/2247696110',
                 'interstitial' => 'ca-app-pub-3940256099942544/1033173712',
+                'rewarded' => 'ca-app-pub-3940256099942544/5224354917',
             ],
             'ios' => [
                 'native' => 'ca-app-pub-3940256099942544/3986624511',
                 'interstitial' => 'ca-app-pub-3940256099942544/4411468910',
+                'rewarded' => 'ca-app-pub-3940256099942544/1712485313',
             ],
         ],
     ],

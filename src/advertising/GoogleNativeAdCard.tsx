@@ -1,7 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Image, StyleSheet, Text, View } from 'react-native';
 import type { StyleProp, ViewStyle } from 'react-native';
-import { googleAds, initializeGoogleAds, nativeUnitId } from './googleMobileAds';
+import { adEnvironmentForUnitId, googleAds, initializeGoogleAds, nativeUnitId } from './googleMobileAds';
+import { reportAdDiagnostic } from './adDiagnostics';
 import { acquireNativeAd, NativeAdLease, peekNativeAd, prepareNativeAdSession } from './nativeAdManager';
 
 type LoadedAd = { identity: string; ad: any | null };
@@ -38,7 +39,8 @@ export default function GoogleNativeAdCard({
     setLoaded({ identity, ad: cached });
 
     if (!module || !unitId) return () => { mounted = false; };
-    void initializeGoogleAds(unitId)
+    const diagnosticContext = { environment: adEnvironmentForUnitId(unitId), format: 'native' as const, placement: sessionKey, unitId };
+    void initializeGoogleAds(diagnosticContext)
       .then(ready => {
         if (!ready) throw new Error('Ad consent is unavailable');
         if (!mounted) return null;
@@ -49,7 +51,8 @@ export default function GoogleNativeAdCard({
       .then(ad => {
         if (mounted && ad) setLoaded({ identity, ad });
       })
-      .catch(() => {
+      .catch(error => {
+        reportAdDiagnostic('native_load_failed', diagnosticContext, { slotIndex }, error);
         if (mounted) unavailableRef.current();
       });
 

@@ -4,7 +4,9 @@ import { Listing } from '../../marketplace';
 import { C, s } from '../../styles';
 import { ApiError, apiRequest } from '../lib/api';
 import { useNotice } from '../notice/NoticeProvider';
-import { googleAds, initializeGoogleAds, rewardedUnitId } from './googleMobileAds';
+import { adEnvironmentForUnitId, googleAds, initializeGoogleAds, rewardedUnitId } from './googleMobileAds';
+import { reportAdDiagnostic } from './adDiagnostics';
+import type { AdEnvironment } from './adDiagnostics';
 const completeWithRetry = async <T,>(request: () => Promise<T>): Promise<T> => {
   let lastError: unknown;
   for (let attempt = 0; attempt < 3; attempt += 1) {
@@ -20,7 +22,7 @@ const completeWithRetry = async <T,>(request: () => Promise<T>): Promise<T> => {
   throw lastError;
 };
 
-type Challenge = { data: { token: string; testMode: boolean; boostHours: number; dailyLimit: number; adMobAndroidUnitId: string | null; adMobIosUnitId: string | null } };
+type Challenge = { data: { token: string; testMode: boolean; adEnvironment?: AdEnvironment; boostHours: number; dailyLimit: number; adMobAndroidUnitId: string | null; adMobIosUnitId: string | null } };
 type BoostStatus = { data: { isBoosted: boolean; boostedUntil: string | null; enabled: boolean; boostHours: number; dailyLimit: number } };
 
 export default function RewardedListingBoostButton({ listing, token, userId, onBoosted }: {
@@ -57,16 +59,33 @@ export default function RewardedListingBoostButton({ listing, token, userId, onB
       const remoteUnitId = Platform.OS === 'ios' ? challenge.data.adMobIosUnitId : challenge.data.adMobAndroidUnitId;
       const unitId = rewardedUnitId(remoteUnitId);
       if (!unitId) throw new Error('Reklam birimi bulunamadı');
-      adsReady = await initializeGoogleAds(unitId, challenge.data.testMode);
+      const diagnosticContext = { environment: challenge.data.adEnvironment ?? adEnvironmentForUnitId(unitId), format: 'rewarded' as const, placement: 'listing_rewarded_boost', unitId };
+      adsReady = await initializeGoogleAds(diagnosticContext);
       if (!adsReady) throw new Error('Reklam izni alınamadı');
       const ad = module.RewardedAd.createForAdRequest(unitId, {
         requestNonPersonalizedAdsOnly: true,
         serverSideVerificationOptions: { userId, customData: challenge.data.token },
       });
       const cleanups: (() => void)[] = [];
-      const clear = () => cleanups.splice(0).forEach(cleanup => cleanup());
+      let loadTimeout: ReturnType<typeof setTimeout> | null = null;
+      const clearLoadTimeout = () => {
+        if (loadTimeout) clearTimeout(loadTimeout);
+        loadTimeout = null;
+      };
+      const clear = () => {
+        clearLoadTimeout();
+        cleanups.splice(0).forEach(cleanup => cleanup());
+      };
       cleanups.push(
-        ad.addAdEventListener(module.RewardedAdEventType.LOADED, () => void ad.show()),
+        ad.addAdEventListener(module.RewardedAdEventType.LOADED, () => {
+          clearLoadTimeout();
+          void ad.show().catch(error => {
+            reportAdDiagnostic('rewarded_show_failed', diagnosticContext, {}, error);
+            clear();
+            setBusy(false);
+            showNotice({ tone: 'error', title: 'Reklam açılamadı', message: 'Şu anda reklam gösterilemiyor. Biraz sonra yeniden deneyebilirsin.' });
+          });
+        }),
         ad.addAdEventListener(module.RewardedAdEventType.EARNED_REWARD, async () => {
           earnedRef.current = true;
           try {
@@ -83,14 +102,22 @@ export default function RewardedListingBoostButton({ listing, token, userId, onB
           clear(); setBusy(false);
           if (!earnedRef.current) showNotice({ tone: 'info', title: 'Reklam tamamlanmadı', message: 'İlanın öne çıkarılmadı. İstersen yeniden deneyebilirsin.' });
         }),
-        ad.addAdEventListener(module.AdEventType.ERROR, () => {
+        ad.addAdEventListener(module.AdEventType.ERROR, error => {
+          reportAdDiagnostic('rewarded_load_failed', diagnosticContext, {}, error);
           clear(); setBusy(false);
           showNotice({ tone: 'error', title: 'Reklam hazırlanamadı', message: 'Şu anda uygun reklam bulunamadı. Biraz sonra yeniden deneyebilirsin.' });
         }),
       );
       earnedRef.current = false;
+      loadTimeout = setTimeout(() => {
+        reportAdDiagnostic('rewarded_load_timeout', diagnosticContext);
+        clear();
+        setBusy(false);
+        showNotice({ tone: 'error', title: 'Reklam hazırlanamadı', message: 'Şu anda uygun reklam bulunamadı. Biraz sonra yeniden deneyebilirsin.' });
+      }, 20_000);
       ad.load();
     } catch (error) {
+      reportAdDiagnostic('rewarded_start_failed', { environment: 'unknown', format: 'rewarded', placement: 'listing_rewarded_boost' }, {}, error);
       setBusy(false);
       showNotice({ tone: 'error', title: 'Öne çıkarma başlatılamadı', message: error instanceof ApiError ? error.message : 'Reklam servisine ulaşılamadı.' });
     }

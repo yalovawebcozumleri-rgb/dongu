@@ -45,7 +45,8 @@ class RewardedUsageRightController extends Controller
         return response()->json(['data' => [
             'token' => $token,
             'offer' => $offer,
-            'testMode' => config('advertising.admob.mode') === 'test',
+            'testMode' => $setting->adMobMode($validated['platform']) === 'test',
+            'adEnvironment' => $setting->adMobMode($validated['platform']),
             // The SDK reward event is the user-facing completion point. AdMob SSV can verify the same claim later.
             'clientCompletionAllowed' => true,
             'adMobAndroidUnitId' => $setting->adMobUnitId('android', 'rewarded'),

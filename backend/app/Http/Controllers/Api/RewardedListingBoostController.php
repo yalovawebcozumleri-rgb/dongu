@@ -60,7 +60,8 @@ class RewardedListingBoostController extends Controller
             'expiresAt' => now()->addMinutes(30)->toIso8601String(),
             // Reward immediately after the SDK event; AdMob SSV verifies the same claim later.
             'clientCompletionAllowed' => true,
-            'testMode' => config('advertising.admob.mode') === 'test',
+            'testMode' => $setting->adMobMode($validated['platform']) === 'test',
+            'adEnvironment' => $setting->adMobMode($validated['platform']),
             'boostHours' => $boostHours,
             'dailyLimit' => $dailyLimit,
             'adMobAndroidUnitId' => $setting->adMobUnitId('android', 'rewarded'),

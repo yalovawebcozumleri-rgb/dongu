@@ -22,7 +22,8 @@ class RewardedListingBoostTest extends TestCase
             ->assertOk()
             ->assertJsonPath('data.clientCompletionAllowed', true)
             ->assertJsonPath('data.testMode', true)
-            ->assertJsonPath('data.adMobAndroidUnitId', 'ca-app-pub-6681150378641816/1142247732')
+            ->assertJsonPath('data.adMobAndroidUnitId', 'ca-app-pub-3940256099942544/5224354917')
+            ->assertJsonPath('data.adEnvironment', 'test')
             ->json('data.token');
 
         $this->postJson("/api/v1/listings/{$listing->id}/rewarded-boost/complete", ['token' => $token])

@@ -73,6 +73,13 @@ return [
             'replace_placeholders' => true,
         ],
 
+        'admob' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/admob.log'),
+            'level' => env('ADMOB_LOG_LEVEL', 'info'),
+            'days' => (int) env('ADMOB_LOG_DAYS', 30),
+            'replace_placeholders' => true,
+        ],
         'slack' => [
             'driver' => 'slack',
             'url' => env('LOG_SLACK_WEBHOOK_URL'),

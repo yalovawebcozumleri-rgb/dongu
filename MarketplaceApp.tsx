@@ -49,6 +49,7 @@ import { usePickupInterstitial } from './src/advertising/usePickupInterstitial';
 import { useAdvertisements } from './src/advertising/useAdvertisements';
 import { MAX_NATIVE_ADS_PER_PAGE } from './src/advertising/nativeAdManager';
 import { useNativeAdSessionKey, useNativeAdSessionPreload } from './src/advertising/useNativeAdSession';
+import { initializeGoogleAds } from './src/advertising/googleMobileAds';
 import NotificationCenter from './src/notifications/NotificationCenterFinal';
 import { AppNotification } from './src/notifications/types';
 import { observeNotificationResponses } from './src/push/notificationObserver';
@@ -1102,6 +1103,7 @@ function NavButton({ icon, label, active, onPress, badgeCount = 0 }: {
 type MarketplaceAppProps = { fullName: string; userEmail?: string; userEmailVerified?: boolean; userId?: string; token?: string | null; avatarUrl?: string | null; onProfileUpdated?: (fullName: string) => Promise<{ error?: string }>; onProfileRefresh?: () => Promise<void>; onSignOut: () => void; onDeleteAccount?: (confirmation: string) => Promise<{ error?: string }>;  isGuest?: boolean; onRequireAuth?: () => void };
 
 function AppContent({ fullName, userEmail = '', userEmailVerified = false, userId, token, avatarUrl, onProfileUpdated, onProfileRefresh, onSignOut, onDeleteAccount, isGuest = false, onRequireAuth }: MarketplaceAppProps) {
+  useEffect(() => { void initializeGoogleAds({ format: 'sdk', placement: 'app_start' }); }, []);
   const { showNotice } = useNotice();
   const { fontScale } = useWindowDimensions();
   const insets = useSafeAreaInsets();

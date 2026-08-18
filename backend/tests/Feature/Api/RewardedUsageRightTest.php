@@ -28,7 +28,8 @@ class RewardedUsageRightTest extends TestCase
         $challenge = $this->postJson('/api/v1/rewarded-rights/listing_daily/challenge', ['platform' => 'android'])
             ->assertOk()
             ->assertJsonPath('data.clientCompletionAllowed', true)
-            ->assertJsonPath('data.adMobAndroidUnitId', 'ca-app-pub-6681150378641816/6596149732')
+            ->assertJsonPath('data.adMobAndroidUnitId', 'ca-app-pub-3940256099942544/5224354917')
+            ->assertJsonPath('data.adEnvironment', 'test')
             ->assertJsonPath('data.offer.rewardKey', 'listing_daily')
             ->json('data.token');
 

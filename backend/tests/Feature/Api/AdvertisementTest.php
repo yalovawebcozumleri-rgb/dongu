@@ -60,17 +60,20 @@ class AdvertisementTest extends TestCase
 
     public function test_test_mode_exposes_official_google_native_demo_units(): void
     {
-        config()->set('advertising.admob.mode', 'test');
+        config()->set('advertising.admob.modes.android', 'test');
+        config()->set('advertising.admob.modes.ios', 'test');
 
         $this->getJson('/api/v1/advertisements?placement=home_feed')
             ->assertOk()
             ->assertJsonPath('meta.adMobAndroidUnitId', 'ca-app-pub-3940256099942544/2247696110')
-            ->assertJsonPath('meta.adMobIosUnitId', 'ca-app-pub-3940256099942544/3986624511');
+            ->assertJsonPath('meta.adMobIosUnitId', 'ca-app-pub-3940256099942544/3986624511')
+            ->assertJsonPath('meta.adMobAndroidEnvironment', 'test')
+            ->assertJsonPath('meta.adMobIosEnvironment', 'test');
     }
 
     public function test_production_mode_exposes_placement_native_unit(): void
     {
-        config()->set('advertising.admob.mode', 'production');
+        config()->set('advertising.admob.modes.android', 'production');
         AdvertisementPlacementSetting::forKey('home_feed')->update([
             'admob_android_unit_id' => 'ca-app-pub-6681150378641816/4910102351',
         ]);
@@ -80,16 +83,17 @@ class AdvertisementTest extends TestCase
             ->assertJsonPath('meta.adMobAndroidUnitId', 'ca-app-pub-6681150378641816/4910102351');
     }
 
-    public function test_rewarded_unit_is_never_replaced_by_demo_unit(): void
+    public function test_rewarded_unit_uses_official_google_demo_unit_in_test_mode(): void
     {
-        config()->set('advertising.admob.mode', 'test');
+        config()->set('advertising.admob.modes.android', 'test');
+        config()->set('advertising.admob.modes.ios', 'test');
         $setting = AdvertisementPlacementSetting::forKey('home_feed');
         $setting->update([
             'admob_android_unit_id' => 'ca-app-pub-6681150378641816/1142247732',
         ]);
 
         $this->assertSame(
-            $setting->admob_android_unit_id,
+            'ca-app-pub-3940256099942544/5224354917',
             $setting->adMobUnitId('android', 'rewarded'),
         );
     }

@@ -64,6 +64,8 @@ class AdvertisementController extends Controller
                 'minItems' => $setting->min_items,
                 'adMobAndroidUnitId' => $setting->adMobUnitId('android', 'native'),
                 'adMobIosUnitId' => $setting->adMobUnitId('ios', 'native'),
+                'adMobAndroidEnvironment' => $setting->adMobMode('android'),
+                'adMobIosEnvironment' => $setting->adMobMode('ios'),
                 'androidEnabled' => $setting->platformEnabled('android'),
                 'iosEnabled' => $setting->platformEnabled('ios'),
             ],

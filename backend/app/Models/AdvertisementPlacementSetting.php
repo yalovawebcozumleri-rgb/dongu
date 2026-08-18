@@ -65,13 +65,20 @@ class AdvertisementPlacementSetting extends Model
             return null;
         }
 
-        if (config('advertising.admob.mode') === 'test' && in_array($format, ['native', 'interstitial'], true)) {
+        if ($this->adMobMode($platform) === 'test') {
             return config("advertising.admob.test_unit_ids.{$platform}.{$format}");
         }
 
         return $platform === 'ios'
             ? $this->admob_ios_unit_id
             : $this->admob_android_unit_id;
+    }
+
+    public function adMobMode(string $platform): string
+    {
+        $mode = (string) config("advertising.admob.modes.{$platform}", config('advertising.admob.mode', 'test'));
+
+        return $mode === 'production' ? 'production' : 'test';
     }
 
     public function nativeAdLimit(): int
