@@ -87,10 +87,6 @@ const submit = confirmProduction => {
         <h2 class="mt-1 text-lg font-semibold text-slate-950">Reklam çalışma modları</h2>
         <p class="mt-1 max-w-3xl text-sm leading-6 text-slate-600">Android ve iOS ortamlarını ayrı satırlardan güvenli biçimde yönet. Değişiklik backend üzerinden uygulanır; yeni mobil build gerekmez.</p>
       </div>
-      <div class="rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-right">
-        <p class="text-xs font-semibold text-slate-500">Genel yapılandırma</p>
-        <p class="mt-0.5 text-sm font-semibold text-slate-950">#{{ setting.configurationVersion }}</p>
-      </div>
     </header>
 
     <div class="overflow-x-auto">
@@ -109,7 +105,6 @@ const submit = confirmProduction => {
           <tr v-for="platform in platforms" :key="platform.key" class="align-middle">
             <td class="px-5 py-4">
               <p class="font-semibold text-slate-950">{{ platform.label }}</p>
-              <p class="mt-1 text-xs text-slate-500">Yapılandırma #{{ platformHistory(platform).configurationVersion }}</p>
             </td>
             <td class="px-5 py-4">
               <span :class="['inline-flex rounded-full px-3 py-1 text-xs font-semibold', platformHistory(platform).mode === 'production' ? 'bg-emerald-100 text-emerald-900' : 'bg-amber-100 text-amber-900']">

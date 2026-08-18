@@ -10,6 +10,7 @@ use App\Services\RewardedUsageGrantService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
@@ -119,7 +120,9 @@ class AdvertisementController extends Controller
 
             return [$platform => [
                 'mode' => $platform === 'android' ? $runtimeSetting->android_mode : $runtimeSetting->ios_mode,
-                'updatedAt' => $audit?->created_at ?? $runtimeSetting->created_at?->toDateTimeString(),
+                'updatedAt' => $audit?->created_at
+                    ? Carbon::parse($audit->created_at, 'UTC')->toIso8601String()
+                    : $runtimeSetting->created_at?->toIso8601String(),
                 'updatedBy' => $audit?->changed_by_name ?? 'Sistem',
                 'configurationVersion' => (int) ($audit?->configuration_version ?? 1),
             ]];

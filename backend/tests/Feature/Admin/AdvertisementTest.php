@@ -97,6 +97,7 @@ class AdvertisementTest extends TestCase
                 ->where('adMob.runtime.platforms.android.mode', 'production')
                 ->where('adMob.runtime.platforms.android.updatedBy', 'Reklam Yöneticisi')
                 ->where('adMob.runtime.platforms.android.configurationVersion', 2)
+                ->where('adMob.runtime.platforms.android.updatedAt', fn (string $value) => str_ends_with($value, '+00:00'))
                 ->where('adMob.runtime.platforms.ios.mode', 'test')
                 ->where('adMob.runtime.platforms.ios.updatedBy', 'Sistem')
                 ->where('adMob.runtime.platforms.ios.configurationVersion', 1));
