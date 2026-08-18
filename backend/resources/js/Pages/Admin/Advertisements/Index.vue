@@ -2,8 +2,8 @@
 import AdminLayout from '../../../Layouts/AdminLayout.vue';
 import PlacementSettings from './PlacementSettings.vue';
 import AdMobRuntimeSettings from './AdMobRuntimeSettings.vue';
-import { Head, Link, router, useForm, usePage } from '@inertiajs/vue3';
-import { computed, reactive, ref } from 'vue';
+import { Head, Link, router, useForm } from '@inertiajs/vue3';
+import { reactive, ref } from 'vue';
 
 const props = defineProps({
   campaigns: Object,
@@ -15,7 +15,6 @@ const props = defineProps({
   adMob: Object,
 });
 
-const flash = computed(() => usePage().props.flash?.success);
 const filter = reactive({ ...props.filters });
 const composeOpen = ref(false);
 const viewing = ref(null);
@@ -86,7 +85,6 @@ const confirmDelete = () => deleteForm.delete(`/admin/advertisements/${deleteCan
   <Head title="Reklam Yönetimi" />
   <AdminLayout eyebrow="Gelir" title="Reklam yönetimi" description="Döngü’ye ait kampanyaları ve AdMob reklam alanlarını tek merkezden yönet.">
     <main class="mx-auto max-w-[1600px] px-5 py-8 lg:px-8">
-      <div v-if="flash" class="mb-5 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-900">{{ flash }}</div>
       <AdMobRuntimeSettings :setting="adMob.runtime" />
       <PlacementSettings class="mt-5" :settings="placementSettings" />
 

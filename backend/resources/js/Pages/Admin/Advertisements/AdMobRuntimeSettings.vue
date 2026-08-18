@@ -48,11 +48,15 @@ const openEditor = platform => {
   activePlatformKey.value = platform.key;
 };
 
-const closeEditor = () => {
-  if (form.processing) return;
+const resetEditor = () => {
   confirmationStep.value = false;
   activePlatformKey.value = null;
   form.clearErrors();
+};
+
+const closeEditor = () => {
+  if (form.processing) return;
+  resetEditor();
 };
 
 const requestSave = () => {
@@ -69,7 +73,7 @@ const submit = confirmProduction => {
   form.confirmProduction = confirmProduction;
   form.patch('/admin/advertising-runtime', {
     preserveScroll: true,
-    onSuccess: closeEditor,
+    onSuccess: resetEditor,
     onFinish: () => { form.confirmProduction = false; },
   });
 };

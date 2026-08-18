@@ -1,10 +1,9 @@
 <script setup>
 import AdminLayout from '../../../Layouts/AdminLayout.vue';
-import { Head, Link, useForm, usePage } from '@inertiajs/vue3';
+import { Head, Link, useForm } from '@inertiajs/vue3';
 import { computed, ref, watch } from 'vue';
 
 const props = defineProps({ profile: Object, actions: Array });
-const flash = computed(() => usePage().props.flash?.success);
 const actionOpen = ref(false);
 const actionForm = useForm({ action: 'account_suspension_24h', reason: '' });
 const listingStatuses = { active: 'Aktif', reserved: 'Rezerve', completed: 'Tamamlandı', cancelled: 'İptal' };
@@ -37,7 +36,6 @@ const submitAction = () => actionForm.patch(`/admin/users/${props.profile.id}/ac
   <Head :title="profile.name" />
   <AdminLayout eyebrow="Hesaplar" :title="profile.name" description="Kullanıcının hesap durumunu, pazaryeri hareketlerini ve denetlenebilir yaptırım geçmişini yönet.">
     <main class="mx-auto max-w-[1600px] px-5 py-8 lg:px-8">
-      <div v-if="flash" class="mb-5 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-900">{{ flash }}</div>
       <div class="flex flex-wrap items-center justify-between gap-3"><Link href="/admin/users" class="text-sm font-semibold text-emerald-700">← Kullanıcı yönetimine dön</Link><div class="flex flex-wrap gap-2"><button v-if="profile.has_active_restriction || profile.account_state !== 'active'" type="button" class="h-11 rounded-xl border border-emerald-300 bg-emerald-50 px-5 text-sm font-semibold text-emerald-900" @click="openAction('restore')">Hesabı yeniden aç</button><button type="button" class="h-11 rounded-xl bg-slate-950 px-5 text-sm font-semibold text-white" @click="openAction()">Hesap işlemi</button></div></div>
 
       <section v-if="profile.account_state !== 'active'" class="mt-5 flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-5"><span class="grid size-10 shrink-0 place-items-center rounded-xl bg-white text-amber-800">!</span><div><p class="font-semibold text-amber-950">Bu hesabın erişimi sınırlandırılmış</p><p class="mt-1 text-sm leading-6 text-amber-900">Durum: {{ profile.account_state_label }}. Ayrıntı ve uygulayan yönetici yaptırım geçmişinde görülebilir.</p></div></section>

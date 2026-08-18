@@ -1,10 +1,9 @@
 <script setup>
 import AdminLayout from '../../../Layouts/AdminLayout.vue';
-import { Head, useForm, usePage } from '@inertiajs/vue3';
+import { Head, useForm } from '@inertiajs/vue3';
 import { computed } from 'vue';
 
 const props = defineProps({ policy: Object, meta: Object });
-const flash = computed(() => usePage().props.flash?.success);
 const form = useForm({ ...props.policy });
 
 const groups = [
@@ -82,7 +81,6 @@ const resetChanges = () => { form.reset(); form.clearErrors(); };
   <Head title="Kullanım Limitleri" />
   <AdminLayout eyebrow="Sistem Ayarları" title="Kullanım limitleri" description="İlan, talep, görüşme ve mesajlaşma sınırlarını merkezi ve denetlenebilir biçimde yönet.">
     <main class="mx-auto max-w-[1600px] px-5 py-8 lg:px-8">
-      <div v-if="flash" class="mb-5 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-900">{{ flash }}</div>
 
       <section class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <article class="rounded-2xl border border-slate-200 bg-white p-5"><p class="text-sm font-semibold text-slate-700">Yeni hesap dönemi</p><p class="mt-2 text-3xl font-semibold text-slate-950">{{ form.new_account_hours }} saat</p><p class="mt-1 text-xs text-slate-600">Kısıtlı başlangıç süresi</p></article>

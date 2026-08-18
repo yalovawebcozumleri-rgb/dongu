@@ -1,10 +1,9 @@
 <script setup>
 import AdminLayout from '../../../Layouts/AdminLayout.vue';
-import { Head, Link, router, useForm, usePage } from '@inertiajs/vue3';
-import { computed, reactive, ref } from 'vue';
+import { Head, Link, router, useForm } from '@inertiajs/vue3';
+import { reactive, ref } from 'vue';
 
 const props = defineProps({ listings: Object, filters: Object, counts: Object, pageSizes: Array });
-const flash = computed(() => usePage().props.flash?.success);
 const filter = reactive({ ...props.filters });
 const removing = ref(null);
 const removeForm = useForm({ reason: '' });
@@ -23,7 +22,6 @@ const confirmRemove = () => removeForm.delete(`/admin/listings/${removing.value.
   <Head title="İlan Yönetimi" />
   <AdminLayout eyebrow="Pazaryeri" title="İlan yönetimi" description="İlanları bölge, durum, malzeme ve kullanıcı bilgileriyle ara; işlem geçmişini koruyarak yönet.">
     <main class="mx-auto max-w-[1600px] px-5 py-8 lg:px-8">
-      <div v-if="flash" class="mb-5 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-900">{{ flash }}</div>
 
       <section class="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
         <button v-for="item in [['', 'Tüm ilanlar', counts.all], ['active', 'Aktif', counts.active], ['reserved', 'Rezerve', counts.reserved], ['completed', 'Tamamlandı', counts.completed], ['cancelled', 'İptal', counts.cancelled]]" :key="item[0]" type="button" @click="setStatus(item[0])" :class="['rounded-2xl border bg-white p-4 text-left transition', (filter.status || '') === item[0] ? 'border-emerald-500 ring-2 ring-emerald-100' : 'border-slate-200 hover:border-slate-300']">

@@ -1,10 +1,9 @@
 <script setup>
 import AdminLayout from '../../../Layouts/AdminLayout.vue';
-import { Head, Link, useForm, usePage } from '@inertiajs/vue3';
+import { Head, Link, useForm } from '@inertiajs/vue3';
 import { computed, watch } from 'vue';
 
 const props = defineProps({ riskCase: Object });
-const flash = computed(() => usePage().props.flash?.success);
 
 const actions = { clear: 'Puanları onayla', revoke: 'Puanları iptal et', restore: 'Puanları iade et', reopen: 'Yeniden incele' };
 const availableActions = computed(() => {
@@ -71,7 +70,6 @@ const submit = () => form.patch(`/admin/cycle-risk-cases/${props.riskCase.id}`, 
   <AdminLayout eyebrow="Güvenlik" :title="`Puan vakası #${riskCase.id}`" description="İşlem kanıtlarını değerlendir ve denetlenebilir bir yönetici kararı kaydet.">
     <main class="mx-auto max-w-[1600px] px-5 py-8 lg:px-8">
       <div class="mb-5"><Link href="/admin/cycle-risk-cases" class="inline-flex items-center gap-2 text-sm font-semibold text-slate-700 transition hover:text-emerald-700"><svg viewBox="0 0 24 24" class="size-4" fill="none" stroke="currentColor" stroke-width="1.8"><path d="m15 18-6-6 6-6"/></svg>Puan denetimine dön</Link></div>
-      <div v-if="flash" class="mb-5 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-900">{{ flash }}</div>
 
       <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
         <div class="flex flex-wrap items-start justify-between gap-5">

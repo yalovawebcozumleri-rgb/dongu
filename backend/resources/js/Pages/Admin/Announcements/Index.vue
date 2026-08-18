@@ -1,10 +1,9 @@
 <script setup>
 import AdminLayout from '../../../Layouts/AdminLayout.vue';
-import { Head, Link, router, useForm, usePage } from '@inertiajs/vue3';
-import { computed, ref } from 'vue';
+import { Head, Link, router, useForm } from '@inertiajs/vue3';
+import { ref } from 'vue';
 
 const props = defineProps({ campaigns: Object, audience: Object, limits: Object });
-const flash = computed(() => usePage().props.flash?.success);
 const composeOpen = ref(false);
 const viewingCampaign = ref(null);
 const sendCandidate = ref(null);
@@ -106,9 +105,6 @@ const confirmDelete = () => {
   <Head title="Duyurular" />
   <AdminLayout eyebrow="İletişim" title="Duyuru ve kampanyalar" description="Uygulama içi ve push bildirimlerini planla, yayınla ve gönderim sonuçlarını tek ekrandan izle.">
     <main class="mx-auto max-w-[1600px] px-5 py-8 lg:px-8">
-      <div v-if="flash" class="mb-5 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-900">
-        {{ flash }}
-      </div>
 
       <section class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <article class="rounded-2xl border border-slate-200 bg-white p-5">

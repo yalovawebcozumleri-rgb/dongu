@@ -1,6 +1,6 @@
 <script setup>
 import { Link, router, usePage } from '@inertiajs/vue3';
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 
 defineProps({
     eyebrow: { type: String, default: '' },
@@ -13,6 +13,42 @@ const mobileMenuOpen = ref(false);
 const openMenu = ref(null);
 const currentPath = computed(() => page.url.split('?')[0]);
 const navigationCounts = computed(() => page.props.adminNavigationCounts || {});
+const toast = ref(null);
+let toastTimer = null;
+
+const toastPresentation = {
+    success: { title: 'İşlem tamamlandı', icon: '✓', accent: 'bg-emerald-500', iconClass: 'bg-emerald-100 text-emerald-800' },
+    error: { title: 'İşlem tamamlanamadı', icon: '!', accent: 'bg-red-500', iconClass: 'bg-red-100 text-red-800' },
+    warning: { title: 'Dikkat', icon: '!', accent: 'bg-amber-500', iconClass: 'bg-amber-100 text-amber-800' },
+    info: { title: 'Bilgi', icon: 'i', accent: 'bg-sky-500', iconClass: 'bg-sky-100 text-sky-800' },
+};
+
+const dismissToast = () => {
+    toast.value = null;
+    if (toastTimer) {
+        window.clearTimeout(toastTimer);
+        toastTimer = null;
+    }
+};
+
+const showToast = (type, message) => {
+    dismissToast();
+    if (!message) return;
+
+    toast.value = { type, message, ...toastPresentation[type] };
+    toastTimer = window.setTimeout(dismissToast, 5000);
+};
+
+watch(
+    () => page.props.flash,
+    flash => {
+        if (flash?.error) return showToast('error', flash.error);
+        if (flash?.warning) return showToast('warning', flash.warning);
+        if (flash?.success) return showToast('success', flash.success);
+        if (flash?.info) showToast('info', flash.info);
+    },
+    { deep: true, immediate: true },
+);
 
 const securityItems = [
     { label: 'Mesaj bildirimleri', description: 'Bildirilen konuşmaları incele', href: '/admin/message-reports', countKey: 'messageReports' },
@@ -55,11 +91,38 @@ onMounted(() => {
 onBeforeUnmount(() => {
     document.removeEventListener('pointerdown', handleOutsideClick);
     document.removeEventListener('keydown', handleEscape);
+    if (toastTimer) window.clearTimeout(toastTimer);
 });
 </script>
 
 <template>
     <div class="min-h-screen bg-cream-50 text-slate-900">
+        <Transition
+            enter-active-class="transition duration-200 ease-out"
+            enter-from-class="translate-y-2 opacity-0 sm:translate-x-3 sm:translate-y-0"
+            enter-to-class="translate-x-0 translate-y-0 opacity-100"
+            leave-active-class="transition duration-150 ease-in"
+            leave-from-class="translate-x-0 opacity-100"
+            leave-to-class="translate-x-3 opacity-0"
+        >
+            <aside
+                v-if="toast"
+                role="status"
+                aria-live="polite"
+                class="fixed right-4 top-20 z-[100] w-[calc(100%-2rem)] max-w-sm overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl shadow-slate-900/15 sm:right-6"
+            >
+                <div class="flex items-start gap-3 p-4 pr-3">
+                    <span :class="['mt-0.5 grid size-8 shrink-0 place-items-center rounded-full text-sm font-bold', toast.iconClass]" aria-hidden="true">{{ toast.icon }}</span>
+                    <div class="min-w-0 flex-1">
+                        <p class="text-sm font-semibold text-slate-950">{{ toast.title }}</p>
+                        <p class="mt-0.5 text-sm leading-5 text-slate-600">{{ toast.message }}</p>
+                    </div>
+                    <button type="button" class="grid size-8 shrink-0 place-items-center rounded-lg text-lg leading-none text-slate-400 transition hover:bg-slate-100 hover:text-slate-700" aria-label="Bildirimi kapat" @click="dismissToast">×</button>
+                </div>
+                <div :class="['h-1 w-full', toast.accent]" />
+            </aside>
+        </Transition>
+
         <header ref="header" class="sticky top-0 z-40 border-b border-slate-200/80 bg-white/95 shadow-sm backdrop-blur-xl">
             <div class="mx-auto grid min-h-16 max-w-[1600px] grid-cols-[1fr_auto] items-center gap-4 px-5 xl:grid-cols-[112px_minmax(0,1fr)_112px] xl:px-8">
                 <Link href="/admin" class="w-fit text-[22px] font-semibold tracking-[-.04em] text-slate-900" @click="closeMenus">

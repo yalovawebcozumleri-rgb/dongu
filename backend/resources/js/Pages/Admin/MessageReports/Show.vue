@@ -5,7 +5,6 @@ import { computed, watch } from 'vue';
 
 const props = defineProps({ report: { type: Object, required: true } });
 const user = computed(() => usePage().props.auth.user);
-const flash = computed(() => usePage().props.flash?.success);
 const form = useForm({ resolution: props.report.status, note: props.report.resolution_note || '', enforcement_action: props.report.enforcement_action || 'warning', remove_message: !!props.report.remove_message });
 const reasons = { spam: 'Spam veya reklam', harassment: 'Taciz veya hakaret', fraud: 'Dolandırıcılık şüphesi', personal_data: 'Kişisel bilgi paylaşımı', other: 'Diğer' };
 const statuses = { pending: 'İncelenecek', confirmed: 'İhlal doğrulandı', dismissed: 'Bildirim reddedildi' };
@@ -58,7 +57,6 @@ const logout = () => router.post('/admin/logout');
   <Head :title="`Mesaj Bildirimi #${report.id}`" />
   <AdminLayout eyebrow="Güvenlik" :title="`Mesaj bildirimi #${report.id}`" description="Bildirilen mesajı bağlamıyla değerlendir ve uygun yaptırımı belirle.">
     <main class="mx-auto max-w-[1600px] px-5 py-8 lg:px-8">
-      <div v-if="flash" class="mb-5 rounded-2xl border border-emerald-200 bg-emerald-50 px-5 py-4 text-sm font-bold text-emerald-800">{{ flash }}</div>
       <div class="grid gap-6 lg:grid-cols-[1.35fr_.65fr]">
         <section>
           <div class="rounded-2xl border border-black/5 bg-white p-5 shadow-sm"><div class="flex flex-wrap items-start justify-between gap-3"><div><p class="text-xs font-extrabold uppercase tracking-wider text-forest-700">Bildirim #{{ report.id }}</p><h2 class="mt-1 text-2xl font-black text-forest-950">{{ reasons[report.reason] }}</h2><p class="mt-2 text-sm text-slate-500">{{ $adminDate(report.created_at) }} · Görüşme #{{ report.conversation_id }}</p></div><span class="rounded-full bg-amber-100 px-3 py-1 text-xs font-extrabold text-amber-800">{{ statuses[report.status] }}</span></div><p v-if="report.details" class="mt-4 rounded-xl bg-slate-50 p-4 text-sm text-slate-700">{{ report.details }}</p></div>
