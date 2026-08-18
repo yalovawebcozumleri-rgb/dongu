@@ -105,6 +105,25 @@ class AdvertisementController extends Controller
             ->pluck('advertisement_placements.placement');
         $placementSettings = AdvertisementPlacementSetting::query()->orderBy('id')->get();
         $runtimeSetting = AdMobRuntimeSetting::current();
+        $runtimeHistory = collect(['android', 'ios'])->mapWithKeys(function (string $platform) use ($runtimeSetting): array {
+            $audit = DB::table('admob_runtime_setting_audits')
+                ->leftJoin('users', 'users.id', '=', 'admob_runtime_setting_audits.changed_by_user_id')
+                ->whereColumn("previous_{$platform}_mode", '<>', "new_{$platform}_mode")
+                ->latest('admob_runtime_setting_audits.id')
+                ->select([
+                    'admob_runtime_setting_audits.created_at',
+                    'admob_runtime_setting_audits.configuration_version',
+                    'users.name as changed_by_name',
+                ])
+                ->first();
+
+            return [$platform => [
+                'mode' => $platform === 'android' ? $runtimeSetting->android_mode : $runtimeSetting->ios_mode,
+                'updatedAt' => $audit?->created_at ?? $runtimeSetting->created_at?->toDateTimeString(),
+                'updatedBy' => $audit?->changed_by_name ?? 'Sistem',
+                'configurationVersion' => (int) ($audit?->configuration_version ?? 1),
+            ]];
+        });
 
         return Inertia::render('Admin/Advertisements/Index', [
             'campaigns' => $campaigns,
@@ -167,6 +186,7 @@ class AdvertisementController extends Controller
                     'configurationVersion' => (int) $runtimeSetting->configuration_version,
                     'updatedAt' => $runtimeSetting->updated_at?->toIso8601String(),
                     'updatedBy' => $runtimeSetting->changedBy?->name,
+                    'platforms' => $runtimeHistory,
                 ],
                 'coveredPlacements' => $coveredPlacements->values(),
                 'coveredPlacementLabels' => $coveredPlacements

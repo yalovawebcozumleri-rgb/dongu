@@ -81,6 +81,26 @@ class AdvertisementTest extends TestCase
                 ->where('campaigns.per_page', 25));
     }
 
+    public function test_admin_index_tracks_android_and_ios_runtime_changes_independently(): void
+    {
+        $admin = User::factory()->create(['role' => User::ROLE_ADMIN, 'name' => 'Reklam Yöneticisi']);
+
+        $this->actingAs($admin)->patch('/admin/advertising-runtime', [
+            'androidMode' => 'production',
+            'iosMode' => 'test',
+            'confirmProduction' => true,
+        ])->assertRedirect();
+
+        $this->actingAs($admin)->get('/admin/advertisements')
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('adMob.runtime.platforms.android.mode', 'production')
+                ->where('adMob.runtime.platforms.android.updatedBy', 'Reklam Yöneticisi')
+                ->where('adMob.runtime.platforms.android.configurationVersion', 2)
+                ->where('adMob.runtime.platforms.ios.mode', 'test')
+                ->where('adMob.runtime.platforms.ios.updatedBy', 'Sistem')
+                ->where('adMob.runtime.platforms.ios.configurationVersion', 1));
+    }
     public function test_native_placement_rejects_house_fallback_source(): void
     {
         $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
