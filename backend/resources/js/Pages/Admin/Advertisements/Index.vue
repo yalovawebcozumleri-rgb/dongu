@@ -1,6 +1,7 @@
 <script setup>
 import AdminLayout from '../../../Layouts/AdminLayout.vue';
 import PlacementSettings from './PlacementSettings.vue';
+import AdMobRuntimeSettings from './AdMobRuntimeSettings.vue';
 import { Head, Link, router, useForm, usePage } from '@inertiajs/vue3';
 import { computed, reactive, ref } from 'vue';
 
@@ -86,7 +87,8 @@ const confirmDelete = () => deleteForm.delete(`/admin/advertisements/${deleteCan
   <AdminLayout eyebrow="Gelir" title="Reklam yönetimi" description="Döngü’ye ait kampanyaları ve AdMob reklam alanlarını tek merkezden yönet.">
     <main class="mx-auto max-w-[1600px] px-5 py-8 lg:px-8">
       <div v-if="flash" class="mb-5 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-900">{{ flash }}</div>
-      <PlacementSettings :settings="placementSettings" />
+      <AdMobRuntimeSettings :setting="adMob.runtime" />
+      <PlacementSettings class="mt-5" :settings="placementSettings" />
 
       <section class="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <button type="button" @click="setStatus('')" :class="['rounded-2xl border bg-white p-5 text-left transition', !filter.status ? 'border-emerald-500 ring-2 ring-emerald-100' : 'border-slate-200 hover:border-slate-300']"><p class="text-sm font-semibold text-slate-700">Toplam kampanya</p><p class="mt-2 text-3xl font-semibold text-slate-950">{{ Number(counts.all).toLocaleString('tr-TR') }}</p><p class="mt-1 text-xs text-slate-600">Döngü kampanya kayıtları</p></button>

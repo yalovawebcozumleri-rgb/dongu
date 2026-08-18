@@ -74,8 +74,9 @@ class AdvertisementTest extends TestCase
                 ->where('placementOptions.2.hint', 'Sayfanın altında tek reklam.')
                 ->where('placementOptions.3.hint', '5. içerikten sonra tek reklam yuvası.')
                 ->has('placementSettings', 16)
-                ->where('adMob.mode', 'test')
-                ->where('adMob.earnsRevenue', false)
+                ->where('adMob.runtime.androidMode', 'test')
+                ->where('adMob.runtime.iosMode', 'test')
+                ->where('adMob.runtime.configurationVersion', 1)
                 ->where('adMob.coveredPlacements', [])
                 ->where('campaigns.per_page', 25));
     }

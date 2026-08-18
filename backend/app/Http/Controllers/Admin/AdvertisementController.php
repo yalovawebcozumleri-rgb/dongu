@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Advertisement;
 use App\Models\AdvertisementPlacementSetting;
+use App\Models\AdMobRuntimeSetting;
 use App\Services\RewardedUsageGrantService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
@@ -103,6 +104,7 @@ class AdvertisementController extends Controller
             ->distinct()
             ->pluck('advertisement_placements.placement');
         $placementSettings = AdvertisementPlacementSetting::query()->orderBy('id')->get();
+        $runtimeSetting = AdMobRuntimeSetting::current();
 
         return Inertia::render('Admin/Advertisements/Index', [
             'campaigns' => $campaigns,
@@ -159,9 +161,13 @@ class AdvertisementController extends Controller
                     'policy' => config("advertising.placements.{$value}"),
                 ])->values(),
             'adMob' => [
-                'mode' => config('advertising.admob.mode'),
-                'modeLabel' => config('advertising.admob.mode') === 'production' ? 'Canlı reklamlar' : 'Google test reklamları',
-                'earnsRevenue' => config('advertising.admob.mode') === 'production',
+                'runtime' => [
+                    'androidMode' => $runtimeSetting->android_mode,
+                    'iosMode' => $runtimeSetting->ios_mode,
+                    'configurationVersion' => (int) $runtimeSetting->configuration_version,
+                    'updatedAt' => $runtimeSetting->updated_at?->toIso8601String(),
+                    'updatedBy' => $runtimeSetting->changedBy?->name,
+                ],
                 'coveredPlacements' => $coveredPlacements->values(),
                 'coveredPlacementLabels' => $coveredPlacements
                     ->map(fn (string $placement) => Advertisement::PLACEMENT_LABELS[$placement])

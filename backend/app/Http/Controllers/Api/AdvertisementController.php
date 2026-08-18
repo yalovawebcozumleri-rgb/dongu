@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Advertisement;
 use App\Models\AdvertisementImpression;
 use App\Models\AdvertisementPlacementSetting;
+use App\Models\AdMobRuntimeSetting;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -66,6 +67,7 @@ class AdvertisementController extends Controller
                 'adMobIosUnitId' => $setting->adMobUnitId('ios', 'native'),
                 'adMobAndroidEnvironment' => $setting->adMobMode('android'),
                 'adMobIosEnvironment' => $setting->adMobMode('ios'),
+                'adMobConfigurationVersion' => AdMobRuntimeSetting::configurationVersion(),
                 'androidEnabled' => $setting->platformEnabled('android'),
                 'iosEnabled' => $setting->platformEnabled('ios'),
             ],

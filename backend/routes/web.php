@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Admin\AdvertisementController;
 use App\Http\Controllers\Admin\AdvertisementPlacementSettingController;
+use App\Http\Controllers\Admin\AdMobRuntimeSettingController;
 use App\Http\Controllers\Admin\AnnouncementCampaignController;
 use App\Http\Controllers\Admin\AuthController;
 use App\Http\Controllers\Admin\CycleRiskCaseController;
@@ -53,6 +54,7 @@ Route::prefix('admin')->middleware(['auth', 'admin'])->group(function () {
     Route::post('/advertisements', [AdvertisementController::class, 'store'])->name('admin.advertisements.store');
     Route::patch('/advertisements/{advertisement}', [AdvertisementController::class, 'update'])->name('admin.advertisements.update');
     Route::delete('/advertisements/{advertisement}', [AdvertisementController::class, 'destroy'])->name('admin.advertisements.destroy');
+    Route::patch('/advertising-runtime', [AdMobRuntimeSettingController::class, 'update'])->name('admin.advertising-runtime.update');
     Route::patch('/advertisement-placements/{setting}', [AdvertisementPlacementSettingController::class, 'update'])->name('admin.advertisement-placements.update');
     Route::get('/cycle-risk-cases', [CycleRiskCaseController::class, 'index'])->name('admin.cycle-risk-cases.index');
     Route::get('/cycle-risk-cases/{cycleRiskCase}', [CycleRiskCaseController::class, 'show'])->name('admin.cycle-risk-cases.show');

@@ -76,9 +76,7 @@ class AdvertisementPlacementSetting extends Model
 
     public function adMobMode(string $platform): string
     {
-        $mode = (string) config("advertising.admob.modes.{$platform}", config('advertising.admob.mode', 'test'));
-
-        return $mode === 'production' ? 'production' : 'test';
+        return AdMobRuntimeSetting::modeFor($platform);
     }
 
     public function nativeAdLimit(): int

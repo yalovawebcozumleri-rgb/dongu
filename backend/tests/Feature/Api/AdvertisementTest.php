@@ -4,6 +4,7 @@ namespace Tests\Feature\Api;
 
 use App\Models\Advertisement;
 use App\Models\AdvertisementPlacementSetting;
+use App\Models\AdMobRuntimeSetting;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -60,8 +61,7 @@ class AdvertisementTest extends TestCase
 
     public function test_test_mode_exposes_official_google_native_demo_units(): void
     {
-        config()->set('advertising.admob.modes.android', 'test');
-        config()->set('advertising.admob.modes.ios', 'test');
+        AdMobRuntimeSetting::current()->update(['android_mode' => 'test', 'ios_mode' => 'test']);
 
         $this->getJson('/api/v1/advertisements?placement=home_feed')
             ->assertOk()
@@ -73,7 +73,7 @@ class AdvertisementTest extends TestCase
 
     public function test_production_mode_exposes_placement_native_unit(): void
     {
-        config()->set('advertising.admob.modes.android', 'production');
+        AdMobRuntimeSetting::current()->update(['android_mode' => 'production']);
         AdvertisementPlacementSetting::forKey('home_feed')->update([
             'admob_android_unit_id' => 'ca-app-pub-6681150378641816/4910102351',
         ]);
@@ -85,8 +85,7 @@ class AdvertisementTest extends TestCase
 
     public function test_rewarded_unit_uses_official_google_demo_unit_in_test_mode(): void
     {
-        config()->set('advertising.admob.modes.android', 'test');
-        config()->set('advertising.admob.modes.ios', 'test');
+        AdMobRuntimeSetting::current()->update(['android_mode' => 'test', 'ios_mode' => 'test']);
         $setting = AdvertisementPlacementSetting::forKey('home_feed');
         $setting->update([
             'admob_android_unit_id' => 'ca-app-pub-6681150378641816/1142247732',
