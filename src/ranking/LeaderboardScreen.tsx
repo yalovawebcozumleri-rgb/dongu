@@ -4,6 +4,7 @@ import { C } from '../../styles';
 import { ApiError, apiRequest } from '../lib/api';
 import { readStaleCache, writeStaleCache } from '../lib/staleCache';
 import MonetizedAdSlot from '../advertising/MonetizedAdSlot';
+import SponsoredBannerSlot from '../advertising/SponsoredBannerSlot';
 import { useNativeAdSessionKey } from '../advertising/useNativeAdSession';
 import UserAvatar from '../profile/UserAvatar';
 
@@ -95,6 +96,7 @@ export default function LeaderboardScreen({ token, userId, requireAuth }: { toke
         <>
           <View style={x.periodRow}><Text style={x.periodLabel}>{meta?.periodLabel}</Text><Text style={x.participants}>{meta?.totalParticipants ?? 0} katılımcı</Text></View>
           {podium.length ? <View style={x.podium}>{podium.map(row => <Podium key={row.userId} row={row} />)}</View> : <View style={x.empty}><Text style={x.emptyTitle}>İlk puanı sen kazan</Text><Text style={x.emptyText}>Bu dönemde tamamlanan bir teslimat henüz yok.</Text></View>}
+          <SponsoredBannerSlot placement="leaderboard" token={token} sessionKey={adSessionKey} />
           {!!rest.length && <View style={x.list}>{rest.slice(0, 7).map(row => <RankItem key={row.userId} row={row} />)}</View>}
           <MonetizedAdSlot placement="leaderboard" token={token} itemCount={rows.length} sessionKey={adSessionKey} style={x.adSlot} />
           {rest.length > 7 && <View style={x.list}>{rest.slice(7).map(row => <RankItem key={row.userId} row={row} />)}</View>}

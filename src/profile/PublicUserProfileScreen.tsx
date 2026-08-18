@@ -10,6 +10,7 @@ import { useNotice } from '../notice/NoticeProvider';
 import UserAvatar from './UserAvatar';
 
 import MonetizedAdSlot from '../advertising/MonetizedAdSlot';
+import SponsoredBannerSlot from '../advertising/SponsoredBannerSlot';
 type Badge = { code: string; name: string; description: string; icon: string; awardedAt: string | null };
 type Review = { id: number; rating: number; comment: string | null; reviewer: { id: number; name: string; avatarUrl?: string | null }; createdAt: string | null };
 type NextBadge = { code: string; name: string; description: string; icon: string; current: number; target: number; unit: 'puan' | 'teslimat'; progress: number };
@@ -236,6 +237,7 @@ export default function PublicUserProfileScreen({ userId, token, currentUserId, 
           <View><Text style={x.impactLabel}>PUANLANAN TESLİMAT</Text><Text style={x.impactValue}>{profile.cycle.verifiedDeliveries}</Text></View>
           <View style={x.impactRight}><Text style={x.impactLabel}>AKTİF İLAN</Text><Text style={x.impactValue}>{profile.activeListings.length}</Text></View>
         </View>
+        <SponsoredBannerSlot placement="public_profile" token={token} />
 
         <View style={x.sectionHeading}><View><Text style={x.sectionEyebrow}>BAŞARILAR</Text><Text style={x.sectionTitle}>Başarı rozetleri</Text></View><Text style={x.sectionCount}>{profile.badges.length}</Text></View>
         {profile.badges.length ? <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={x.badgeRow}>{profile.badges.map(badge => <View key={badge.code} style={x.badge}><Text style={x.badgeIcon}>{badge.icon || '♻'}</Text><Text style={x.badgeName}>{badge.name}</Text><Text style={x.badgeDescription}>{badge.description}</Text></View>)}</ScrollView> : <View style={x.emptyCard}><Text style={x.emptyCopy}>Henüz kazanılmış rozet yok.</Text></View>}

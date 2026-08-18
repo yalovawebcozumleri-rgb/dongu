@@ -41,7 +41,7 @@
     "test:slow-network": "node --no-warnings --experimental-strip-types scripts/api-slow-network-test.mjs",
     "test:typography": "node scripts/check-mobile-typography.mjs",
     "postinstall": "patch-package",
-    "test:native-ads": "node --no-warnings --experimental-strip-types scripts/native-ad-session-cache-test.mjs"
+    "test:native-ads": "node --no-warnings --experimental-strip-types scripts/native-ad-session-cache-test.mjs && node --no-warnings --experimental-strip-types scripts/advertisement-slot-rules-test.mjs"
   },
   "private": true
 }

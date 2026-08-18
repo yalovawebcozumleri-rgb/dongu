@@ -25,7 +25,8 @@ class Advertisement extends Model
     public const FORMAT_NATIVE = 'native';
     public const FORMAT_IMAGE = 'image';
     public const FORMAT_COMPACT = 'compact';
-    public const FORMATS = [self::FORMAT_NATIVE, self::FORMAT_IMAGE, self::FORMAT_COMPACT];
+    public const FORMAT_BANNER = 'banner';
+    public const FORMATS = [self::FORMAT_NATIVE, self::FORMAT_IMAGE, self::FORMAT_COMPACT, self::FORMAT_BANNER];
 
     public const PLACEMENTS = [self::PLACEMENT_HOME_FEED, self::PLACEMENT_LEADERBOARD, self::PLACEMENT_LISTING_DETAIL, self::PLACEMENT_FAVORITES, self::PLACEMENT_PUBLIC_PROFILE, self::PLACEMENT_MY_LISTINGS, self::PLACEMENT_PURCHASE_REQUESTS, self::PLACEMENT_MESSAGES_LIST, self::PLACEMENT_TRANSACTION_HISTORY, self::PLACEMENT_TRANSACTION_DETAIL, self::PLACEMENT_NOTIFICATIONS, self::PLACEMENT_PROFILE_HOME, self::PLACEMENT_USAGE_LIMITS];
 
@@ -33,11 +34,26 @@ class Advertisement extends Model
         self::PLACEMENT_HOME_FEED => 'Ana sayfa', self::PLACEMENT_LEADERBOARD => 'Döngü sıralaması', self::PLACEMENT_LISTING_DETAIL => 'İlan detayı', self::PLACEMENT_FAVORITES => 'Favoriler', self::PLACEMENT_PUBLIC_PROFILE => 'Kullanıcı profili', self::PLACEMENT_MY_LISTINGS => 'İlanlarım', self::PLACEMENT_PURCHASE_REQUESTS => 'Alım taleplerim', self::PLACEMENT_MESSAGES_LIST => 'Mesajlar', self::PLACEMENT_TRANSACTION_HISTORY => 'İşlem geçmişi', self::PLACEMENT_TRANSACTION_DETAIL => 'İşlem detayı', self::PLACEMENT_NOTIFICATIONS => 'Bildirimler', self::PLACEMENT_PROFILE_HOME => 'Profil', self::PLACEMENT_USAGE_LIMITS => 'Limitlerim',
     ];
 
-    protected $fillable = ['placement', 'format', 'sponsor_name', 'headline', 'body', 'cta_label', 'target_url', 'background_color', 'image_path', 'is_active', 'starts_at', 'ends_at', 'priority'];
+    public const SPONSORED_PLACEMENT_HINTS = [
+        self::PLACEMENT_HOME_FEED => 'Konum kartından sonra, ilan listesinden önce.',
+        self::PLACEMENT_LEADERBOARD => 'İlk üç sıralama kartından sonra.',
+        self::PLACEMENT_LISTING_DETAIL => 'Ambalaj ve fiyat bölümünden sonra, teslimat bilgilerinden önce.',
+        self::PLACEMENT_FAVORITES => 'Sayfa özetinden sonra, favori listesinden önce.',
+        self::PLACEMENT_PUBLIC_PROFILE => 'Profil özetinden sonra, aktif ilanlardan önce.',
+        self::PLACEMENT_MY_LISTINGS => 'Sayfa başlığı ve filtrelerden sonra, ilan listesinden önce.',
+        self::PLACEMENT_PURCHASE_REQUESTS => 'Sayfa başlığı ve filtrelerden sonra, talep listesinden önce.',
+        self::PLACEMENT_MESSAGES_LIST => 'Sayfa başlığından sonra, görüşme listesinden önce.',
+        self::PLACEMENT_TRANSACTION_HISTORY => 'Sayfa başlığı ve filtrelerden sonra, işlem listesinden önce.',
+        self::PLACEMENT_TRANSACTION_DETAIL => 'Durum özetinden sonra, işlem ayrıntılarından önce.',
+        self::PLACEMENT_NOTIFICATIONS => 'Sayfa başlığı ve filtrelerden sonra, bildirim listesinden önce.',
+        self::PLACEMENT_PROFILE_HOME => 'Hesap özetinden sonra, profil menüsünden önce.',
+        self::PLACEMENT_USAGE_LIMITS => 'Kullanım özeti kartlarından sonra.',
+    ];
+    protected $fillable = ['placement', 'format', 'sponsor_name', 'headline', 'body', 'cta_label', 'target_url', 'background_color', 'image_path', 'android_enabled', 'ios_enabled', 'is_active', 'starts_at', 'ends_at', 'priority'];
 
     protected function casts(): array
     {
-        return ['is_active' => 'boolean', 'starts_at' => 'datetime', 'ends_at' => 'datetime', 'priority' => 'integer'];
+        return ['android_enabled' => 'boolean', 'ios_enabled' => 'boolean', 'is_active' => 'boolean', 'starts_at' => 'datetime', 'ends_at' => 'datetime', 'priority' => 'integer'];
     }
 
     public function scopeCurrentlyActive(Builder $query): Builder

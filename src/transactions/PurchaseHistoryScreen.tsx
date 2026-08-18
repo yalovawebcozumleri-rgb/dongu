@@ -8,7 +8,8 @@ import { ApiError, apiRequest } from '../lib/api';
 import { useNotice } from '../notice/NoticeProvider';
 import TransactionDetailScreen from './TransactionDetailScreen';
 import MonetizedAdSlot from '../advertising/MonetizedAdSlot';
-import { insertAdvertisementSlots } from '../advertising/listSlots';
+import SponsoredBannerSlot from '../advertising/SponsoredBannerSlot';
+import { countAdvertisementSlots, insertAdvertisementSlots } from '../advertising/listSlots';
 import { useAdvertisements } from '../advertising/useAdvertisements';
 import { useNativeAdSessionKey, useNativeAdSessionPreload } from '../advertising/useNativeAdSession';
 
@@ -115,6 +116,7 @@ export default function PurchaseHistoryScreen({ token, back, openConversation }:
         renderItem={({ item }) => item.kind === 'advertisement'
           ? <MonetizedAdSlot placement={placement} token={token} slotIndex={item.slotIndex} itemCount={items.length} sessionKey={adSessionKey} />
           : <TransactionCard item={item.item} scope={scope} open={() => scope === 'active' ? openConversation(item.item) : setSelected(item.item)} />}
+        ListHeaderComponent={<SponsoredBannerSlot placement={placement} token={token} sessionKey={adSessionKey} />}
         contentContainerStyle={items.length ? x.list : x.emptyList}
         refreshing={refreshing}
         onRefresh={() => { setAdSessionGeneration(current => current + 1); void load(1, 'refresh'); }}
@@ -127,7 +129,7 @@ export default function PurchaseHistoryScreen({ token, back, openConversation }:
         ) : (
           <View style={x.empty}><Text style={x.emptyIcon}>{scope === 'active' ? '◎' : '✓'}</Text><Text style={x.emptyTitle}>{scope === 'active' ? 'Aktif alım talebin yok' : 'İşlem geçmişin henüz boş'}</Text><Text style={x.emptyText}>{scope === 'active' ? 'Bir ilan için “Almak istiyorum” dediğinde süreci buradan takip edebilirsin.' : 'Sonuçlanan alım taleplerin ve tamamlanan teslimatların burada saklanacak.'}</Text></View>
         )}
-        ListFooterComponent={loadingMore ? <ActivityIndicator color={C.green} style={x.footer} /> : null}
+        ListFooterComponent={!loading && !error && !items.length && countAdvertisementSlots(0, advertisementCollection?.meta) > 0 ? <MonetizedAdSlot placement={placement} token={token} slotIndex={1} itemCount={0} sessionKey={adSessionKey} /> : loadingMore ? <ActivityIndicator color={C.green} style={x.footer} /> : null}
         initialNumToRender={7}
         maxToRenderPerBatch={7}
         windowSize={7}

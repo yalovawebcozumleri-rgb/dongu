@@ -5,8 +5,9 @@ import { C } from '../../styles';
 import { ApiError, apiRequest } from '../lib/api';
 import ListingCard from '../listings/ListingCard';
 import MonetizedAdSlot from '../advertising/MonetizedAdSlot';
+import SponsoredBannerSlot from '../advertising/SponsoredBannerSlot';
 
-import { insertAdvertisementSlots } from '../advertising/listSlots';
+import { countAdvertisementSlots, insertAdvertisementSlots } from '../advertising/listSlots';
 import { useAdvertisements } from '../advertising/useAdvertisements';
 import { useNativeAdSessionKey, useNativeAdSessionPreload } from '../advertising/useNativeAdSession';
 type FavoriteResponse = {
@@ -109,6 +110,7 @@ export default function FavoritesScreen({
               toggleFavorite={() => void remove(item.item)}
             />
         }
+        ListHeaderComponent={<SponsoredBannerSlot placement="favorites" token={token} sessionKey={adSessionKey} />}
         contentContainerStyle={listings.length ? x.list : x.emptyList}
         refreshing={refreshing}
         onRefresh={() => { setAdSessionGeneration(current => current + 1); void load(1, 'refresh'); }}
@@ -123,7 +125,7 @@ export default function FavoritesScreen({
         ) : (
           <View style={x.empty}><Text style={x.emptyIcon}>♡</Text><Text style={x.emptyTitle}>Henüz favorin yok</Text><Text style={x.emptyText}>Ana sayfadaki kalp simgesine dokunduğun ilanlar burada görünecek.</Text></View>
         )}
-        ListFooterComponent={loadingMore ? <ActivityIndicator color={C.green} style={x.footer} /> : null}
+        ListFooterComponent={!loading && !error && !listings.length && countAdvertisementSlots(0, advertisementCollection?.meta) > 0 ? <MonetizedAdSlot placement="favorites" token={token} slotIndex={1} itemCount={0} sessionKey={adSessionKey} style={x.adSlot} /> : loadingMore ? <ActivityIndicator color={C.green} style={x.footer} /> : null}
         initialNumToRender={6}
         maxToRenderPerBatch={6}
         windowSize={7}

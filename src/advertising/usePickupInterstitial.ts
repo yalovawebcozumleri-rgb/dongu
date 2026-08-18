@@ -24,7 +24,7 @@ export function usePickupInterstitial(enabled: boolean) {
     };
     void initializeGoogleAds(diagnosticContext).then(ready => {
       if (!ready) return;
-      const ad = module.InterstitialAd.createForAdRequest(unitId, { requestNonPersonalizedAdsOnly: true });
+      const ad = module.InterstitialAd.createForAdRequest(unitId);
       adRef.current = ad;
       cleanupRef.current = [
         ad.addAdEventListener(module.AdEventType.LOADED, () => {

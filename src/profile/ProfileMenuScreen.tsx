@@ -3,6 +3,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { C } from '../../styles';
 import UserAvatar from './UserAvatar';
 import MonetizedAdSlot from '../advertising/MonetizedAdSlot';
+import SponsoredBannerSlot from '../advertising/SponsoredBannerSlot';
 
 export default function ProfileMenuScreen({ fullName, avatarUrl, email, emailVerified, token, openPublicProfile, openEditProfile, openUsageLimits, openAddresses, openMyListings, openFavorites, openPurchaseHistory, openNotificationPreferences, openBlockedUsers, openTerms, openPrivacy, openDeleteAccount, onSignOut }: {
   fullName: string;
@@ -49,6 +50,7 @@ export default function ProfileMenuScreen({ fullName, avatarUrl, email, emailVer
         <View style={[x.verified, !emailVerified && x.unverified]}><Text style={[x.verifiedText, !emailVerified && x.unverifiedText]}>{emailVerified ? '✓ E-posta doğrulandı' : 'E-posta doğrulanmadı'}</Text></View>
         <Pressable accessibilityRole="button" accessibilityState={{ disabled: openingPublicProfile }} disabled={openingPublicProfile} onPress={handleOpenPublicProfile} style={[x.publicButton, openingPublicProfile && x.publicButtonDisabled]}><Text style={x.publicButtonText}>Profilimi görüntüle</Text><Text style={x.publicButtonArrow}>›</Text></Pressable>
       </View>
+      <SponsoredBannerSlot placement="profile_home" token={token} />
 
       <Text style={x.sectionLabel}>HESAP VE İŞLEMLER</Text>
       <MenuRow label="Profili düzenle" onPress={openEditProfile} />

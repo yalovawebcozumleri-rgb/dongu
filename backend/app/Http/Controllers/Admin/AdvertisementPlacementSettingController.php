@@ -23,8 +23,6 @@ class AdvertisementPlacementSettingController extends Controller
             'enabled' => ['required', 'boolean'],
             'androidEnabled' => ['required', 'boolean'],
             'iosEnabled' => ['required', 'boolean'],
-            'sourceOrder' => [Rule::requiredIf($request->boolean('enabled') && $setting->kind === AdvertisementPlacementSetting::KIND_NATIVE), 'nullable', 'array', 'max:2'],
-            'sourceOrder.*' => ['required', 'string', 'distinct', Rule::in(AdvertisementPlacementSetting::NATIVE_SOURCES)],
             'firstAfter' => ['required', 'integer', 'min:0', 'max:1000'],
             'repeatEvery' => ['required', 'integer', 'min:0', 'max:1000'],
             'maxPerSession' => ['required', 'integer', 'min:1', 'max:'.$maxPerSession],
@@ -50,12 +48,10 @@ class AdvertisementPlacementSettingController extends Controller
         $iosEnabled = (bool) $base['enabled'] && (bool) $base['iosEnabled'];
         abort_if((bool) $base['enabled'] && ! $androidEnabled && ! $iosEnabled, 422, 'Alan açıkken en az bir platform açık olmalıdır.');
 
-        $sources = $base['sourceOrder'] ?? $setting->source_order ?? [AdvertisementPlacementSetting::SOURCE_ADMOB];
+        $sources = [AdvertisementPlacementSetting::SOURCE_ADMOB];
         if ($setting->kind === AdvertisementPlacementSetting::KIND_NATIVE) {
             $hasEnabledAdMobUnit = (! empty($base['adMobAndroidUnitId']) && $androidEnabled) || (! empty($base['adMobIosUnitId']) && $iosEnabled);
-            abort_if((bool) $base['enabled'] && in_array(AdvertisementPlacementSetting::SOURCE_ADMOB, $sources, true) && ! $hasEnabledAdMobUnit, 422, 'AdMob kaynağı açıksa açık platformlardan en az biri için reklam birimi kimliği gereklidir.');
-        } else {
-            $sources = [AdvertisementPlacementSetting::SOURCE_ADMOB];
+            abort_if((bool) $base['enabled'] && ! $hasEnabledAdMobUnit, 422, 'Alan açıksa açık platformlardan en az biri için AdMob reklam birimi kimliği gereklidir.');
         }
 
         $extra = $setting->settings ?? [];

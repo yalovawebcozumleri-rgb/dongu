@@ -5,7 +5,8 @@ import { money } from '../../marketplace';
 import { Conversation } from './types';
 import UserAvatar from '../profile/UserAvatar';
 import MonetizedAdSlot from '../advertising/MonetizedAdSlot';
-import { insertAdvertisementSlots } from '../advertising/listSlots';
+import SponsoredBannerSlot from '../advertising/SponsoredBannerSlot';
+import { countAdvertisementSlots, insertAdvertisementSlots } from '../advertising/listSlots';
 import { useAdvertisements } from '../advertising/useAdvertisements';
 import { useNativeAdSessionKey, useNativeAdSessionPreload } from '../advertising/useNativeAdSession';
 import { formatLocalMessageTime } from './time';
@@ -129,12 +130,18 @@ export default function ConversationList({ conversations, open, onHide, onRefres
     >
       <Text style={x.eyebrow}>GÖRÜŞMELER</Text>
       <Text style={x.title}>Mesajlar</Text>
+      <SponsoredBannerSlot placement="messages_list" sessionKey={adSessionKey} />
       {!conversations.length ? (
-        <View style={x.empty}>
-          <Text style={x.emptyIcon}>◎</Text>
-          <Text style={x.emptyTitle}>Henüz mesajın yok</Text>
-          <Text style={x.emptyText}>Bir ilan hakkında yazdığında veya alım talebi aldığında konuşma burada görünecek.</Text>
-        </View>
+        <>
+          <View style={x.empty}>
+            <Text style={x.emptyIcon}>◎</Text>
+            <Text style={x.emptyTitle}>Henüz mesajın yok</Text>
+            <Text style={x.emptyText}>Bir ilan hakkında yazdığında veya alım talebi aldığında konuşma burada görünecek.</Text>
+          </View>
+          {countAdvertisementSlots(0, advertisementCollection?.meta) > 0 && (
+            <MonetizedAdSlot placement="messages_list" slotIndex={1} itemCount={0} sessionKey={adSessionKey} />
+          )}
+        </>
       ) : listData.map(row => row.kind === 'advertisement'
         ? <MonetizedAdSlot key={row.key} placement="messages_list" slotIndex={row.slotIndex} itemCount={conversations.length} sessionKey={adSessionKey} /> : ((conversation: Conversation) => (
         <SwipeRow key={conversation.id} conversation={conversation} onHide={onHide}>

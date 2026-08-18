@@ -10,7 +10,6 @@ const form = reactive({
   enabled: false,
   androidEnabled: true,
   iosEnabled: true,
-  sourceOrder: [],
   firstAfter: 0,
   repeatEvery: 0,
   maxPerSession: 1,
@@ -37,7 +36,6 @@ const maximumFor = item => item?.kind === 'native' ? nativeMaximum(item) : 1000;
 const isSingleNativePlacement = item => item?.kind === 'native' && nativeMaximum(item) === 1;
 
 const actionSettings = computed(() => props.settings.filter(item => ['interstitial', 'rewarded'].includes(item.kind)));
-const sourceLabels = { direct: 'Döngü kampanyası', admob: 'AdMob' };
 
 const displayRule = item => {
   if (item.key === 'rewarded_extra_rights') return `${item.usageRewards.filter(reward => reward.enabled).length}/${item.usageRewards.length} ek hak açık`;
@@ -48,7 +46,6 @@ const displayRule = item => {
   return item.locationLabel;
 };
 
-const sourcesLabel = item => item.sourceOrder.map(source => sourceLabels[source]).join(' → ');
 const unitLabel = value => value || 'Tanımlı değil';
 const platformLabel = item => {
   if (!item.enabled) return 'Kapalı';
@@ -65,7 +62,6 @@ const open = item => {
     enabled: item.enabled,
     androidEnabled: item.enabled ? Boolean(item.androidEnabled) : false,
     iosEnabled: item.enabled ? Boolean(item.iosEnabled) : false,
-    sourceOrder: [...item.sourceOrder],
     firstAfter: item.firstAfter,
     repeatEvery: item.repeatEvery,
     maxPerSession: Math.min(item.maxPerSession, maximumFor(item)),
@@ -100,8 +96,6 @@ watch(() => form.maxPerSession, value => {
 });
 
 const close = () => { if (!pending.value) editing.value = null; };
-const toggleSource = source => { const index = form.sourceOrder.indexOf(source); if (index >= 0) form.sourceOrder.splice(index, 1); else form.sourceOrder.push(source); };
-const move = (index, direction) => { const target = index + direction; if (target < 0 || target >= form.sourceOrder.length) return; [form.sourceOrder[index], form.sourceOrder[target]] = [form.sourceOrder[target], form.sourceOrder[index]]; };
 const save = () => {
   if (!editing.value || pending.value) return;
   pending.value = true;
@@ -120,16 +114,15 @@ const save = () => {
   <section class="mt-5 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
     <header class="border-b border-slate-200 px-5 py-4">
       <h2 class="text-lg font-semibold text-slate-950">Reklam alanları</h2>
-      <p class="mt-1 text-sm text-slate-600">Uygulamadaki standart reklam kartlarını, kaynak sırasını ve gösterim yoğunluğunu tek yerden yönet.</p>
+      <p class="mt-1 text-sm text-slate-600">Uygulamadaki AdMob reklam kartlarını ve gösterim yoğunluğunu tek yerden yönet. Sponsorlu banner kampanyaları aşağıdaki ayrı bölümden yönetilir.</p>
     </header>
     <div class="overflow-x-auto">
-      <table class="w-full min-w-[1280px] text-left text-sm">
+      <table class="w-full min-w-[1120px] text-left text-sm">
         <thead class="border-b border-slate-200 bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-700">
           <tr>
             <th class="px-5 py-3.5">Reklam alanı</th>
             <th class="px-5 py-3.5">Durum</th>
             <th class="px-5 py-3.5">Platform</th>
-            <th class="px-5 py-3.5">Reklam sırası</th>
             <th class="px-5 py-3.5">Gösterim düzeni</th>
             <th class="px-5 py-3.5">AdMob birimleri</th>
             <th class="px-5 py-3.5 text-right">İşlem</th>
@@ -140,7 +133,6 @@ const save = () => {
             <td class="px-5 py-4 font-semibold text-slate-950">{{ item.label }}</td>
             <td class="px-5 py-4"><span :class="['rounded-full px-2.5 py-1 text-xs font-semibold', item.enabled ? 'bg-emerald-50 text-emerald-800' : 'bg-slate-100 text-slate-700']">{{ item.enabled ? 'Açık' : 'Kapalı' }}</span></td>
             <td class="px-5 py-4 text-slate-700">{{ platformLabel(item) }}</td>
-            <td class="px-5 py-4 text-slate-700">{{ sourcesLabel(item) }}</td>
             <td class="px-5 py-4 text-slate-700">{{ displayRule(item) }}</td>
             <td class="px-5 py-4 text-xs text-slate-600"><div><span class="font-semibold text-slate-700">Android:</span> <span class="font-mono">{{ unitLabel(item.adMobAndroidUnitId) }}</span></div><div class="mt-1"><span class="font-semibold text-slate-700">iOS:</span> <span class="font-mono">{{ unitLabel(item.adMobIosUnitId) }}</span></div></td>
             <td class="px-5 py-4 text-right"><button class="rounded-xl border border-slate-300 px-4 py-2 text-xs font-semibold text-slate-800 hover:border-emerald-500" @click="open(item)">Düzenle</button></td>
@@ -182,7 +174,6 @@ const save = () => {
         <p class="mt-2 text-xs leading-5 text-slate-500">Alan durumu kapalıysa Android ve iOS şalterleri otomatik kapalı kaydedilir.</p>
 
         <template v-if="editing.kind === 'native'">
-          <fieldset class="mt-5"><legend class="text-sm font-semibold text-slate-950">Reklam kaynakları ve sırası</legend><p class="mt-1 text-xs leading-5 text-slate-600">Döngü kampanyası yalnızca sana ait marka ve projeleri temsil eder. İki kaynak da reklam vermezse alan gösterilmez.</p><div class="mt-2 space-y-2"><div v-for="(source, index) in form.sourceOrder" :key="source" class="flex items-center justify-between rounded-xl border border-slate-200 px-4 py-3"><span class="text-sm font-semibold">{{ index + 1 }}. {{ sourceLabels[source] }}</span><div class="flex gap-1"><button type="button" class="rounded-lg border px-2 py-1" @click="move(index, -1)">↑</button><button type="button" class="rounded-lg border px-2 py-1" @click="move(index, 1)">↓</button><button type="button" class="rounded-lg border px-2 py-1 text-red-700" @click="toggleSource(source)">Kaldır</button></div></div></div><div class="mt-2 flex gap-2"><button v-for="source in ['direct','admob'].filter(value => !form.sourceOrder.includes(value))" :key="source" type="button" class="rounded-lg border border-emerald-300 px-3 py-2 text-xs font-semibold text-emerald-800" @click="toggleSource(source)">+ {{ sourceLabels[source] }}</button></div></fieldset>
           <div class="mt-5 grid gap-4 sm:grid-cols-2"><label class="text-xs font-semibold">İlk reklam<input v-model.number="form.firstAfter" type="number" min="0" class="mt-1 h-11 w-full rounded-xl border px-3" /></label><label class="text-xs font-semibold">Tekrarlama aralığı<input v-model.number="form.repeatEvery" type="number" min="0" class="mt-1 h-11 w-full rounded-xl border px-3" /></label><label class="text-xs font-semibold">Maksimum reklam<input v-model.number="form.maxPerSession" type="number" min="1" class="mt-1 h-11 w-full rounded-xl border px-3" /></label><label class="text-xs font-semibold">Minimum içerik<input v-model.number="form.minItems" type="number" min="0" class="mt-1 h-11 w-full rounded-xl border px-3" /></label></div>
         </template>
 

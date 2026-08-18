@@ -61,6 +61,11 @@ const systemItems = [
     { label: 'Kullanım limitleri', description: 'İlan, talep ve mesaj sınırları', href: '/admin/usage-policies' },
 ];
 
+const advertisingItems = [
+    { label: 'AdMob yönetimi', description: 'Çalışma modu, reklam alanları ve ödüllü reklamlar', href: '/admin/advertisements/admob' },
+    { label: 'Sponsorlu bannerlar', description: 'Bağımsız marka kampanyaları ve performans', href: '/admin/advertisements/sponsors' },
+];
+
 const isActive = href => href === '/admin'
     ? currentPath.value === href
     : currentPath.value.startsWith(href);
@@ -177,7 +182,27 @@ onBeforeUnmount(() => {
                     </div>
 
                     <Link href="/admin/announcements" :class="['admin-nav-trigger inline-flex h-10 items-center justify-center border-b-2 border-transparent px-3 transition', isActive('/admin/announcements') ? 'border-emerald-600 text-slate-950' : 'text-slate-900 hover:border-slate-300 hover:text-slate-950']" @click="closeMenus"><span class="admin-nav-label">Duyurular</span></Link>
-                    <Link href="/admin/advertisements" :class="['admin-nav-trigger inline-flex h-10 items-center justify-center border-b-2 border-transparent px-3 transition', isActive('/admin/advertisements') ? 'border-emerald-600 text-slate-950' : 'text-slate-900 hover:border-slate-300 hover:text-slate-950']" @click="closeMenus"><span class="admin-nav-label">Reklamlar</span></Link>
+                    <div class="relative">
+                        <button
+                            type="button"
+                            :aria-expanded="openMenu === 'advertising'"
+                            aria-haspopup="true"
+                            :class="[
+                                'admin-nav-trigger inline-flex h-10 items-center justify-center gap-1.5 border-b-2 border-transparent px-3 transition',
+                                isSectionActive(advertisingItems) ? 'border-emerald-600 text-slate-950' : 'text-slate-900 hover:border-slate-300 hover:text-slate-950',
+                            ]"
+                            @click="toggleDropdown('advertising')"
+                        >
+                            <span class="admin-nav-label">Reklamlar</span>
+                            <span :class="['text-[10px] transition-transform', openMenu === 'advertising' && 'rotate-180']" aria-hidden="true">▾</span>
+                        </button>
+                        <div v-if="openMenu === 'advertising'" class="absolute left-1/2 top-[calc(100%+.65rem)] w-72 -translate-x-1/2 rounded-2xl border border-slate-200 bg-white p-2 shadow-xl shadow-slate-900/10">
+                            <Link v-for="item in advertisingItems" :key="item.href" :href="item.href" :class="['block rounded-xl px-3.5 py-3 transition', isActive(item.href) ? 'bg-emerald-50' : 'hover:bg-slate-50']" @click="closeMenus">
+                                <span :class="['block text-sm font-semibold', isActive(item.href) ? 'text-forest-700' : 'text-slate-900']">{{ item.label }}</span>
+                                <span class="mt-0.5 block text-xs text-slate-600">{{ item.description }}</span>
+                            </Link>
+                        </div>
+                    </div>
 
                     <div class="relative">
                         <button
@@ -233,7 +258,10 @@ onBeforeUnmount(() => {
                     </section>
                     <section class="grid gap-1 sm:grid-cols-2">
                         <Link href="/admin/announcements" :class="['rounded-xl px-4 py-3 text-sm font-semibold', isActive('/admin/announcements') ? 'bg-emerald-50 text-forest-700' : 'text-slate-900 hover:bg-slate-50']" @click="closeMenus">Duyurular</Link>
-                        <Link href="/admin/advertisements" :class="['rounded-xl px-4 py-3 text-sm font-semibold', isActive('/admin/advertisements') ? 'bg-emerald-50 text-forest-700' : 'text-slate-900 hover:bg-slate-50']" @click="closeMenus">Reklamlar</Link>
+                        </section>
+                    <section>
+                        <p class="px-4 pb-1.5 text-[10px] font-semibold uppercase tracking-[.16em] text-slate-600">Reklamlar</p>
+                        <Link v-for="item in advertisingItems" :key="item.href" :href="item.href" :class="['block rounded-xl px-4 py-2.5 text-sm font-semibold', isActive(item.href) ? 'bg-emerald-50 text-forest-700' : 'text-slate-900 hover:bg-slate-50']" @click="closeMenus">{{ item.label }}</Link>
                     </section>
                     <section>
                         <p class="px-4 pb-1.5 text-[10px] font-semibold uppercase tracking-[.16em] text-slate-600">Sistem Ayarları</p>

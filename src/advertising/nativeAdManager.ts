@@ -5,7 +5,7 @@ type NativeAdInstance = {
 
 type NativeAdModule = {
   NativeAd: {
-    createForAdRequest: (unitId: string, options: { requestNonPersonalizedAdsOnly: boolean }) => Promise<NativeAdInstance>;
+    createForAdRequest: (unitId: string) => Promise<NativeAdInstance>;
   };
 };
 
@@ -79,7 +79,7 @@ function processQueue() {
 
   inFlightEntry = entry;
   entry.state = 'loading';
-  void entry.module.NativeAd.createForAdRequest(entry.unitId, { requestNonPersonalizedAdsOnly: true })
+  void entry.module.NativeAd.createForAdRequest(entry.unitId)
     .then(ad => {
       if (entry.cancelled || entries.get(entry.key) !== entry) {
         destroyOnce(ad);

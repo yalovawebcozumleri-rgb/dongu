@@ -7,6 +7,7 @@ import { useNotice } from '../notice/NoticeProvider';
 import UserAvatar from '../profile/UserAvatar';
 import { C } from '../../styles';
 import MonetizedAdSlot from '../advertising/MonetizedAdSlot';
+import SponsoredBannerSlot from '../advertising/SponsoredBannerSlot';
 
 const statusLabels: Record<Conversation['status'], string> = {
   inquiry: 'Görüşme',
@@ -73,6 +74,7 @@ export default function TransactionDetailScreen({ item, token, back, openMessage
           <Text style={x.status}>{statusLabel}</Text>
           <Text style={x.date}>{formatDate(item.updatedAt)}</Text>
         </View>
+        <SponsoredBannerSlot placement="transaction_detail" token={token} />
 
         <View style={x.card}>
           <Text style={x.sectionLabel}>İŞLEM YAPILAN KULLANICI</Text>

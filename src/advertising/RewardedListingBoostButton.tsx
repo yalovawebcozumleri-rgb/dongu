@@ -63,7 +63,6 @@ export default function RewardedListingBoostButton({ listing, token, userId, onB
       adsReady = await initializeGoogleAds(diagnosticContext);
       if (!adsReady) throw new Error('Reklam izni alınamadı');
       const ad = module.RewardedAd.createForAdRequest(unitId, {
-        requestNonPersonalizedAdsOnly: true,
         serverSideVerificationOptions: { userId, customData: challenge.data.token },
       });
       const cleanups: (() => void)[] = [];

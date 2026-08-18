@@ -26,20 +26,10 @@ class AdvertisementController extends Controller
         $platform = $filters['platform'] ?? $this->platformFromRequest($request);
         $setting = AdvertisementPlacementSetting::forKey($placement);
         $platformEnabled = $setting->platformEnabled($platform);
-        $sources = collect($setting->source_order ?? [])
-            ->filter(fn (string $source) => in_array($source, AdvertisementPlacementSetting::NATIVE_SOURCES, true))
-            ->values()->all();
-
+        // Sponsorlu banner kampanyaları ayrı /sponsored-banners akışından gelir.
+        // Bu uç yalnızca mevcut AdMob sözleşmesini ve yerleşim ayarlarını taşır.
+        $sources = [AdvertisementPlacementSetting::SOURCE_ADMOB];
         $advertisements = collect();
-        if ($platformEnabled && in_array(AdvertisementPlacementSetting::SOURCE_DIRECT, $sources, true)) {
-            $advertisements = Advertisement::query()
-                ->currentlyActive()
-                ->whereHas('placements', fn ($query) => $query->where('placement', $placement))
-                ->orderByDesc('priority')
-                ->orderBy('id')
-                ->limit(10)
-                ->get();
-        }
 
         return response()->json([
             'data' => $advertisements->map(fn (Advertisement $advertisement) => [

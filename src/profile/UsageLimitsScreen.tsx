@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { C } from '../../styles';
 import MonetizedAdSlot from '../advertising/MonetizedAdSlot';
+import SponsoredBannerSlot from '../advertising/SponsoredBannerSlot';
 import RewardedUsageRightButton, { RewardOffer } from '../advertising/RewardedUsageRightButton';
 import { ApiError, apiRequest } from '../lib/api';
 
@@ -54,6 +55,7 @@ export default function UsageLimitsScreen({ token, userId, back }: { token: stri
             <Text style={x.accountTitle}>{data.isNewAccount ? 'Yeni kullanıcı limitleri uygulanıyor' : 'Standart kullanım limitleri uygulanıyor'}</Text>
             <Text style={x.accountText}>{data.isNewAccount && data.newAccountEndsAt ? `Yeni hesap dönemin ${formatDate(data.newAccountEndsAt)} tarihinde sona erecek. Sonrasında standart limitlere otomatik geçeceksin.` : 'Hakların son 24 saat içindeki kullanımına göre hareketli olarak yenilenir.'}</Text>
           </View>
+          <SponsoredBannerSlot placement="usage_limits" token={token} />
           <Text style={x.sectionTitle}>SON 24 SAATLİK HAKLAR</Text>
           <QuotaCard title="İlan oluşturma" quota={data.listings} token={token} userId={userId} reload={load} />
           <QuotaCard title="Yeni görüşme başlatma" quota={data.contacts} token={token} userId={userId} reload={load} />

@@ -6,7 +6,8 @@ import { ApiError, apiRequest } from '../lib/api';
 import { useNotice } from '../notice/NoticeProvider';
 import RewardedListingBoostButton from '../advertising/RewardedListingBoostButton';
 import MonetizedAdSlot from '../advertising/MonetizedAdSlot';
-import { insertAdvertisementSlots } from '../advertising/listSlots';
+import SponsoredBannerSlot from '../advertising/SponsoredBannerSlot';
+import { countAdvertisementSlots, insertAdvertisementSlots } from '../advertising/listSlots';
 import { useAdvertisements } from '../advertising/useAdvertisements';
 import { useNativeAdSessionKey, useNativeAdSessionPreload } from '../advertising/useNativeAdSession';
 
@@ -167,6 +168,7 @@ export default function MyListingsScreen({ token, userId, back, openListing, cre
             }}
           />
         )}
+        ListHeaderComponent={<SponsoredBannerSlot placement="my_listings" token={token} sessionKey={adSessionKey} />}
         contentContainerStyle={listings.length ? x.list : x.emptyList}
         refreshing={refreshing}
         onRefresh={() => { setAdSessionGeneration(current => current + 1); void load(1, 'refresh'); }}
@@ -184,7 +186,7 @@ export default function MyListingsScreen({ token, userId, back, openListing, cre
             {scope === 'active' && <Pressable accessibilityRole="button" onPress={createListing} style={x.primary}><Text style={x.primaryText}>İlan oluştur</Text></Pressable>}
           </View>
         )}
-        ListFooterComponent={loadingMore ? <ActivityIndicator color={C.green} style={x.footer} /> : null}
+        ListFooterComponent={!loading && !error && !listings.length && countAdvertisementSlots(0, advertisementCollection?.meta) > 0 ? <MonetizedAdSlot placement="my_listings" token={token} slotIndex={1} itemCount={0} sessionKey={adSessionKey} /> : loadingMore ? <ActivityIndicator color={C.green} style={x.footer} /> : null}
         initialNumToRender={6}
         maxToRenderPerBatch={6}
         windowSize={7}

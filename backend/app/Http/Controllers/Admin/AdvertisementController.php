@@ -20,6 +20,11 @@ use Throwable;
 
 class AdvertisementController extends Controller
 {
+    public function redirectToAdMob(): RedirectResponse
+    {
+        return redirect()->route('admin.advertisements.admob');
+    }
+
     public function index(Request $request): Response
     {
         $filters = $request->validate([
@@ -35,6 +40,7 @@ class AdvertisementController extends Controller
         $perPage = (int) ($filters['per_page'] ?? 50);
 
         $query = Advertisement::query()
+            ->where('format', Advertisement::FORMAT_BANNER)
             ->with('placements')
             ->withCount(['impressions', 'impressions as clicks_count' => fn ($query) => $query->whereNotNull('clicked_at')])
             ->when($search !== '', fn (Builder $query) => $query->where(fn (Builder $query) => $query
@@ -77,8 +83,9 @@ class AdvertisementController extends Controller
                 'body' => $advertisement->body,
                 'ctaLabel' => $advertisement->cta_label,
                 'targetUrl' => $advertisement->target_url,
-                'backgroundColor' => $advertisement->background_color,
                 'format' => $advertisement->format,
+                'androidEnabled' => $advertisement->android_enabled,
+                'iosEnabled' => $advertisement->ios_enabled,
                 'imageUrl' => $advertisement->image_path ? url("/api/v1/advertisements/{$advertisement->id}/image") : null,
                 'isActive' => $advertisement->is_active,
                 'status' => $status,
@@ -93,11 +100,19 @@ class AdvertisementController extends Controller
             ];
         });
 
-        $allCampaigns = Advertisement::query();
-        $totalImpressions = (int) DB::table('advertisement_impressions')->count();
-        $totalClicks = (int) DB::table('advertisement_impressions')->whereNotNull('clicked_at')->count();
+        $allCampaigns = Advertisement::query()->where('format', Advertisement::FORMAT_BANNER);
+        $totalImpressions = (int) DB::table('advertisement_impressions')
+            ->join('advertisements', 'advertisements.id', '=', 'advertisement_impressions.advertisement_id')
+            ->where('advertisements.format', Advertisement::FORMAT_BANNER)
+            ->count();
+        $totalClicks = (int) DB::table('advertisement_impressions')
+            ->join('advertisements', 'advertisements.id', '=', 'advertisement_impressions.advertisement_id')
+            ->where('advertisements.format', Advertisement::FORMAT_BANNER)
+            ->whereNotNull('advertisement_impressions.clicked_at')
+            ->count();
         $coveredPlacements = DB::table('advertisement_placements')
             ->join('advertisements', 'advertisements.id', '=', 'advertisement_placements.advertisement_id')
+            ->where('advertisements.format', Advertisement::FORMAT_BANNER)
             ->where('advertisements.is_active', true)
             ->where(fn ($query) => $query->whereNull('advertisements.starts_at')->orWhere('advertisements.starts_at', '<=', now()))
             ->where(fn ($query) => $query->whereNull('advertisements.ends_at')->orWhere('advertisements.ends_at', '>', now()))
@@ -128,7 +143,11 @@ class AdvertisementController extends Controller
             ]];
         });
 
-        return Inertia::render('Admin/Advertisements/Index', [
+        $component = $request->routeIs('admin.advertisements.admob')
+            ? 'Admin/Advertisements/AdMob'
+            : 'Admin/Advertisements/Index';
+
+        return Inertia::render($component, [
             'campaigns' => $campaigns,
             'filters' => ['search' => $search, 'status' => $status, 'placement' => $placement, 'per_page' => $perPage],
             'counts' => [
@@ -152,7 +171,6 @@ class AdvertisementController extends Controller
                 'androidEnabled' => $setting->android_enabled,
                 'iosEnabled' => $setting->ios_enabled,
                 'locked' => $setting->locked,
-                'sourceOrder' => $setting->source_order ?? [],
                 'firstAfter' => $setting->first_after,
                 'repeatEvery' => $setting->repeat_every,
                 'maxPerSession' => $setting->max_per_session,
@@ -179,7 +197,7 @@ class AdvertisementController extends Controller
                 ->map(fn (string $label, string $value) => [
                     'value' => $value,
                     'label' => $label,
-                    'hint' => $this->placementHint($placementSettings->firstWhere('key', $value)),
+                    'hint' => Advertisement::SPONSORED_PLACEMENT_HINTS[$value] ?? '',
                     'policy' => config("advertising.placements.{$value}"),
                 ])->values(),
             'adMob' => [
@@ -199,38 +217,22 @@ class AdvertisementController extends Controller
         ]);
     }
 
-    private function placementHint(?AdvertisementPlacementSetting $setting): string
-    {
-        if (! $setting) {
-            return '';
-        }
-
-        if ($setting->repeat_every > 0) {
-            return "{$setting->first_after}. içerikten sonra; devamında her {$setting->repeat_every} içerikte bir reklam yuvası.";
-        }
-
-        if ($setting->first_after > 0) {
-            return "{$setting->first_after}. içerikten sonra tek reklam yuvası.";
-        }
-
-        return rtrim((string) $setting->location_label, ". \t\n\r\0\x0B").'.';
-    }
-
     public function store(Request $request): RedirectResponse
     {
         $validated = $request->validate([
             'sponsorName' => ['required', 'string', 'max:100'],
             'headline' => ['required', 'string', 'max:140'],
             'body' => ['required', 'string', 'max:240'],
-            'format' => ['required', Rule::in(['native'])],
-            'image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:4096'],
+            'format' => ['required', Rule::in([Advertisement::FORMAT_BANNER])],
+            'image' => ['required', 'image', 'mimes:jpg,jpeg,png,webp', 'max:4096', 'dimensions:min_width=600,min_height=300,ratio=2/1'],
             'ctaLabel' => ['nullable', 'string', 'max:40', 'required_with:targetUrl'],
             'targetUrl' => ['nullable', 'url:http,https', 'max:500'],
-            'backgroundColor' => ['required', 'regex:/^#[0-9A-Fa-f]{6}$/'],
             'startsAt' => ['nullable', 'date'],
             'endsAt' => ['nullable', 'date', 'after:startsAt'],
             'priority' => ['required', 'integer', 'min:0', 'max:1000'],
             'isActive' => ['required', 'boolean'],
+            'androidEnabled' => ['required', 'boolean'],
+            'iosEnabled' => ['required', 'boolean'],
             'placements' => ['required', 'array', 'min:1'],
             'placements.*' => ['string', 'distinct', Rule::in(Advertisement::PLACEMENTS)],
         ], [
@@ -239,14 +241,14 @@ class AdvertisementController extends Controller
             'placements.*.in' => 'Seçilen yayın alanı artık desteklenmiyor.',
             'endsAt.after' => 'Bitiş zamanı başlangıç zamanından sonra olmalıdır.',
             'targetUrl.url' => 'Yönlendirme bağlantısı http:// veya https:// ile başlayan geçerli bir adres olmalıdır.',
-            'image.max' => 'Reklam görseli en fazla 4 MB olabilir.',
+            'image.max' => 'Banner görseli en fazla 4 MB olabilir.',
+            'image.dimensions' => 'Banner görseli tam 2:1 oranında olmalıdır. Önerilen boyut 1200 × 600 pikseldir.',
         ], [
             'sponsorName' => 'Sponsor adı',
             'headline' => 'Başlık',
             'body' => 'Açıklama',
             'format' => 'Reklam biçimi',
             'image' => 'Reklam görseli',
-            'backgroundColor' => 'Arka plan rengi',
             'priority' => 'Öncelik',
             'isActive' => 'Kampanya durumu',
             'placements' => 'Yayın alanları',
@@ -254,7 +256,9 @@ class AdvertisementController extends Controller
             'targetUrl' => 'Yönlendirme bağlantısı',
         ]);
 
-        $imagePath = $request->file('image')?->store('advertisements', 'public');
+        abort_if(! $validated['androidEnabled'] && ! $validated['iosEnabled'], 422, 'En az bir platform seçmelisin.');
+
+        $imagePath = $request->file('image')->store('advertisements', 'public');
         try {
             DB::transaction(function () use ($validated, $imagePath): void {
                 $advertisement = Advertisement::create([
@@ -265,8 +269,10 @@ class AdvertisementController extends Controller
                     'body' => trim($validated['body']),
                     'cta_label' => isset($validated['ctaLabel']) ? trim($validated['ctaLabel']) : null,
                     'target_url' => $validated['targetUrl'] ?? null,
-                    'background_color' => strtoupper($validated['backgroundColor']),
+                    'background_color' => '#FFFFFF',
                     'image_path' => $imagePath,
+                    'android_enabled' => $validated['androidEnabled'],
+                    'ios_enabled' => $validated['iosEnabled'],
                     'starts_at' => $validated['startsAt'] ?? null,
                     'ends_at' => $validated['endsAt'] ?? null,
                     'priority' => $validated['priority'],
@@ -279,7 +285,7 @@ class AdvertisementController extends Controller
             throw $exception;
         }
 
-        return back()->with('success', 'Doğrudan reklam kampanyası oluşturuldu.');
+        return back()->with('success', 'Sponsorlu banner kampanyası oluşturuldu.');
     }
 
     public function update(Request $request, Advertisement $advertisement): RedirectResponse

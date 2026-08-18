@@ -67,7 +67,6 @@ export default function RewardedUsageRightButton({ offer, token, userId, onRewar
       const adsReady = await initializeGoogleAds(diagnosticContext);
       if (!adsReady) throw new Error('Reklam izni alınamadı');
       const ad = module.RewardedAd.createForAdRequest(unitId, {
-        requestNonPersonalizedAdsOnly: true,
         serverSideVerificationOptions: { userId, customData: challenge.data.token },
       });
       const cleanups: (() => void)[] = [];

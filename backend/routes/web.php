@@ -15,6 +15,7 @@ use App\Http\Controllers\Admin\UserManagementController;
 use App\Http\Controllers\Admin\UserReportController;
 use App\Http\Controllers\LegalDocumentController;
 use App\Http\Controllers\AccountDeletionController;
+use App\Http\Controllers\AppDownloadRedirectController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/hesap-silme', [AccountDeletionController::class, 'create'])->name('account-deletion.create');
@@ -30,6 +31,9 @@ Route::view('/hakkimizda', 'marketing.about')->name('marketing.about');
 Route::view('/sss', 'marketing.faq')->name('marketing.faq');
 Route::view('/iletisim', 'marketing.contact')->name('marketing.contact');
 Route::view('/mobil-uygulama', 'marketing.mobile-app')->name('marketing.mobile-app');
+Route::get('/indir', AppDownloadRedirectController::class)
+    ->withoutMiddleware(\App\Http\Middleware\HandleInertiaRequests::class)
+    ->name('app.download');
 
 Route::middleware('guest')->group(function () {
     Route::get('/admin/login', [AuthController::class, 'create'])->name('admin.login');
@@ -50,7 +54,9 @@ Route::prefix('admin')->middleware(['auth', 'admin'])->group(function () {
     Route::post('/announcements', [AnnouncementCampaignController::class, 'store'])->name('admin.announcements.store');
     Route::patch('/announcements/{announcement}', [AnnouncementCampaignController::class, 'update'])->name('admin.announcements.update');
     Route::delete('/announcements/{announcement}', [AnnouncementCampaignController::class, 'destroy'])->name('admin.announcements.destroy');
-    Route::get('/advertisements', [AdvertisementController::class, 'index'])->name('admin.advertisements.index');
+    Route::get('/advertisements', [AdvertisementController::class, 'redirectToAdMob'])->name('admin.advertisements.index');
+    Route::get('/advertisements/admob', [AdvertisementController::class, 'index'])->name('admin.advertisements.admob');
+    Route::get('/advertisements/sponsors', [AdvertisementController::class, 'index'])->name('admin.advertisements.sponsors');
     Route::post('/advertisements', [AdvertisementController::class, 'store'])->name('admin.advertisements.store');
     Route::patch('/advertisements/{advertisement}', [AdvertisementController::class, 'update'])->name('admin.advertisements.update');
     Route::delete('/advertisements/{advertisement}', [AdvertisementController::class, 'destroy'])->name('admin.advertisements.destroy');

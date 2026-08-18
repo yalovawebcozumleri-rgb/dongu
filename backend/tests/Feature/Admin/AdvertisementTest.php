@@ -18,12 +18,14 @@ class AdvertisementTest extends TestCase
 
     public function test_admin_can_create_multi_placement_campaign_pause_and_delete_it(): void
     {
+        Storage::fake('public');
         $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
         $this->actingAs($admin)->post('/admin/advertisements', [
             'sponsorName' => 'Yerel sponsor', 'headline' => 'Dönüşüme destek ol', 'body' => 'Kontrollü kampanya metni.',
-            'ctaLabel' => 'İncele', 'targetUrl' => 'https://example.com/kampanya', 'backgroundColor' => '#E8F4E9',
+            'ctaLabel' => 'İncele', 'targetUrl' => 'https://example.com/kampanya',
             'startsAt' => now()->format('Y-m-d H:i:s'), 'endsAt' => now()->addDay()->format('Y-m-d H:i:s'),
-            'priority' => 20, 'isActive' => true, 'format' => 'native', 'placements' => ['home_feed', 'leaderboard', 'listing_detail'],
+            'priority' => 20, 'isActive' => true, 'format' => 'banner', 'image' => UploadedFile::fake()->image('sponsor.png', 1200, 600),
+            'androidEnabled' => true, 'iosEnabled' => true, 'placements' => ['home_feed', 'leaderboard', 'listing_detail'],
         ])->assertRedirect();
 
         $advertisement = Advertisement::firstOrFail();
@@ -40,8 +42,8 @@ class AdvertisementTest extends TestCase
         $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
         $this->actingAs($admin)->post('/admin/advertisements', [
             'sponsorName' => 'Görselli sponsor', 'headline' => 'Görselli kampanya', 'body' => 'Görsel reklam açıklaması.',
-            'format' => 'native', 'image' => UploadedFile::fake()->image('sponsor.jpg', 1200, 630),
-            'backgroundColor' => '#E8F4E9', 'priority' => 10, 'isActive' => true, 'placements' => ['listing_detail'],
+            'format' => 'banner', 'image' => UploadedFile::fake()->image('sponsor.jpg', 1200, 600),
+            'priority' => 10, 'isActive' => true, 'androidEnabled' => true, 'iosEnabled' => true, 'placements' => ['listing_detail'],
         ])->assertRedirect();
 
         $advertisement = Advertisement::firstOrFail();
@@ -54,31 +56,38 @@ class AdvertisementTest extends TestCase
     public function test_admin_can_view_aggregated_campaign_statistics(): void
     {
         $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
-        $advertisement = Advertisement::create(['placement' => 'home_feed', 'sponsor_name' => 'Sponsor', 'headline' => 'Başlık', 'body' => 'Açıklama', 'is_active' => true]);
+        $advertisement = Advertisement::create(['placement' => 'home_feed', 'format' => 'banner', 'sponsor_name' => 'Sponsor', 'headline' => 'Başlık', 'body' => 'Açıklama', 'image_path' => 'advertisements/banner.png', 'is_active' => true]);
         $advertisement->placements()->create(['placement' => 'home_feed']);
         $advertisement->impressions()->create(['placement' => 'home_feed', 'session_key' => 'mobile-session-1234567890', 'slot_index' => 1, 'viewed_at' => now(), 'clicked_at' => now()]);
 
-        $this->actingAs($admin)->get('/admin/advertisements')->assertOk();
+        $this->actingAs($admin)->get('/admin/advertisements/sponsors')->assertOk();
     }
 
-    public function test_admin_index_separates_admob_and_exposes_only_current_mobile_placements(): void
+    public function test_admin_advertising_pages_are_separated_and_old_url_redirects_to_admob(): void
     {
         $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
 
-        $this->actingAs($admin)->get('/admin/advertisements?per_page=25')
+        $this->actingAs($admin)->get('/admin/advertisements')
+            ->assertRedirect('/admin/advertisements/admob');
+
+        $this->actingAs($admin)->get('/admin/advertisements/sponsors?per_page=25')
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->component('Admin/Advertisements/Index')
                 ->has('placementOptions', 13)
-                ->where('placementOptions.0.hint', '3. içerikten sonra; devamında her 8 içerikte bir reklam yuvası.')
-                ->where('placementOptions.2.hint', 'Sayfanın altında tek reklam.')
-                ->where('placementOptions.3.hint', '5. içerikten sonra tek reklam yuvası.')
+                ->where('placementOptions.0.hint', 'Konum kartından sonra, ilan listesinden önce.')
+                ->where('placementOptions.2.hint', 'Ambalaj ve fiyat bölümünden sonra, teslimat bilgilerinden önce.')
+                ->where('placementOptions.3.hint', 'Sayfa özetinden sonra, favori listesinden önce.')
+                ->where('campaigns.per_page', 25));
+
+        $this->actingAs($admin)->get('/admin/advertisements/admob')
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Admin/Advertisements/AdMob')
                 ->has('placementSettings', 16)
                 ->where('adMob.runtime.androidMode', 'test')
                 ->where('adMob.runtime.iosMode', 'test')
-                ->where('adMob.runtime.configurationVersion', 1)
-                ->where('adMob.coveredPlacements', [])
-                ->where('campaigns.per_page', 25));
+                ->where('adMob.runtime.configurationVersion', 1));
     }
 
     public function test_admin_index_tracks_android_and_ios_runtime_changes_independently(): void
@@ -91,9 +100,10 @@ class AdvertisementTest extends TestCase
             'confirmProduction' => true,
         ])->assertRedirect();
 
-        $this->actingAs($admin)->get('/admin/advertisements')
+        $this->actingAs($admin)->get('/admin/advertisements/admob')
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
+                ->component('Admin/Advertisements/AdMob')
                 ->where('adMob.runtime.platforms.android.mode', 'production')
                 ->where('adMob.runtime.platforms.android.updatedBy', 'Reklam Yöneticisi')
                 ->where('adMob.runtime.platforms.android.configurationVersion', 2)
@@ -102,7 +112,7 @@ class AdvertisementTest extends TestCase
                 ->where('adMob.runtime.platforms.ios.updatedBy', 'Sistem')
                 ->where('adMob.runtime.platforms.ios.configurationVersion', 1));
     }
-    public function test_native_placement_rejects_house_fallback_source(): void
+    public function test_native_placement_is_always_saved_as_admob_only(): void
     {
         $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
         $setting = AdvertisementPlacementSetting::forKey('home_feed');
@@ -121,9 +131,9 @@ class AdvertisementTest extends TestCase
             'boostHours' => 24,
             'dailyLimit' => 3,
             'ordinals' => [2, 4],
-        ])->assertRedirect('/admin/advertisements')->assertSessionHasErrors('sourceOrder');
+        ])->assertRedirect('/admin/advertisements')->assertSessionDoesntHaveErrors();
 
-        $this->assertSame(['direct', 'admob'], $setting->fresh()->source_order);
+        $this->assertSame(['admob'], $setting->fresh()->source_order);
     }
 
     public function test_admin_can_disable_native_placement_and_both_platforms(): void
@@ -179,8 +189,8 @@ class AdvertisementTest extends TestCase
         $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
         $this->actingAs($admin)->from('/admin/advertisements')->post('/admin/advertisements', [
             'sponsorName' => 'Sponsor', 'headline' => 'Başlık', 'body' => 'Açıklama',
-            'backgroundColor' => '#E8F4E9', 'priority' => 0, 'isActive' => false,
-            'format' => 'native', 'placements' => ['chat_screen'],
+            'priority' => 0, 'isActive' => false, 'format' => 'banner',
+            'image' => UploadedFile::fake()->image('sponsor.png', 1200, 600), 'androidEnabled' => true, 'iosEnabled' => true, 'placements' => ['chat_screen'],
         ])->assertRedirect('/admin/advertisements')->assertSessionHasErrors('placements.0');
     }
 
@@ -188,8 +198,8 @@ class AdvertisementTest extends TestCase
     {
         $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
         $this->actingAs($admin)->from('/admin/advertisements')->post('/admin/advertisements', [
-            'sponsorName' => 'Sponsor', 'headline' => 'Başlık', 'body' => 'Açıklama', 'backgroundColor' => '#E8F4E9',
-            'priority' => 0, 'isActive' => false, 'format' => 'native', 'placements' => [],
+            'sponsorName' => 'Sponsor', 'headline' => 'Başlık', 'body' => 'Açıklama',
+            'priority' => 0, 'isActive' => false, 'format' => 'banner', 'image' => UploadedFile::fake()->image('sponsor.png', 1200, 600), 'androidEnabled' => true, 'iosEnabled' => true, 'placements' => [],
         ])->assertRedirect('/admin/advertisements')->assertSessionHasErrors('placements');
     }
 

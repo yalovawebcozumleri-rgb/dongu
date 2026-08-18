@@ -19,15 +19,17 @@ class AdvertisementTest extends TestCase
         return $advertisement;
     }
 
-    public function test_api_returns_campaign_only_for_selected_placement_with_placement_policy(): void
+    public function test_admob_api_never_returns_sponsor_banners_and_keeps_placement_policy(): void
     {
-        $active = $this->campaign([Advertisement::PLACEMENT_HOME_FEED, Advertisement::PLACEMENT_LISTING_DETAIL]);
-        $this->campaign([Advertisement::PLACEMENT_LEADERBOARD], false);
+        $this->campaign([Advertisement::PLACEMENT_HOME_FEED, Advertisement::PLACEMENT_LISTING_DETAIL]);
 
-        $this->getJson('/api/v1/advertisements?placement=home_feed')->assertOk()->assertJsonCount(1, 'data')
-            ->assertJsonPath('data.0.id', $active->id)->assertJsonPath('meta.firstAfter', 3)
-            ->assertJsonPath('meta.repeatEvery', 8)->assertJsonPath('meta.maxPerSession', 5);
-        $this->getJson('/api/v1/advertisements?placement=leaderboard')->assertOk()->assertJsonCount(0, 'data');
+        $this->getJson('/api/v1/advertisements?placement=home_feed')
+            ->assertOk()
+            ->assertJsonCount(0, 'data')
+            ->assertJsonPath('meta.sourceOrder', ['admob'])
+            ->assertJsonPath('meta.firstAfter', 3)
+            ->assertJsonPath('meta.repeatEvery', 8)
+            ->assertJsonPath('meta.maxPerSession', 5);
     }
 
     public function test_native_api_applies_panel_value_with_hard_safety_cap(): void
@@ -56,7 +58,7 @@ class AdvertisementTest extends TestCase
 
         $this->getJson('/api/v1/advertisements?placement=home_feed')
             ->assertOk()
-            ->assertJsonPath('meta.sourceOrder', ['direct', 'admob']);
+            ->assertJsonPath('meta.sourceOrder', ['admob']);
     }
 
     public function test_test_mode_exposes_official_google_native_demo_units(): void

@@ -17,6 +17,7 @@ use App\Http\Controllers\Api\RegionController;
 use App\Http\Controllers\Api\RewardedAdCallbackController;
 use App\Http\Controllers\Api\RewardedListingBoostController;
 use App\Http\Controllers\Api\RewardedUsageRightController;
+use App\Http\Controllers\Api\SponsoredBannerController;
 use App\Http\Controllers\Api\UsagePolicyController;
 use App\Http\Controllers\Api\UserAddressController;
 use App\Http\Controllers\Api\UserBlockController;
@@ -35,6 +36,9 @@ Route::prefix('v1')->group(function () {
     Route::get('/advertisements/{advertisement}/image', [AdvertisementController::class, 'image'])->middleware('throttle:120,1');
     Route::post('/advertisements/{advertisement}/impressions', [AdvertisementController::class, 'impression'])->middleware('throttle:30,1');
     Route::post('/advertisements/{advertisement}/clicks', [AdvertisementController::class, 'click'])->middleware('throttle:30,1');
+    Route::get('/sponsored-banners', [SponsoredBannerController::class, 'index'])->middleware('throttle:120,1');
+    Route::post('/sponsored-banners/{advertisement}/impressions', [SponsoredBannerController::class, 'impression'])->middleware('throttle:60,1');
+    Route::post('/sponsored-banners/{advertisement}/clicks', [SponsoredBannerController::class, 'click'])->middleware('throttle:60,1');
     Route::get('/leaderboard', [LeaderboardController::class, 'index'])->middleware('throttle:60,1');
     Route::get('/admob/rewarded/callback', RewardedAdCallbackController::class)->middleware('throttle:120,1');
     Route::post('/admob/client-events', AdMobClientEventController::class)->middleware('throttle:30,1');

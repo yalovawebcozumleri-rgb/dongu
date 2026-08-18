@@ -43,11 +43,12 @@ import MyListingsScreen from './src/listings/MyListingsScreen';
 import PurchaseHistoryScreen from './src/transactions/PurchaseHistoryScreen';
 import ListingCard, { MaterialIcon } from './src/listings/ListingCard';
 import MonetizedAdSlot from './src/advertising/MonetizedAdSlot';
+import SponsoredBannerSlot from './src/advertising/SponsoredBannerSlot';
 import RewardedListingBoostButton from './src/advertising/RewardedListingBoostButton';
 import RewardedUsageRightButton, { RewardOffer } from './src/advertising/RewardedUsageRightButton';
 import { usePickupInterstitial } from './src/advertising/usePickupInterstitial';
 import { useAdvertisements } from './src/advertising/useAdvertisements';
-import { MAX_NATIVE_ADS_PER_PAGE } from './src/advertising/nativeAdManager';
+import { advertisementSlotPositions } from './src/advertising/listSlots';
 import { useNativeAdSessionKey, useNativeAdSessionPreload } from './src/advertising/useNativeAdSession';
 import { initializeGoogleAds } from './src/advertising/googleMobileAds';
 import NotificationCenter from './src/notifications/NotificationCenterFinal';
@@ -187,24 +188,15 @@ function Home({
   );
   const feedData = useMemo<FeedItem[]>(() => {
     const result: FeedItem[] = [];
+    const slotPositions = new Set(advertisementSlotPositions(visibleListings.length, loading || error ? undefined : advertisementPolicy));
     let slotCount = 0;
-    const firstAfter = advertisementPolicy?.firstAfter ?? 3;
-    const repeatEvery = advertisementPolicy?.repeatEvery ?? 8;
-    const minItems = advertisementPolicy?.minItems ?? 3;
-    const maxPerSession = Math.min(advertisementPolicy?.maxPerSession ?? MAX_NATIVE_ADS_PER_PAGE, MAX_NATIVE_ADS_PER_PAGE);
+    if (slotPositions.has(0)) result.push({ kind: 'ad-slot', slotIndex: ++slotCount });
     visibleListings.forEach((listing, index) => {
       result.push({ kind: 'listing', listing });
-      const itemNumber = index + 1;
-      const hasCapacity = slotCount < maxPerSession;
-      const placementEnabled = advertisementPolicy?.enabled ?? false;
-      const hasStartingPoint = firstAfter > 0;
-      const shouldInsert = placementEnabled && hasStartingPoint && hasCapacity && visibleListings.length >= minItems
-        && itemNumber >= firstAfter
-        && (itemNumber === firstAfter || (repeatEvery > 0 && (itemNumber - firstAfter) % repeatEvery === 0));
-      if (shouldInsert) result.push({ kind: 'ad-slot', slotIndex: ++slotCount });
+      if (slotPositions.has(index + 1)) result.push({ kind: 'ad-slot', slotIndex: ++slotCount });
     });
     return result;
-  }, [advertisementPolicy, visibleListings]);
+  }, [advertisementPolicy, error, loading, visibleListings]);
 
   const adSessionKey = useNativeAdSessionKey('home_feed', adSessionGeneration);
   useNativeAdSessionPreload(adSessionKey, advertisementCollection, visibleListings.length);
@@ -253,6 +245,7 @@ function Home({
         </View>
         <View style={s.locationCircle}><Text style={s.locationCircleText}>⌖</Text></View>
       </Pressable>
+      <SponsoredBannerSlot placement="home_feed" token={token} sessionKey={adSessionKey} />
       <View style={s.sectionHeading}>
         <View>
           <Text style={s.sectionTitle}>Yakınındaki ilanlar</Text>
@@ -363,7 +356,7 @@ function Home({
       )}
       ListHeaderComponent={header}
       ListEmptyComponent={empty}
-      ListFooterComponent={loadingMore ? <View style={s.listFooter}><ActivityIndicator color={C.green} /><Text style={s.listFooterText}>Daha fazla ilan yükleniyor</Text></View> : null}
+      ListFooterComponent={!visibleListings.length && feedData.length ? empty : loadingMore ? <View style={s.listFooter}><ActivityIndicator color={C.green} /><Text style={s.listFooterText}>Daha fazla ilan yükleniyor</Text></View> : null}
       contentContainerStyle={[s.pageBottom, { paddingBottom: 124 }]}
       showsVerticalScrollIndicator={false}
       refreshing={refreshing}
@@ -566,6 +559,7 @@ function ListingDetail({
             </View>
           </View>
         </View>
+        <SponsoredBannerSlot placement="listing_detail" token={token} />
         <View style={ds.section}>
           <Text style={ds.sectionLabel}>TESLİMAT BİLGİLERİ</Text>
           <View style={ds.infoRow}>

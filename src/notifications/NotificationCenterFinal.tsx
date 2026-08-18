@@ -16,7 +16,8 @@ import { ApiError, apiRequest } from '../lib/api';
 import { useNotice } from '../notice/NoticeProvider';
 import { AppNotification } from './types';
 import MonetizedAdSlot from '../advertising/MonetizedAdSlot';
-import { insertAdvertisementSlots } from '../advertising/listSlots';
+import SponsoredBannerSlot from '../advertising/SponsoredBannerSlot';
+import { countAdvertisementSlots, insertAdvertisementSlots } from '../advertising/listSlots';
 import { useAdvertisements } from '../advertising/useAdvertisements';
 import { useNativeAdSessionKey, useNativeAdSessionPreload } from '../advertising/useNativeAdSession';
 
@@ -384,6 +385,7 @@ export default function NotificationCenterFinal({
       <FlatList
         data={listData}
         keyExtractor={item => item.key}
+        ListHeaderComponent={<SponsoredBannerSlot placement="notifications" token={token} sessionKey={adSessionKey} />}
         contentContainerStyle={items.length ? x.list : x.emptyList}
         renderItem={({ item: row }) => row.kind === 'advertisement'
           ? <MonetizedAdSlot placement="notifications" token={token} slotIndex={row.slotIndex} itemCount={items.length} sessionKey={adSessionKey} /> : ((item: AppNotification) => (
@@ -425,7 +427,7 @@ export default function NotificationCenterFinal({
             <Text style={x.emptyText}>{selectedEmpty.message}</Text>
           </View>
         )}
-        ListFooterComponent={loadingMore ? <ActivityIndicator color={C.green} style={x.footer} /> : null}
+        ListFooterComponent={!loading && !error && !items.length && countAdvertisementSlots(0, advertisementCollection?.meta) > 0 ? <MonetizedAdSlot placement="notifications" token={token} slotIndex={1} itemCount={0} sessionKey={adSessionKey} /> : loadingMore ? <ActivityIndicator color={C.green} style={x.footer} /> : null}
         initialNumToRender={8}
         maxToRenderPerBatch={8}
         windowSize={7}
