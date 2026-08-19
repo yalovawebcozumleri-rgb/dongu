@@ -10,12 +10,13 @@
             <h1>Dönüşümün yanında<br><em>birlikte yer alalım.</em></h1>
             <p>Döngü’nün geri dönüşüm odaklı yolculuğuna proje destekçisi olarak katılın; markanızı uygulamanın seçili alanlarında, kullanıcı deneyimini bozmayan sponsorlu bannerlarla görünür kılın.</p>
         </div>
-        <div class="vision-hero-visual vision-partnership-orbit" aria-hidden="true">
-            <div class="core">iş<br>birliği</div>
-            <span class="node node-one">Android</span>
-            <span class="node node-two">iOS</span>
-            <span class="node node-three">Raporlama</span>
-            <i></i><i></i><i></i>
+        <div class="vision-question-orbit vision-orbit-brandmark vision-partnership-orbit" aria-hidden="true">
+            <div class="vision-orbit-ring ring-one"></div>
+            <div class="vision-orbit-ring ring-two"></div>
+            <div class="vision-orbit-logo-mark"><img src="{{ asset('images/site/dongu-icon.png') }}" alt=""></div>
+            <b class="vision-orbit-chip chip-one">Proje Desteği</b>
+            <b class="vision-orbit-chip chip-two">Marka Görünürlüğü</b>
+            <b class="vision-orbit-chip chip-three">Şeffaf Raporlama</b>
         </div>
     </div>
 </section>
