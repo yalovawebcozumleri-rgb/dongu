@@ -29,4 +29,5 @@
         <article><small>Hukuk ve gizlilik</small><h3>KVKK başvuruları</h3><p>Verilerinin işlenmesiyle ilgili taleplerini hesabındaki e-posta adresi üzerinden iletebilirsin.</p><a href="{{ route('legal.privacy') }}">Gizlilik ve KVKK metni →</a></article>
     </div>
 </section>
+<x-partnership-cta />
 @endsection

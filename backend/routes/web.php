@@ -31,6 +31,7 @@ Route::view('/hakkimizda', 'marketing.about')->name('marketing.about');
 Route::view('/sss', 'marketing.faq')->name('marketing.faq');
 Route::view('/iletisim', 'marketing.contact')->name('marketing.contact');
 Route::view('/mobil-uygulama', 'marketing.mobile-app')->name('marketing.mobile-app');
+Route::view('/reklam-ve-isbirligi', 'marketing.partnerships')->name('marketing.partnerships');
 Route::get('/indir', AppDownloadRedirectController::class)
     ->withoutMiddleware(\App\Http\Middleware\HandleInertiaRequests::class)
     ->name('app.download');

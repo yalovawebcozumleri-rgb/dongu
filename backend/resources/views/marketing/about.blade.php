@@ -34,4 +34,5 @@
         </div>
     </div>
 </section>
+<x-partnership-cta />
 @endsection

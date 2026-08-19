@@ -29,8 +29,8 @@
     <link rel="stylesheet" href="{{ asset('site/marketing.css') }}">
     <link rel="stylesheet" href="{{ asset('site/marketing-v2.css') }}">
     <link rel="stylesheet" href="{{ asset('site/marketing-mobile-fix.css') }}">
-    <link rel="stylesheet" href="{{ asset('site/marketing-vision.css') }}?v=20260812-mobile-app">
-    <link rel="stylesheet" href="{{ asset('site/marketing-vision-responsive.css') }}?v=20260812-mobile-app">
+    <link rel="stylesheet" href="{{ asset('site/marketing-vision.css') }}?v=20260819-partnerships">
+    <link rel="stylesheet" href="{{ asset('site/marketing-vision-responsive.css') }}?v=20260819-partnerships">
     <link rel="stylesheet" href="{{ asset('site/marketing-app-carousel.css') }}?v=20260815-app-carousel">
     <link rel="stylesheet" href="{{ asset('site/store-badges.css') }}?v=20260815-official-badges">
     <title>@yield('title', 'Döngü')</title>
@@ -120,7 +120,7 @@
             </div>
             <div class="site-footer-links">
                 <div><strong>Keşfet</strong><a href="{{ route('marketing.how-it-works') }}">Nasıl çalışır?</a><a href="{{ route('marketing.about') }}">Hakkımızda</a></div>
-                <div><strong>Destek</strong><a href="{{ route('marketing.faq') }}">Sık sorulanlar</a><a href="{{ route('marketing.contact') }}">İletişim</a><a href="{{ route('account-deletion.create') }}">Hesap silme</a></div>
+                <div><strong>Destek</strong><a href="{{ route('marketing.faq') }}">Sık sorulanlar</a><a href="{{ route('marketing.contact') }}">İletişim</a><a href="{{ route('marketing.partnerships') }}">Reklam ve İş Birliği</a><a href="{{ route('account-deletion.create') }}">Hesap silme</a></div>
                 <div><strong>Yasal</strong><a href="{{ route('legal.terms') }}">Kullanım Şartları</a><a href="{{ route('legal.privacy') }}">Gizlilik ve KVKK</a></div>
             </div>
         </div>
