@@ -264,6 +264,11 @@ class AdvertisementController extends Controller
         $endsAt = $this->turkiyeDateTimeToUtc($validated['endsAt'] ?? null);
 
         $imagePath = $request->file('image')->store('advertisements', 'public');
+        abort_if(
+            ! is_string($imagePath) || $imagePath === '',
+            500,
+            'Banner görseli kaydedilemedi. Lütfen yeniden deneyin.'
+        );
         try {
             DB::transaction(function () use ($validated, $imagePath, $startsAt, $endsAt): void {
                 $advertisement = Advertisement::create([
