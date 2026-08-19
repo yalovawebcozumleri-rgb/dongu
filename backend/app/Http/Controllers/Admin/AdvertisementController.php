@@ -258,9 +258,14 @@ class AdvertisementController extends Controller
 
         abort_if(! $validated['androidEnabled'] && ! $validated['iosEnabled'], 422, 'En az bir platform seçmelisin.');
 
+        // datetime-local alanlari saat dilimi bilgisi tasimaz. Panelde girilen
+        // degeri Turkiye yerel saati kabul edip veritabaninda UTC sakliyoruz.
+        $startsAt = $this->turkiyeDateTimeToUtc($validated['startsAt'] ?? null);
+        $endsAt = $this->turkiyeDateTimeToUtc($validated['endsAt'] ?? null);
+
         $imagePath = $request->file('image')->store('advertisements', 'public');
         try {
-            DB::transaction(function () use ($validated, $imagePath): void {
+            DB::transaction(function () use ($validated, $imagePath, $startsAt, $endsAt): void {
                 $advertisement = Advertisement::create([
                     'placement' => $validated['placements'][0],
                     'format' => $validated['format'],
@@ -273,8 +278,8 @@ class AdvertisementController extends Controller
                     'image_path' => $imagePath,
                     'android_enabled' => $validated['androidEnabled'],
                     'ios_enabled' => $validated['iosEnabled'],
-                    'starts_at' => $validated['startsAt'] ?? null,
-                    'ends_at' => $validated['endsAt'] ?? null,
+                    'starts_at' => $startsAt,
+                    'ends_at' => $endsAt,
                     'priority' => $validated['priority'],
                     'is_active' => $validated['isActive'],
                 ]);
@@ -286,6 +291,15 @@ class AdvertisementController extends Controller
         }
 
         return back()->with('success', 'Sponsorlu banner kampanyası oluşturuldu.');
+    }
+
+    private function turkiyeDateTimeToUtc(?string $value): ?Carbon
+    {
+        if ($value === null || trim($value) === '') {
+            return null;
+        }
+
+        return Carbon::parse($value, 'Europe/Istanbul')->utc();
     }
 
     public function update(Request $request, Advertisement $advertisement): RedirectResponse

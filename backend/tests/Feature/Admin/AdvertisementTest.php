@@ -36,6 +36,31 @@ class AdvertisementTest extends TestCase
         $this->assertDatabaseCount('advertisements', 0); $this->assertDatabaseCount('advertisement_placements', 0);
     }
 
+    public function test_campaign_datetime_local_values_are_interpreted_as_turkiye_time(): void
+    {
+        Storage::fake('public');
+        $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
+
+        $this->actingAs($admin)->post('/admin/advertisements', [
+            'sponsorName' => 'Saat testi',
+            'headline' => 'Yerel saat kampanyası',
+            'body' => 'Türkiye saat dilimi doğrulaması.',
+            'format' => 'banner',
+            'image' => UploadedFile::fake()->image('sponsor.png', 1200, 600),
+            'startsAt' => '2026-08-20T00:00',
+            'endsAt' => '2026-08-20T01:30',
+            'priority' => 1,
+            'isActive' => true,
+            'androidEnabled' => true,
+            'iosEnabled' => true,
+            'placements' => ['favorites'],
+        ])->assertRedirect()->assertSessionDoesntHaveErrors();
+
+        $advertisement = Advertisement::firstOrFail();
+        $this->assertSame('2026-08-19 21:00:00', $advertisement->starts_at->utc()->format('Y-m-d H:i:s'));
+        $this->assertSame('2026-08-19 22:30:00', $advertisement->ends_at->utc()->format('Y-m-d H:i:s'));
+    }
+
     public function test_admin_can_upload_serve_and_delete_image_advertisement(): void
     {
         Storage::fake('public');
