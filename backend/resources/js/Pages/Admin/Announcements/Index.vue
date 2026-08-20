@@ -103,7 +103,8 @@ const turkeyDateInput = value => {
 const turkeyDateLabel = value => value
   ? new Intl.DateTimeFormat('tr-TR', { timeZone: 'Europe/Istanbul', dateStyle: 'short' }).format(new Date(value))
   : 'Tek gönderim';
-const campaignNumber = campaign => (props.campaigns.from || 1) + props.campaigns.data.findIndex(item => item.id === campaign.id);
+const campaignNumberAt = index => Number(props.campaigns.total) - ((props.campaigns.from || 1) - 1 + index);
+const campaignNumber = campaign => campaignNumberAt(props.campaigns.data.findIndex(item => item.id === campaign.id));
 const canEdit = campaign => campaign.runs_count === 0 && ['draft', 'scheduled', 'paused'].includes(campaign.status);
 const openComposer = () => {
   form.reset();
@@ -211,7 +212,7 @@ const confirmDelete = () => {
             <tbody class="divide-y divide-slate-100">
               <tr v-for="(campaign, index) in campaigns.data" :key="campaign.id" class="text-slate-800 transition hover:bg-slate-50/80">
                 <td class="max-w-[430px] px-5 py-4">
-                  <p class="text-xs font-semibold uppercase tracking-wide text-emerald-800">#{{ (campaigns.from || 1) + index }} · {{ types[campaign.type] }}</p>
+                  <p class="text-xs font-semibold uppercase tracking-wide text-emerald-800">#{{ campaignNumberAt(index) }} · {{ types[campaign.type] }}</p>
                   <p class="mt-1 truncate font-semibold text-slate-950">{{ campaign.title }}</p>
                 </td>
                 <td class="px-5 py-4">
