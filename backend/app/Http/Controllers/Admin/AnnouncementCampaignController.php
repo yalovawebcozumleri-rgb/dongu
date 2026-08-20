@@ -81,8 +81,8 @@ class AnnouncementCampaignController extends Controller
             throw ValidationException::withMessages(['endsAt' => 'Tekrarlanan duyurular için bitiş tarihi zorunludur.']);
         }
 
-        $start = $validated['submitAction'] === 'send_now' ? now() : (! empty($validated['scheduledAt']) ? Carbon::parse($validated['scheduledAt']) : null);
-        $endsAt = ! empty($validated['endsAt']) ? Carbon::parse($validated['endsAt'])->endOfDay() : null;
+        $start = $validated['submitAction'] === 'send_now' ? now() : $this->turkiyeDateTimeToUtc($validated['scheduledAt'] ?? null);
+        $endsAt = $this->turkiyeEndOfDayToUtc($validated['endsAt'] ?? null);
         if ($start && $validated['submitAction'] === 'schedule' && $start->isPast()) {
             throw ValidationException::withMessages(['scheduledAt' => 'Planlama zamanı gelecekte olmalıdır.']);
         }
@@ -116,7 +116,12 @@ class AnnouncementCampaignController extends Controller
 
     public function update(Request $request, AnnouncementCampaign $announcement): RedirectResponse
     {
-        $validated = $request->validate(['action' => ['required', Rule::in(['send_now', 'pause', 'resume', 'cancel'])]]);
+        $validated = $request->validate(['action' => ['required', Rule::in(['edit', 'send_now', 'pause', 'resume', 'cancel'])]]);
+
+        if ($validated['action'] === 'edit') {
+            return $this->editCampaign($request, $announcement);
+        }
+
         match ($validated['action']) {
             'send_now' => $this->sendNow($announcement),
             'pause' => $announcement->update(['status' => AnnouncementCampaign::STATUS_PAUSED]),
@@ -136,10 +141,88 @@ class AnnouncementCampaignController extends Controller
         return back()->with('success', 'Duyuru yönetim listesinden kaldırıldı. Teslim edilmiş kullanıcı bildirimleri korunmaya devam ediyor.');
     }
 
+    private function editCampaign(Request $request, AnnouncementCampaign $campaign): RedirectResponse
+    {
+        abort_unless(
+            in_array($campaign->status, [AnnouncementCampaign::STATUS_DRAFT, AnnouncementCampaign::STATUS_SCHEDULED, AnnouncementCampaign::STATUS_PAUSED], true)
+                && $campaign->runs_count === 0,
+            422,
+            'Yalnızca henüz gönderilmemiş taslak, planlanmış veya duraklatılmış duyurular düzenlenebilir.'
+        );
+
+        $validated = $request->validate([
+            'type' => ['required', Rule::in(['marketing', 'system'])],
+            'title' => ['required', 'string', 'max:100'],
+            'body' => ['required', 'string', 'max:500'],
+            'audience' => ['required', Rule::in(['all_active', 'selected'])],
+            'targetUserIds' => ['nullable', 'array', 'max:500'],
+            'targetUserIds.*' => ['integer', 'distinct', 'exists:users,id'],
+            'pushEnabled' => ['required', 'boolean'],
+            'recurrence' => ['required', Rule::in(['none', 'daily', 'weekly'])],
+            'scheduledAt' => ['nullable', 'date'],
+            'endsAt' => ['nullable', 'date'],
+        ]);
+
+        if ($validated['audience'] === 'selected' && empty($validated['targetUserIds'])) {
+            throw ValidationException::withMessages(['targetUserIds' => 'Belirli kullanıcılar için en az bir kullanıcı numarası girmelisin.']);
+        }
+        if ($campaign->status !== AnnouncementCampaign::STATUS_DRAFT && empty($validated['scheduledAt'])) {
+            throw ValidationException::withMessages(['scheduledAt' => 'Planlanmış duyuru için tarih ve saat seçmelisin.']);
+        }
+        if ($validated['recurrence'] !== 'none' && empty($validated['endsAt'])) {
+            throw ValidationException::withMessages(['endsAt' => 'Tekrarlanan duyurular için bitiş tarihi zorunludur.']);
+        }
+
+        $start = $this->turkiyeDateTimeToUtc($validated['scheduledAt'] ?? null);
+        $endsAt = $this->turkiyeEndOfDayToUtc($validated['endsAt'] ?? null);
+        if ($start && $campaign->status !== AnnouncementCampaign::STATUS_DRAFT && $start->isPast()) {
+            throw ValidationException::withMessages(['scheduledAt' => 'Planlama zamanı gelecekte olmalıdır.']);
+        }
+        if ($endsAt && $start && $endsAt->lte($start)) {
+            throw ValidationException::withMessages(['endsAt' => 'Bitiş tarihi ilk gönderimden sonra olmalıdır.']);
+        }
+        if ($validated['recurrence'] === 'daily' && $start && $endsAt && $start->diffInDays($endsAt) > 31) {
+            throw ValidationException::withMessages(['endsAt' => 'Günlük otomatik duyuru en fazla 31 günlük dönem için kurulabilir.']);
+        }
+
+        $campaign->update([
+            'type' => $validated['type'],
+            'title' => trim($validated['title']),
+            'body' => trim($validated['body']),
+            'audience' => $validated['audience'],
+            'target_user_ids' => $validated['audience'] === 'selected' ? array_values($validated['targetUserIds']) : null,
+            'push_enabled' => $validated['pushEnabled'],
+            'recurrence' => $validated['recurrence'],
+            'scheduled_at' => $start,
+            'next_send_at' => $campaign->status === AnnouncementCampaign::STATUS_DRAFT ? null : $start,
+            'ends_at' => $endsAt,
+        ]);
+
+        return back()->with('success', 'Duyuru güncellendi.');
+    }
+
     private function sendNow(AnnouncementCampaign $campaign): void
     {
         abort_if($campaign->status === AnnouncementCampaign::STATUS_SENDING, 422, 'Duyuru zaten gönderiliyor.');
         $campaign->update(['status' => AnnouncementCampaign::STATUS_SENDING, 'next_send_at' => now()]);
         DispatchAnnouncementCampaign::dispatch($campaign->id)->afterResponse();
+    }
+
+    private function turkiyeDateTimeToUtc(?string $value): ?Carbon
+    {
+        if ($value === null || trim($value) === '') {
+            return null;
+        }
+
+        return Carbon::parse($value, 'Europe/Istanbul')->utc();
+    }
+
+    private function turkiyeEndOfDayToUtc(?string $value): ?Carbon
+    {
+        if ($value === null || trim($value) === '') {
+            return null;
+        }
+
+        return Carbon::parse($value, 'Europe/Istanbul')->endOfDay()->utc();
     }
 }
