@@ -10,7 +10,9 @@ class AppDownloadRedirectTest extends TestCase
     {
         parent::setUp();
 
+        config()->set('stores.app_store_available', true);
         config()->set('stores.app_store_url', 'https://apps.apple.com/tr/app/id6800822946');
+        config()->set('stores.google_play_available', true);
         config()->set('stores.google_play_url', 'https://play.google.com/store/apps/details?id=com.yalovawebcozumleri.dongu');
     }
 
@@ -73,6 +75,28 @@ class AppDownloadRedirectTest extends TestCase
 
         $response = $this->withHeader('User-Agent', 'Mozilla/5.0 (iPhone; Mobile)')->get('/indir');
 
-        $response->assertRedirect(route('marketing.mobile-app'));
+        $response->assertRedirect(route('marketing.mobile-app', ['platform' => 'ios']));
+    }
+
+    public function test_iphone_visitors_see_the_mobile_page_while_the_app_store_release_is_unavailable(): void
+    {
+        config()->set('stores.app_store_available', false);
+
+        $response = $this->withHeader('User-Agent', 'Mozilla/5.0 (iPhone; Mobile)')->get('/indir');
+
+        $response->assertRedirect(route('marketing.mobile-app', ['platform' => 'ios']));
+    }
+
+    public function test_mobile_page_keeps_google_play_live_and_marks_the_app_store_as_coming_soon(): void
+    {
+        config()->set('stores.app_store_available', false);
+
+        $response = $this->get(route('marketing.mobile-app', ['platform' => 'ios']));
+
+        $response
+            ->assertOk()
+            ->assertSee('Döngü iOS sürümü çok yakında.')
+            ->assertSee(config('stores.google_play_url'))
+            ->assertDontSee('href="'.config('stores.app_store_url').'"', false);
     }
 }

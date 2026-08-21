@@ -99,7 +99,7 @@
                 <img src="{{ asset('images/site/dongu-icon.png') }}" alt="" width="54" height="54">
                 <div>
                     <strong>Döngü mobil uygulaması</strong>
-                    <span>iPhone ve Android için</span>
+                    <span>{{ config('stores.app_store_available') ? 'iPhone ve Android için' : 'Android’de yayında · iPhone’da yakında' }}</span>
                 </div>
             </div>
             <x-store-badges class="store-badges-download-band" />

@@ -20,6 +20,68 @@
     transition: transform 180ms ease !important;
 }
 
+.store-badge-wrap {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+}
+
+.store-badge-unavailable {
+    cursor: default;
+    opacity: 0.48;
+    filter: grayscale(1) !important;
+}
+
+.store-badge-unavailable:hover {
+    transform: none !important;
+}
+
+.store-badge-note {
+    position: absolute;
+    top: -8px;
+    right: -9px;
+    padding: 4px 8px;
+    border: 1px solid rgba(8, 45, 32, 0.12);
+    border-radius: 999px;
+    color: #082d20;
+    background: #c9ef61;
+    box-shadow: 0 7px 18px rgba(8, 45, 32, 0.14);
+    font-family: "Manrope", sans-serif;
+    font-size: 10px;
+    font-weight: 900;
+    line-height: 1;
+    text-transform: uppercase;
+}
+
+.store-availability-notice {
+    grid-column: 1 / -1;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    margin-bottom: 8px;
+    padding: 18px 20px;
+    border: 1px solid rgba(8, 45, 32, 0.1);
+    border-radius: 18px;
+    color: #082d20;
+    background: rgba(201, 239, 97, 0.18);
+}
+
+.store-availability-notice strong {
+    font-family: "Manrope", sans-serif;
+    font-weight: 900;
+}
+
+.store-availability-notice span {
+    color: #617169;
+    font-size: 14px;
+    line-height: 1.55;
+}
+
+.vision-orbit-chip-unavailable {
+    cursor: default;
+    opacity: 0.72;
+}
+
 .store-badge:hover,
 .store-badge:focus-visible {
     transform: translateY(-3px) !important;
@@ -31,6 +93,13 @@
 .store-badge:focus-visible {
     border-radius: 8px !important;
     box-shadow: 0 0 0 3px rgba(201, 243, 91, 0.55) !important;
+}
+
+.store-badge.store-badge-unavailable,
+.store-badge.store-badge-unavailable:hover {
+    transform: none !important;
+    box-shadow: none !important;
+    filter: grayscale(1) !important;
 }
 
 .store-badge img {
