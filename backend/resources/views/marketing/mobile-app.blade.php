@@ -23,7 +23,7 @@
             @if ($appStoreAvailable)
                 <a class="vision-orbit-chip chip-two" href="{{ config('stores.app_store_url') }}" target="_blank" rel="noopener" aria-label="Döngü uygulamasını App Store'da aç">App Store</a>
             @else
-                <span class="vision-orbit-chip chip-two vision-orbit-chip-unavailable">App Store · Yakında</span>
+                <span class="vision-orbit-chip chip-two vision-orbit-chip-unavailable">App Store</span>
             @endif
             <a class="vision-orbit-chip chip-three" href="{{ config('stores.google_play_url') }}" target="_blank" rel="noopener" aria-label="Döngü uygulamasını Google Play'de aç">Play Store</a>
         </div>
