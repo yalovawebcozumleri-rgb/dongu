@@ -32,7 +32,7 @@
     <link rel="stylesheet" href="{{ asset('site/marketing-vision.css') }}?v=20260819-partnerships-v2">
     <link rel="stylesheet" href="{{ asset('site/marketing-vision-responsive.css') }}?v=20260819-partnerships">
     <link rel="stylesheet" href="{{ asset('site/marketing-app-carousel.css') }}?v=20260815-app-carousel">
-    <link rel="stylesheet" href="{{ asset('site/store-badges.css') }}?v=20260815-official-badges">
+    <link rel="stylesheet" href="{{ asset('site/store-badges.css') }}?v=20260822-store-links">
     <title>@yield('title', 'Döngü')</title>
     <script type="application/ld+json">
         {!! json_encode([
