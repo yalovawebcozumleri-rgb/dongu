@@ -97,6 +97,7 @@ class AppDownloadRedirectTest extends TestCase
             ->assertOk()
             ->assertSee('Döngü iOS sürümü çok yakında.')
             ->assertSee(config('stores.google_play_url'))
+            ->assertSee('<b class="vision-orbit-chip chip-two vision-orbit-chip-unavailable">App Store</b>', false)
             ->assertDontSee('href="'.config('stores.app_store_url').'"', false);
     }
 }
