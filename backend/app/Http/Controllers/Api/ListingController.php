@@ -36,6 +36,14 @@ class ListingController extends Controller
         ]);
 
         $user = $request->user('sanctum');
+        $reviewDemoLocation = $this->appStoreReviewDemoLocation($user);
+        if ($reviewDemoLocation) {
+            $filters['latitude'] = $reviewDemoLocation['latitude'];
+            $filters['longitude'] = $reviewDemoLocation['longitude'];
+            $filters['radius'] = $reviewDemoLocation['radius'];
+            unset($filters['province']);
+        }
+
         $relations = ['seller', 'materials', 'photos'];
         if ($user) {
             $relations['pickupRequests'] = fn ($query) => $query
@@ -208,13 +216,28 @@ class ListingController extends Controller
                 $publicArea = $savedAddress?->public_area ?? trim($validated['public_area']);
                 $exactAddress = $savedAddress?->full_address ?? trim($validated['exact_address']);
                 $deliveryNotes = $savedAddress?->delivery_notes ?? ($validated['delivery_notes'] ?? null);
+                $sourceAddressId = $savedAddress?->id;
+                $provinceId = $savedAddress?->province_id;
+                $districtId = $savedAddress?->district_id;
+
+                if ($reviewDemoLocation = $this->appStoreReviewDemoLocation($user)) {
+                    $latitude = (string) $reviewDemoLocation['latitude'];
+                    $longitude = (string) $reviewDemoLocation['longitude'];
+                    $publicArea = $reviewDemoLocation['public_area'];
+                    $exactAddress = $reviewDemoLocation['exact_address'];
+                    $sourceAddressId = null;
+                    $provinceId = Province::query()
+                        ->where('name', $reviewDemoLocation['province'])
+                        ->value('id');
+                    $districtId = null;
+                }
 
                 $listing = $user->listings()->create([
                     'status' => Listing::STATUS_ACTIVE,
-                    'source_address_id' => $savedAddress?->id,
+                    'source_address_id' => $sourceAddressId,
                     'public_area' => $publicArea,
-                    'province_id' => $savedAddress?->province_id,
-                    'district_id' => $savedAddress?->district_id,
+                    'province_id' => $provinceId,
+                    'district_id' => $districtId,
                     'approximate_latitude' => round((float) $latitude, 3),
                     'approximate_longitude' => round((float) $longitude, 3),
                     'description' => trim($validated['description']),
@@ -252,6 +275,47 @@ class ListingController extends Controller
         }
 
         return new ListingResource($listing->load(['seller', 'materials', 'photos']));
+    }
+
+    private function appStoreReviewDemoLocation(?User $user): ?array
+    {
+        if (! $user
+            || ! config('services.app_store_review.enabled')
+            || ! config('services.app_store_review.demo.enabled')) {
+            return null;
+        }
+
+        $userEmail = mb_strtolower(trim((string) $user->email));
+        $reviewEmails = array_values(array_filter(array_map(
+            fn ($email) => mb_strtolower(trim((string) $email)),
+            [
+                config('services.app_store_review.email'),
+                config('services.app_store_review.secondary_email'),
+            ],
+        )));
+
+        if (! in_array($userEmail, $reviewEmails, true)) {
+            return null;
+        }
+
+        $latitude = (float) config('services.app_store_review.demo.latitude');
+        $longitude = (float) config('services.app_store_review.demo.longitude');
+        $radius = (float) config('services.app_store_review.demo.radius');
+
+        if ($latitude < -90 || $latitude > 90
+            || $longitude < -180 || $longitude > 180
+            || $radius < 1 || $radius > 50) {
+            return null;
+        }
+
+        return [
+            'latitude' => $latitude,
+            'longitude' => $longitude,
+            'radius' => $radius,
+            'province' => trim((string) config('services.app_store_review.demo.province')),
+            'public_area' => trim((string) config('services.app_store_review.demo.public_area')),
+            'exact_address' => trim((string) config('services.app_store_review.demo.exact_address')),
+        ];
     }
 
     public function renew(Request $request, Listing $listing): ListingResource

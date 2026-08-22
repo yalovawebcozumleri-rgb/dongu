@@ -167,6 +167,35 @@ class AuthTest extends TestCase
             ->assertJsonStructure(['data' => ['user', 'token']]);
     }
 
+    public function test_secondary_app_store_review_account_reuses_the_same_configured_code_without_email(): void
+    {
+        Mail::fake();
+        config()->set('services.app_store_review', [
+            'enabled' => true,
+            'email' => 'appstorereview@yalovawebcozumleri.com',
+            'secondary_email' => 'appstorereviewseller@yalovawebcozumleri.com',
+            'code_hash' => Hash::make('729184'),
+        ]);
+        $user = User::factory()->create([
+            'name' => 'App Store Review Seller',
+            'email' => 'appstorereviewseller@yalovawebcozumleri.com',
+            'role' => User::ROLE_USER,
+            'status' => 'active',
+            'email_verified_at' => now(),
+        ]);
+
+        $this->postJson('/api/v1/auth/code/request', [
+            'intent' => 'login', 'email' => $user->email,
+        ])->assertAccepted()->assertJsonPath('data.expires_in', null);
+        Mail::assertNothingSent();
+
+        $this->postJson('/api/v1/auth/code/verify', [
+            'email' => $user->email, 'code' => '729184', 'device_name' => 'App Store Review Seller',
+        ])->assertOk()
+            ->assertJsonPath('data.user.id', $user->id)
+            ->assertJsonStructure(['data' => ['user', 'token']]);
+    }
+
     public function test_code_is_single_use_and_limited_to_five_wrong_attempts(): void
     {
         Mail::fake();

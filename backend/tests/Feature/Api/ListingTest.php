@@ -174,6 +174,58 @@ class ListingTest extends TestCase
             ->assertJsonPath('data.0.id', $visible->id);
     }
 
+    public function test_app_store_review_feed_uses_the_fixed_demo_region_without_changing_normal_users(): void
+    {
+        $this->configureAppStoreReviewDemo();
+        $reviewBuyer = User::factory()->create(['email' => 'appstorereview@yalovawebcozumleri.com']);
+        $reviewSeller = User::factory()->create(['email' => 'appstorereviewseller@yalovawebcozumleri.com']);
+        $normalSeller = User::factory()->create();
+
+        $reviewBuyerOwn = $this->listing($reviewBuyer, 40.655, 29.276);
+        $demoListing = $this->listing($reviewSeller, 40.656, 29.277);
+        $californiaListing = $this->listing($normalSeller, 37.334, -122.009);
+
+        Sanctum::actingAs($reviewBuyer, ['mobile']);
+
+        $this->getJson('/api/v1/listings?latitude=37.334&longitude=-122.009&radius=3&province=California')
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.id', $demoListing->id)
+            ->assertJsonMissing(['id' => $reviewBuyerOwn->id])
+            ->assertJsonMissing(['id' => $californiaListing->id]);
+
+        Sanctum::actingAs(User::factory()->create(), ['mobile']);
+
+        $this->getJson('/api/v1/listings?latitude=37.334&longitude=-122.009&radius=3')
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.id', $californiaListing->id);
+    }
+
+    public function test_app_store_review_listings_are_saved_in_the_fixed_demo_region_only_for_review_accounts(): void
+    {
+        $this->configureAppStoreReviewDemo();
+        $reviewSeller = User::factory()->create(['email' => 'appstorereviewseller@yalovawebcozumleri.com']);
+        Sanctum::actingAs($reviewSeller, ['mobile']);
+
+        $this->postJson('/api/v1/listings', $this->payload())
+            ->assertCreated();
+
+        $yalovaId = Province::query()->where('name', 'Yalova')->value('id');
+        $this->assertDatabaseHas('listings', [
+            'user_id' => $reviewSeller->id,
+            'public_area' => 'Yalova Merkez',
+            'province_id' => $yalovaId,
+            'source_address_id' => null,
+            'approximate_latitude' => 40.6550000,
+            'approximate_longitude' => 29.2760000,
+        ]);
+
+        $privateLocation = ListingPrivateLocation::firstOrFail();
+        $this->assertSame('40.655', $privateLocation->latitude);
+        $this->assertSame('Yalova Merkez demo teslimat noktası', $privateLocation->address);
+    }
+
     public function test_location_feed_never_crosses_the_selected_province_boundary(): void
     {
         $seller = User::factory()->create();
@@ -206,6 +258,25 @@ class ListingTest extends TestCase
             'longitude' => 29.0274567,
             'exact_address' => 'Caferağa Mahallesi, bina 12',
         ];
+    }
+
+    private function configureAppStoreReviewDemo(): void
+    {
+        config()->set('services.app_store_review', [
+            'enabled' => true,
+            'email' => 'appstorereview@yalovawebcozumleri.com',
+            'secondary_email' => 'appstorereviewseller@yalovawebcozumleri.com',
+            'code_hash' => 'unused-in-listing-tests',
+            'demo' => [
+                'enabled' => true,
+                'latitude' => 40.655,
+                'longitude' => 29.276,
+                'radius' => 50,
+                'province' => 'Yalova',
+                'public_area' => 'Yalova Merkez',
+                'exact_address' => 'Yalova Merkez demo teslimat noktası',
+            ],
+        ]);
     }
 
     private function listing(User $seller, float $latitude, float $longitude): Listing

@@ -207,13 +207,20 @@ class AuthController extends Controller
                 continue;
             }
 
-            $reviewEmail = mb_strtolower(trim((string) config("services.{$service}.email")));
-            if ($reviewEmail !== '' && hash_equals($reviewEmail, $email)) {
-                return [
-                    'service' => $service,
-                    'label' => $service === 'app_store_review' ? 'App Store' : 'Google Play',
-                    'code_hash' => (string) config("services.{$service}.code_hash"),
-                ];
+            $reviewEmails = [(string) config("services.{$service}.email")];
+            if ($service === 'app_store_review') {
+                $reviewEmails[] = (string) config('services.app_store_review.secondary_email');
+            }
+
+            foreach ($reviewEmails as $configuredEmail) {
+                $reviewEmail = mb_strtolower(trim($configuredEmail));
+                if ($reviewEmail !== '' && hash_equals($reviewEmail, $email)) {
+                    return [
+                        'service' => $service,
+                        'label' => $service === 'app_store_review' ? 'App Store' : 'Google Play',
+                        'code_hash' => (string) config("services.{$service}.code_hash"),
+                    ];
+                }
             }
         }
 
