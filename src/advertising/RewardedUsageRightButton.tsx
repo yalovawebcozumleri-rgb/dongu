@@ -3,7 +3,7 @@ import { ActivityIndicator, Platform, Pressable, StyleSheet, Text, View } from '
 import { C, s } from '../../styles';
 import { ApiError, apiRequest, QuotaRewardOffer } from '../lib/api';
 import { useNotice } from '../notice/NoticeProvider';
-import { adEnvironmentForUnitId, googleAds, initializeGoogleAds, rewardedUnitId } from './googleMobileAds';
+import { adEnvironmentForUnitId, googleAdRequestOptions, googleAds, initializeGoogleAds, rewardedUnitId } from './googleMobileAds';
 import { reportAdDiagnostic } from './adDiagnostics';
 import type { AdEnvironment } from './adDiagnostics';
 const completeWithRetry = async <T,>(request: () => Promise<T>): Promise<T> => {
@@ -67,6 +67,7 @@ export default function RewardedUsageRightButton({ offer, token, userId, onRewar
       const adsReady = await initializeGoogleAds(diagnosticContext);
       if (!adsReady) throw new Error('Reklam izni alınamadı');
       const ad = module.RewardedAd.createForAdRequest(unitId, {
+        ...googleAdRequestOptions(),
         serverSideVerificationOptions: { userId, customData: challenge.data.token },
       });
       const cleanups: (() => void)[] = [];

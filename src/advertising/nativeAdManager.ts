@@ -1,3 +1,4 @@
+type NativeAdRequestOptions = { requestNonPersonalizedAdsOnly?: boolean };
 type NativeAdInstance = {
   destroy: () => void;
   responseId?: string;
@@ -5,7 +6,7 @@ type NativeAdInstance = {
 
 type NativeAdModule = {
   NativeAd: {
-    createForAdRequest: (unitId: string) => Promise<NativeAdInstance>;
+    createForAdRequest: (unitId: string, options?: { requestNonPersonalizedAdsOnly?: boolean }) => Promise<NativeAdInstance>;
   };
 };
 
@@ -16,6 +17,7 @@ type NativeAdEntry = {
   module: NativeAdModule;
   unitId: string;
   priority: NativeAdPriority;
+  requestOptions?: NativeAdRequestOptions;
   cancelled: boolean;
   settled: boolean;
   state: 'queued' | 'loading' | 'ready' | 'failed';
@@ -79,7 +81,7 @@ function processQueue() {
 
   inFlightEntry = entry;
   entry.state = 'loading';
-  void entry.module.NativeAd.createForAdRequest(entry.unitId)
+  void entry.module.NativeAd.createForAdRequest(entry.unitId, entry.requestOptions)
     .then(ad => {
       if (entry.cancelled || entries.get(entry.key) !== entry) {
         destroyOnce(ad);
@@ -103,11 +105,12 @@ function processQueue() {
     });
 }
 
-function getOrCreateEntry(module: NativeAdModule, unitId: string, sessionKey: string, slotIndex: number, priority: NativeAdPriority) {
+function getOrCreateEntry(module: NativeAdModule, unitId: string, sessionKey: string, slotIndex: number, priority: NativeAdPriority, requestOptions?: NativeAdRequestOptions) {
   const key = cacheKey(sessionKey, unitId, slotIndex);
   const existing = entries.get(key);
   if (existing) {
     if (priority === 'visible' && existing.priority !== 'visible') existing.priority = 'visible';
+    if (requestOptions) existing.requestOptions = requestOptions;
     return existing;
   }
   let resolve!: (ad: NativeAdInstance | null) => void;
@@ -118,7 +121,7 @@ function getOrCreateEntry(module: NativeAdModule, unitId: string, sessionKey: st
   });
   void promise.catch(() => undefined);
   const entry: NativeAdEntry = {
-    key, sessionKey, slotIndex, module, unitId, priority,
+    key, sessionKey, slotIndex, module, unitId, priority, requestOptions,
     cancelled: false, settled: false, state: 'queued', ad: null, promise, resolve, reject,
   };
   entries.set(key, entry);
@@ -130,15 +133,15 @@ function getOrCreateEntry(module: NativeAdModule, unitId: string, sessionKey: st
   return entry;
 }
 
-export function prepareNativeAdSession(module: NativeAdModule, unitId: string, sessionKey: string, slotCount: number) {
+export function prepareNativeAdSession(module: NativeAdModule, unitId: string, sessionKey: string, slotCount: number, requestOptions?: NativeAdRequestOptions) {
   const safeCount = Math.max(0, Math.min(MAX_NATIVE_ADS_PER_PAGE, Math.floor(slotCount)));
   for (let slotIndex = 1; slotIndex <= safeCount; slotIndex += 1) {
-    getOrCreateEntry(module, unitId, sessionKey, slotIndex, 'preload');
+    getOrCreateEntry(module, unitId, sessionKey, slotIndex, 'preload', requestOptions);
   }
 }
 
-export function acquireNativeAd(module: NativeAdModule, unitId: string, sessionKey: string, slotIndex: number, priority: NativeAdPriority = 'visible'): NativeAdLease {
-  const entry = getOrCreateEntry(module, unitId, sessionKey, slotIndex, priority);
+export function acquireNativeAd(module: NativeAdModule, unitId: string, sessionKey: string, slotIndex: number, priority: NativeAdPriority = 'visible', requestOptions?: NativeAdRequestOptions): NativeAdLease {
+  const entry = getOrCreateEntry(module, unitId, sessionKey, slotIndex, priority, requestOptions);
   processQueue();
   return {
     promise: entry.promise,

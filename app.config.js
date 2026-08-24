@@ -42,7 +42,6 @@ module.exports = ({ config: base }) => {
     ios: {
       ...base.ios,
       bundleIdentifier: 'com.yalovawebcozumleri.dongu',
-      buildNumber: '1',
     },
     android: {
       ...base.android,

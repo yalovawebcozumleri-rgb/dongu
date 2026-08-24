@@ -4,7 +4,7 @@ import { Listing } from '../../marketplace';
 import { C, s } from '../../styles';
 import { ApiError, apiRequest } from '../lib/api';
 import { useNotice } from '../notice/NoticeProvider';
-import { adEnvironmentForUnitId, googleAds, initializeGoogleAds, rewardedUnitId } from './googleMobileAds';
+import { adEnvironmentForUnitId, googleAdRequestOptions, googleAds, initializeGoogleAds, rewardedUnitId } from './googleMobileAds';
 import { reportAdDiagnostic } from './adDiagnostics';
 import type { AdEnvironment } from './adDiagnostics';
 const completeWithRetry = async <T,>(request: () => Promise<T>): Promise<T> => {
@@ -63,6 +63,7 @@ export default function RewardedListingBoostButton({ listing, token, userId, onB
       adsReady = await initializeGoogleAds(diagnosticContext);
       if (!adsReady) throw new Error('Reklam izni alınamadı');
       const ad = module.RewardedAd.createForAdRequest(unitId, {
+        ...googleAdRequestOptions(),
         serverSideVerificationOptions: { userId, customData: challenge.data.token },
       });
       const cleanups: (() => void)[] = [];

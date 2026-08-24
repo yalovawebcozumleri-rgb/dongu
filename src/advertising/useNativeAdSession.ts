@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Platform } from 'react-native';
-import { adEnvironmentForUnitId, googleAds, initializeGoogleAds, nativeUnitId } from './googleMobileAds';
+import { adEnvironmentForUnitId, googleAdRequestOptions, googleAds, initializeGoogleAds, nativeUnitId } from './googleMobileAds';
 import { countAdvertisementSlots } from './listSlots';
 import { prepareNativeAdSession, releaseNativeAdSession } from './nativeAdManager';
 import { AdvertisementCollectionResponse, AdvertisementPlacement } from './types';
@@ -63,7 +63,7 @@ export function useNativeAdSessionPreload(
       return () => { active = false; };
     }
     void initializeGoogleAds({ environment: adEnvironmentForUnitId(unitId), format: 'native', placement: sessionKey, unitId }).then(ready => {
-      if (active && ready) prepareNativeAdSession(module, unitId, sessionKey, slotCount);
+      if (active && ready) prepareNativeAdSession(module, unitId, sessionKey, slotCount, googleAdRequestOptions());
     });
     return () => { active = false; };
   }, [collection?.meta.enabled, module, sessionKey, slotCount, source, unitId]);

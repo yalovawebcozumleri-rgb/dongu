@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Image, StyleSheet, Text, View } from 'react-native';
 import type { StyleProp, ViewStyle } from 'react-native';
-import { adEnvironmentForUnitId, googleAds, initializeGoogleAds, nativeUnitId } from './googleMobileAds';
+import { adEnvironmentForUnitId, googleAdRequestOptions, googleAds, initializeGoogleAds, nativeUnitId } from './googleMobileAds';
 import { reportAdDiagnostic } from './adDiagnostics';
 import { acquireNativeAd, NativeAdLease, peekNativeAd, prepareNativeAdSession } from './nativeAdManager';
 
@@ -44,8 +44,8 @@ export default function GoogleNativeAdCard({
       .then(ready => {
         if (!ready) throw new Error('Ad consent is unavailable');
         if (!mounted) return null;
-        prepareNativeAdSession(module, unitId, sessionKey, totalSlots);
-        lease = acquireNativeAd(module, unitId, sessionKey, slotIndex, 'visible');
+        prepareNativeAdSession(module, unitId, sessionKey, totalSlots, googleAdRequestOptions());
+        lease = acquireNativeAd(module, unitId, sessionKey, slotIndex, 'visible', googleAdRequestOptions());
         return lease.promise;
       })
       .then(ad => {

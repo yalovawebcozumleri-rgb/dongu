@@ -15,6 +15,12 @@
       ],
       "expo-notifications",
       [
+        "expo-tracking-transparency",
+        {
+          "userTrackingPermission": "İznin, sana daha alakalı reklamlar göstermek ve reklam performansını ölçmek için kullanılacaktır."
+        }
+      ],
+      [
         "react-native-google-mobile-ads",
         {
           "androidAppId": "ca-app-pub-3940256099942544~3347511713",
@@ -89,10 +95,11 @@
       "supportsTablet": false,
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "Yakındaki ilanları göstermek, adresini doğrulamak ve isteğinle mevcut konumunu kullanmak için konumuna erişmemize izin ver.",
+        "NSUserTrackingUsageDescription": "İznin, sana daha alakalı reklamlar göstermek ve reklam performansını ölçmek için kullanılacaktır.",
+        "CFBundleAllowMixedLocalizations": true,
         "ITSAppUsesNonExemptEncryption": false
       },
-      "bundleIdentifier": "com.yalovawebcozumleri.dongu",
-      "buildNumber": "1"
+      "bundleIdentifier": "com.yalovawebcozumleri.dongu"
     },
     "android": {
       "adaptiveIcon": {
@@ -111,6 +118,10 @@
     },
     "description": "Geri dönüştürülebilir ambalajları yakındaki kullanıcılarla güvenli şekilde döngüye kazandır.",
     "scheme": "dongu",
+    "locales": {
+      "tr": "./locales/tr.json",
+      "en": "./locales/en.json"
+    },
     "extra": {
       "legal": {
         "termsUrl": "https://dongu.yalovawebcozumleri.com/kullanim-sartlari",

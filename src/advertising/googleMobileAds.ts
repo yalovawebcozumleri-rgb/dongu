@@ -1,12 +1,30 @@
 import Constants from 'expo-constants';
-import { Platform } from 'react-native';
+import { AppState, Platform } from 'react-native';
 import { reportAdDiagnostic } from './adDiagnostics';
 import type { AdDiagnosticContext, AdEnvironment } from './adDiagnostics';
+import { resolveAdPersonalization } from './adPrivacyPolicy';
 
 type GoogleAdsModule = typeof import('react-native-google-mobile-ads');
+type TrackingTransparencyModule = typeof import('expo-tracking-transparency');
+
+export type GoogleAdsPrivacyState = {
+  canRequestAds: boolean;
+  gdprApplies: boolean | null;
+  attStatus: string;
+  personalizedAdsAllowed: boolean;
+  requestNonPersonalizedAdsOnly: boolean;
+};
+
 let cachedModule: GoogleAdsModule | null | undefined;
 let sdkInitialization: Promise<boolean> | null = null;
 let consentInitialization: Promise<boolean> | null = null;
+let privacyState: GoogleAdsPrivacyState = {
+  canRequestAds: false,
+  gdprApplies: null,
+  attStatus: Platform.OS === 'ios' ? 'not-requested' : 'not-applicable',
+  personalizedAdsAllowed: false,
+  requestNonPersonalizedAdsOnly: true,
+};
 
 export function googleAds(): GoogleAdsModule | null {
   if (cachedModule !== undefined) return cachedModule;
@@ -33,6 +51,79 @@ function initializeSdk(module: GoogleAdsModule, context: AdDiagnosticContext) {
   }
   return sdkInitialization;
 }
+
+function reportPrivacyState(context: AdDiagnosticContext) {
+  reportAdDiagnostic('privacy_state_resolved', { ...context, format: 'consent' }, {
+    canRequestAds: privacyState.canRequestAds,
+    gdprApplies: privacyState.gdprApplies,
+    attStatus: privacyState.attStatus,
+    personalizedAdsAllowed: privacyState.personalizedAdsAllowed,
+    requestNonPersonalizedAdsOnly: privacyState.requestNonPersonalizedAdsOnly,
+  });
+}
+
+function waitUntilAppIsActive() {
+  if (AppState.currentState === 'active') return Promise.resolve();
+  return new Promise<void>(resolve => {
+    let subscription: ReturnType<typeof AppState.addEventListener> | null = null;
+    const timeout = setTimeout(() => {
+      subscription?.remove();
+      resolve();
+    }, 5000);
+    subscription = AppState.addEventListener('change', state => {
+      if (state !== 'active') return;
+      clearTimeout(timeout);
+      subscription?.remove();
+      resolve();
+    });
+  });
+}
+
+async function requestIosTrackingPermission(context: AdDiagnosticContext) {
+  if (Platform.OS !== 'ios') return 'not-applicable';
+  try {
+    const tracking = require('expo-tracking-transparency') as TrackingTransparencyModule;
+    if (!tracking.isAvailable()) return 'unavailable';
+
+    let permission = await tracking.getTrackingPermissionsAsync();
+    reportAdDiagnostic('att_status_checked', { ...context, format: 'consent' }, {
+      attStatus: permission.status,
+    });
+    if (permission.status === tracking.PermissionStatus.UNDETERMINED) {
+      await waitUntilAppIsActive();
+      permission = await tracking.requestTrackingPermissionsAsync();
+      reportAdDiagnostic('att_prompt_completed', { ...context, format: 'consent' }, {
+        attStatus: permission.status,
+      });
+    }
+    return permission.status;
+  } catch (error) {
+    reportAdDiagnostic('att_request_failed', { ...context, format: 'consent' }, {}, error);
+    return 'error';
+  }
+}
+
+async function gdprAllowsPersonalizedAds(module: GoogleAdsModule, gdprApplies: boolean) {
+  if (!gdprApplies) return true;
+  const choices = await module.AdsConsent.getUserChoices();
+  return choices.storeAndAccessInformationOnDevice
+    && choices.createAPersonalisedAdsProfile
+    && choices.selectPersonalisedAds;
+}
+
+function setPrivacyState(next: GoogleAdsPrivacyState, context: AdDiagnosticContext) {
+  privacyState = next;
+  reportPrivacyState(context);
+}
+
+export function googleAdRequestOptions() {
+  return { requestNonPersonalizedAdsOnly: privacyState.requestNonPersonalizedAdsOnly };
+}
+
+export function getGoogleAdsPrivacyState() {
+  return { ...privacyState };
+}
+
 export function isGoogleTestUnitId(unitId?: string | null) {
   const module = googleAds();
   if (!module || !unitId) return false;
@@ -45,19 +136,6 @@ export function adEnvironmentForUnitId(unitId?: string | null): AdEnvironment {
 }
 
 async function initializeConsent(module: GoogleAdsModule, context: AdDiagnosticContext) {
-  let cachedSdkInitialization: Promise<boolean> | null = null;
-
-  try {
-    const cachedConsent = await module.AdsConsent.getConsentInfo();
-    reportAdDiagnostic('consent_cached_checked', { ...context, format: 'consent' }, {
-      consentStatus: cachedConsent.status,
-      canRequestAds: cachedConsent.canRequestAds,
-    });
-    if (cachedConsent.canRequestAds) cachedSdkInitialization = initializeSdk(module, context);
-  } catch (error) {
-    reportAdDiagnostic('consent_cached_failed', { ...context, format: 'consent' }, {}, error);
-  }
-
   try {
     const updatedConsent = await module.AdsConsent.requestInfoUpdate();
     reportAdDiagnostic('consent_info_updated', { ...context, format: 'consent' }, {
@@ -71,20 +149,50 @@ async function initializeConsent(module: GoogleAdsModule, context: AdDiagnosticC
       canRequestAds: gatheredConsent.canRequestAds,
     });
 
-    if (gatheredConsent.canRequestAds) return initializeSdk(module, context);
-    if (cachedSdkInitialization) return cachedSdkInitialization;
+    if (!gatheredConsent.canRequestAds) {
+      setPrivacyState({
+        canRequestAds: false,
+        gdprApplies: null,
+        attStatus: Platform.OS === 'ios' ? 'not-requested' : 'not-applicable',
+        personalizedAdsAllowed: false,
+        requestNonPersonalizedAdsOnly: true,
+      }, context);
+      return false;
+    }
 
-    reportAdDiagnostic('consent_ads_blocked', { ...context, format: 'consent' }, {
-      consentStatus: gatheredConsent.status,
-      canRequestAds: false,
+    const gdprApplies = await module.AdsConsent.getGdprApplies();
+    const gdprAllowsPersonalization = await gdprAllowsPersonalizedAds(module, gdprApplies);
+    const attStatus = gdprAllowsPersonalization
+      ? await requestIosTrackingPermission(context)
+      : Platform.OS === 'ios' ? 'not-requested-no-gdpr-consent' : 'not-applicable';
+    const personalization = resolveAdPersonalization({
+      platform: Platform.OS === 'ios' ? 'ios' : 'android',
+      gdprAllowsPersonalization,
+      attStatus,
     });
-    return false;
+
+    setPrivacyState({
+      canRequestAds: true,
+      gdprApplies,
+      attStatus,
+      ...personalization,
+    }, context);
+    return initializeSdk(module, context);
   } catch (error) {
     reportAdDiagnostic('consent_update_failed', { ...context, format: 'consent' }, {}, error);
 
     try {
       const fallbackConsent = await module.AdsConsent.getConsentInfo();
-      if (fallbackConsent.canRequestAds) return initializeSdk(module, context);
+      if (fallbackConsent.canRequestAds) {
+        setPrivacyState({
+          canRequestAds: true,
+          gdprApplies: null,
+          attStatus: Platform.OS === 'ios' ? 'not-requested-consent-fallback' : 'not-applicable',
+          personalizedAdsAllowed: false,
+          requestNonPersonalizedAdsOnly: true,
+        }, context);
+        return initializeSdk(module, context);
+      }
       reportAdDiagnostic('consent_fallback_blocked', { ...context, format: 'consent' }, {
         consentStatus: fallbackConsent.status,
         canRequestAds: false,
@@ -93,7 +201,14 @@ async function initializeConsent(module: GoogleAdsModule, context: AdDiagnosticC
       reportAdDiagnostic('consent_fallback_failed', { ...context, format: 'consent' }, {}, fallbackError);
     }
 
-    return cachedSdkInitialization ? cachedSdkInitialization : false;
+    setPrivacyState({
+      canRequestAds: false,
+      gdprApplies: null,
+      attStatus: Platform.OS === 'ios' ? 'not-requested-consent-error' : 'not-applicable',
+      personalizedAdsAllowed: false,
+      requestNonPersonalizedAdsOnly: true,
+    }, context);
+    return false;
   }
 }
 

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef } from 'react';
-import { adEnvironmentForUnitId, googleAds, initializeGoogleAds, interstitialUnitId } from './googleMobileAds';
+import { adEnvironmentForUnitId, googleAdRequestOptions, googleAds, initializeGoogleAds, interstitialUnitId } from './googleMobileAds';
 import { reportAdDiagnostic } from './adDiagnostics';
 
 export function usePickupInterstitial(enabled: boolean) {
@@ -24,7 +24,7 @@ export function usePickupInterstitial(enabled: boolean) {
     };
     void initializeGoogleAds(diagnosticContext).then(ready => {
       if (!ready) return;
-      const ad = module.InterstitialAd.createForAdRequest(unitId);
+      const ad = module.InterstitialAd.createForAdRequest(unitId, googleAdRequestOptions());
       adRef.current = ad;
       cleanupRef.current = [
         ad.addAdEventListener(module.AdEventType.LOADED, () => {
