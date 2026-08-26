@@ -7,7 +7,7 @@
     <meta name="robots" content="index, follow, max-image-preview:large">
     <meta name="application-name" content="Döngü">
     <meta name="apple-mobile-web-app-title" content="Döngü">
-    <meta name="description" content="@yield('description', 'Döngü, DOA işaretli depozitolu PET, cam ve alüminyum ambalajlar için insanları yakındaki ilanlarla buluşturan bağımsız platformdur.')">
+    <meta name="description" content="@yield('description', 'Döngü, depozitolu PET, cam ve alüminyum ambalajlar için kullanıcıları yakındaki ilanlarla buluşturan bağımsız paylaşım platformudur.')">
     <meta property="og:type" content="website">
     <meta property="og:site_name" content="Döngü">
     <meta property="og:title" content="@yield('title', 'Döngü')">
@@ -33,6 +33,11 @@
     <link rel="stylesheet" href="{{ asset('site/marketing-vision-responsive.css') }}?v=20260819-partnerships">
     <link rel="stylesheet" href="{{ asset('site/marketing-app-carousel.css') }}?v=20260815-app-carousel">
     <link rel="stylesheet" href="{{ asset('site/store-badges.css') }}?v=20260822-store-links">
+    <style>
+        .site-footer-independence { line-height: 1.65; }
+        .site-footer-independence a { color: inherit; text-decoration: underline; text-underline-offset: 3px; }
+        @media (max-width: 720px) { .site-footer-bottom .site-footer-independence { display: block !important; margin-top: 12px !important; max-width: none !important; } }
+    </style>
     <title>@yield('title', 'Döngü')</title>
     <script type="application/ld+json">
         {!! json_encode([
@@ -126,6 +131,7 @@
         </div>
         <div class="site-footer-bottom">
             <span>© {{ date('Y') }} Döngü. Tüm hakları saklıdır.</span>
+            <span class="site-footer-independence">Döngü bağımsız bir ilan ve iletişim platformudur; Türkiye Çevre Ajansı, Depozito Yönetim Sistemi veya DOA tarafından işletilmez ya da yetkilendirilmez. <a href="{{ route('marketing.about') }}">Ayrıntılı bilgi →</a></span>
         </div>
     </div>
 </footer>
