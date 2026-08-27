@@ -35,6 +35,21 @@ class UserManagementTest extends TestCase
                 ->has('actions', 10));
     }
 
+    public function test_user_registration_timestamp_is_sent_as_iso_utc_for_istanbul_formatting(): void
+    {
+        $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
+        $user = User::factory()->create([
+            'status' => 'active',
+            'created_at' => '2026-08-27 13:23:00',
+        ]);
+
+        $this->actingAs($admin)->get('/admin/users')
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('users.data.0.id', $user->id)
+                ->where('users.data.0.created_at', '2026-08-27T13:23:00+00:00'));
+    }
+
     public function test_admin_can_suspend_user_and_existing_api_session_is_blocked(): void
     {
         $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
