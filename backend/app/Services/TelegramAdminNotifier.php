@@ -48,7 +48,10 @@ class TelegramAdminNotifier
             ->copy()
             ->timezone('Europe/Istanbul')
             ->format('d.m.Y H:i');
-        $activeUsers = User::query()->where('status', 'active')->count();
+        $activeUsers = User::query()
+            ->where('role', User::ROLE_USER)
+            ->where('status', 'active')
+            ->count();
 
         return implode("\n", [
             '🎉 <b>Yeni Döngü kullanıcısı</b>',

@@ -25,8 +25,11 @@ class AdminNewUserTelegramNotificationTest extends TestCase
             'https://api.telegram.test/bottest-token/sendMessage' => Http::response(['ok' => true], 200),
         ]);
 
+        User::factory()->create(['role' => User::ROLE_ADMIN, 'status' => 'active']);
+        User::factory()->create(['role' => 'supporter', 'status' => 'active']);
         $user = User::factory()->create([
             'name' => 'Yeni Kullanıcı',
+            'role' => User::ROLE_USER,
             'status' => 'active',
         ]);
 
@@ -39,6 +42,7 @@ class AdminNewUserTelegramNotificationTest extends TestCase
                 && str_contains($request['text'], 'Yeni Döngü kullanıcısı')
                 && str_contains($request['text'], 'Yeni Kullanıcı')
                 && str_contains($request['text'], 'Platform: iOS')
+                && str_contains($request['text'], 'Toplam aktif kullanıcı: 1')
                 && str_contains($request['text'], 'Kullanıcı #'.$user->id)
                 && ! str_contains($request['text'], $user->email);
         });

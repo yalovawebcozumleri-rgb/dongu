@@ -20,10 +20,14 @@ class AnnouncementDeliveryTest extends TestCase
     {
         config(['services.expo.push_enabled' => true]);
         Queue::fake([SendUserNotificationPush::class]);
-        $optedIn = User::factory()->create(['status' => 'active']);
-        $optedOut = User::factory()->create(['status' => 'active']);
+        $optedIn = User::factory()->create(['role' => User::ROLE_USER, 'status' => 'active']);
+        $optedOut = User::factory()->create(['role' => User::ROLE_USER, 'status' => 'active']);
+        $admin = User::factory()->create(['role' => User::ROLE_ADMIN, 'status' => 'active']);
+        $supporter = User::factory()->create(['role' => 'supporter', 'status' => 'active']);
         NotificationPreference::create(['user_id' => $optedIn->id, 'marketing_enabled' => true]);
         NotificationPreference::create(['user_id' => $optedOut->id, 'marketing_enabled' => false]);
+        NotificationPreference::create(['user_id' => $admin->id, 'marketing_enabled' => true]);
+        NotificationPreference::create(['user_id' => $supporter->id, 'marketing_enabled' => true]);
         $campaign = AnnouncementCampaign::create([
             'type' => 'marketing', 'title' => 'Döngü duyurusu', 'body' => 'Yeni ilanlara göz at.',
             'audience' => 'all_active', 'push_enabled' => true, 'recurrence' => 'none',
@@ -34,6 +38,8 @@ class AnnouncementDeliveryTest extends TestCase
 
         $this->assertDatabaseHas('user_notifications', ['user_id' => $optedIn->id, 'type' => 'admin_marketing']);
         $this->assertDatabaseHas('user_notifications', ['user_id' => $optedOut->id, 'type' => 'admin_marketing']);
+        $this->assertDatabaseMissing('user_notifications', ['user_id' => $admin->id, 'type' => 'admin_marketing']);
+        $this->assertDatabaseMissing('user_notifications', ['user_id' => $supporter->id, 'type' => 'admin_marketing']);
         $this->assertSame(2, $campaign->fresh()->total_in_app_deliveries);
         $this->assertSame(1, $campaign->fresh()->total_push_eligible);
         $this->assertSame(AnnouncementCampaign::STATUS_COMPLETED, $campaign->fresh()->status);

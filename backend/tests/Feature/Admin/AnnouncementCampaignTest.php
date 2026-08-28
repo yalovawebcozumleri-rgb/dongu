@@ -4,6 +4,7 @@ namespace Tests\Feature\Admin;
 
 use App\Jobs\DispatchAnnouncementCampaign;
 use App\Models\AnnouncementCampaign;
+use App\Models\NotificationPreference;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -19,8 +20,17 @@ class AnnouncementCampaignTest extends TestCase
     {
         Queue::fake();
         $admin = User::factory()->create(['role' => User::ROLE_ADMIN, 'status' => 'active']);
+        $supporter = User::factory()->create(['role' => 'supporter', 'status' => 'active']);
+        $user = User::factory()->create(['role' => User::ROLE_USER, 'status' => 'active']);
+        NotificationPreference::create(['user_id' => $admin->id, 'marketing_enabled' => true]);
+        NotificationPreference::create(['user_id' => $supporter->id, 'marketing_enabled' => true]);
+        NotificationPreference::create(['user_id' => $user->id, 'marketing_enabled' => true]);
+
         $this->actingAs($admin)->get('/admin/announcements')->assertOk()->assertInertia(fn (Assert $page) => $page
-            ->component('Admin/Announcements/Index')->has('campaigns.data')->has('audience.activeUsers'));
+            ->component('Admin/Announcements/Index')
+            ->has('campaigns.data')
+            ->where('audience.activeUsers', 1)
+            ->where('audience.marketingOptIns', 1));
 
         $this->post('/admin/announcements', [
             'type' => 'marketing', 'title' => 'Haftanın duyurusu', 'body' => 'Yeni ilanları keşfet.',

@@ -44,7 +44,11 @@ class DispatchAnnouncementCampaign implements ShouldQueue
 
         $recipients = 0;
         $pushEligible = 0;
-        $query = User::query()->where('status', 'active')->with('notificationPreference')->orderBy('id');
+        $query = User::query()
+            ->where('role', User::ROLE_USER)
+            ->where('status', 'active')
+            ->with('notificationPreference')
+            ->orderBy('id');
         if ($campaign->audience === 'selected') $query->whereIn('id', $campaign->target_user_ids ?? []);
 
         $query->chunkById(200, function ($users) use ($campaign, $dispatch, $notifications, &$recipients, &$pushEligible) {

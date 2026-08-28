@@ -25,8 +25,16 @@ class AnnouncementCampaignController extends Controller
         return Inertia::render('Admin/Announcements/Index', [
             'campaigns' => $campaigns,
             'audience' => [
-                'activeUsers' => User::where('status', 'active')->count(),
-                'marketingOptIns' => NotificationPreference::where('marketing_enabled', true)->count(),
+                'activeUsers' => User::query()
+                    ->where('role', User::ROLE_USER)
+                    ->where('status', 'active')
+                    ->count(),
+                'marketingOptIns' => NotificationPreference::query()
+                    ->where('marketing_enabled', true)
+                    ->whereHas('user', fn ($query) => $query
+                        ->where('role', User::ROLE_USER)
+                        ->where('status', 'active'))
+                    ->count(),
             ],
             'limits' => ['dailyMaximumDays' => 31],
         ]);
