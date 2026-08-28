@@ -59,7 +59,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', closeOnEscape));
       <section class="grid gap-5 xl:grid-cols-2">
         <article class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
           <div class="flex items-start justify-between gap-4">
-            <div><p class="text-xs font-bold uppercase tracking-[0.16em] text-emerald-700">Büyüme</p><h2 class="mt-1 text-xl font-semibold text-slate-950">Kullanıcılar</h2><p class="mt-1 text-sm text-slate-600">Silinen hesaplar büyüme verilerine dahil edilmez.</p></div>
+            <div><p class="text-xs font-bold uppercase tracking-[0.16em] text-emerald-700">Büyüme</p><h2 class="mt-1 text-xl font-semibold text-slate-950">Kullanıcılar</h2><p class="mt-1 text-sm text-slate-600">Toplam kayıt silinen hesapları içerir; aktif ve yeni büyüme verileri içermez.</p></div>
             <Link href="/admin/users" class="rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 transition hover:border-emerald-300 hover:text-emerald-800">Yönet →</Link>
           </div>
           <div class="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">

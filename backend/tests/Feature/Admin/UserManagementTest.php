@@ -35,6 +35,25 @@ class UserManagementTest extends TestCase
                 ->has('actions', 10));
     }
 
+    public function test_deleted_accounts_have_a_distinct_count_filter_and_label(): void
+    {
+        $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
+        User::factory()->create(['status' => 'active']);
+        $deleted = User::factory()->create(['status' => 'deleted']);
+
+        $this->actingAs($admin)->get('/admin/users?status=deleted')
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('counts.all', 2)
+                ->where('counts.active', 1)
+                ->where('counts.deleted', 1)
+                ->where('filters.status', 'deleted')
+                ->has('users.data', 1)
+                ->where('users.data.0.id', $deleted->id)
+                ->where('users.data.0.account_state', 'deleted')
+                ->where('users.data.0.account_state_label', 'Silinmiş'));
+    }
+
     public function test_user_registration_timestamp_is_sent_as_iso_utc_for_istanbul_formatting(): void
     {
         $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);

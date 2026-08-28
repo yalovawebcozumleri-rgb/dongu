@@ -10,6 +10,7 @@ const stateClasses = {
   suspended: 'bg-amber-50 text-amber-900',
   closed: 'bg-red-50 text-red-800',
   inactive: 'bg-slate-100 text-slate-700',
+  deleted: 'bg-slate-200 text-slate-800',
 };
 const applyFilters = () => router.get('/admin/users', { ...filter, search: filter.search || undefined, status: filter.status || undefined }, { preserveState: true, replace: true });
 const setStatus = status => { filter.status = status; applyFilters(); };
@@ -20,8 +21,8 @@ const clearFilters = () => { Object.assign(filter, { search: '', status: '', per
   <Head title="Kullanıcı Yönetimi" />
   <AdminLayout eyebrow="Hesaplar" title="Kullanıcı yönetimi" description="Kayıtlı hesapları ara, erişim durumlarını yönet ve denetlenebilir hesap kararları uygula.">
     <main class="mx-auto max-w-[1600px] px-5 py-8 lg:px-8">
-      <section class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <button v-for="item in [['', 'Tüm kullanıcılar', counts.all], ['active', 'Aktif', counts.active], ['suspended', 'Askıya alınmış', counts.suspended], ['closed', 'Kapatılmış', counts.closed]]" :key="item[0]" type="button" @click="setStatus(item[0])" :class="['rounded-2xl border bg-white p-5 text-left transition', (filter.status || '') === item[0] ? 'border-emerald-500 ring-2 ring-emerald-100' : 'border-slate-200 hover:border-slate-300']">
+      <section class="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+        <button v-for="item in [['', 'Tüm kullanıcılar', counts.all], ['active', 'Aktif', counts.active], ['suspended', 'Askıya alınmış', counts.suspended], ['closed', 'Kapatılmış', counts.closed], ['deleted', 'Silinmiş', counts.deleted]]" :key="item[0]" type="button" @click="setStatus(item[0])" :class="['rounded-2xl border bg-white p-5 text-left transition', (filter.status || '') === item[0] ? 'border-emerald-500 ring-2 ring-emerald-100' : 'border-slate-200 hover:border-slate-300']">
           <p class="text-sm font-semibold text-slate-700">{{ item[1] }}</p>
           <p class="mt-2 text-3xl font-semibold text-slate-950">{{ Number(item[2]).toLocaleString('tr-TR') }}</p>
         </button>
@@ -30,7 +31,7 @@ const clearFilters = () => { Object.assign(filter, { search: '', status: '', per
       <section class="mt-5 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
         <form class="grid gap-3 md:grid-cols-[1fr_210px_140px_auto]" @submit.prevent="applyFilters">
           <label class="text-xs font-semibold text-slate-700">Kullanıcı ara<input v-model="filter.search" class="mt-1.5 h-11 w-full rounded-xl border border-slate-300 px-3 text-sm text-slate-950 outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100" placeholder="Ad, e-posta veya telefon" /></label>
-          <label class="text-xs font-semibold text-slate-700">Hesap durumu<select v-model="filter.status" class="mt-1.5 h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm text-slate-950"><option value="">Tümü</option><option value="active">Aktif</option><option value="suspended">Askıya alınmış</option><option value="closed">Kapatılmış</option><option value="inactive">Pasif / eski durum</option></select></label>
+          <label class="text-xs font-semibold text-slate-700">Hesap durumu<select v-model="filter.status" class="mt-1.5 h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm text-slate-950"><option value="">Tümü</option><option value="active">Aktif</option><option value="suspended">Askıya alınmış</option><option value="closed">Kapatılmış</option><option value="deleted">Silinmiş</option><option value="inactive">Pasif / eski durum</option></select></label>
           <label class="text-xs font-semibold text-slate-700">Sayfa başına<select v-model.number="filter.per_page" class="mt-1.5 h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm text-slate-950"><option v-for="size in pageSizes" :key="size" :value="size">{{ size }}</option></select></label>
           <div class="flex items-end gap-2"><button class="h-11 rounded-xl bg-forest-700 px-5 text-sm font-semibold text-white">Uygula</button><button type="button" class="h-11 rounded-xl border border-slate-300 px-4 text-sm font-semibold text-slate-700" @click="clearFilters">Temizle</button></div>
         </form>

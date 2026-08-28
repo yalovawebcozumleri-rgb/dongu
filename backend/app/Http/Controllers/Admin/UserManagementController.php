@@ -17,7 +17,7 @@ use Inertia\Response;
 class UserManagementController extends Controller
 {
     private const PAGE_SIZES = [50, 100, 250, 500];
-    private const FILTER_STATUSES = ['active', 'suspended', 'closed', 'inactive'];
+    private const FILTER_STATUSES = ['active', 'suspended', 'closed', 'deleted', 'inactive'];
 
     public function index(Request $request): Response
     {
@@ -137,6 +137,7 @@ class UserManagementController extends Controller
             'active' => $active->count(),
             'suspended' => $suspended->count(),
             'closed' => (clone $base)->where('status', 'closed')->count(),
+            'deleted' => (clone $base)->where('status', 'deleted')->count(),
         ];
     }
 
@@ -148,8 +149,10 @@ class UserManagementController extends Controller
             $query->where('status', 'active')->whereHas('moderationSanctions', fn (Builder $query) => $this->activeAccountRestrictionQuery($query));
         } elseif ($status === 'closed') {
             $query->where('status', 'closed');
+        } elseif ($status === 'deleted') {
+            $query->where('status', 'deleted');
         } elseif ($status === 'inactive') {
-            $query->whereNotIn('status', ['active', 'closed']);
+            $query->whereNotIn('status', ['active', 'closed', 'deleted']);
         }
     }
 
@@ -174,6 +177,7 @@ class UserManagementController extends Controller
 
     private function accountState(User $user): string
     {
+        if ($user->status === 'deleted') return 'deleted';
         if ($user->status === 'closed') return 'closed';
         if ($user->status !== 'active') return 'inactive';
         if ($user->moderationSanctions->contains(fn (ModerationSanction $sanction) => $sanction->isActive() && str_starts_with($sanction->action, 'account_suspension_'))) return 'suspended';
@@ -182,6 +186,6 @@ class UserManagementController extends Controller
 
     private function accountStateLabel(string $state): string
     {
-        return ['active' => 'Aktif', 'suspended' => 'Askıya alınmış', 'closed' => 'Kapatılmış', 'inactive' => 'Pasif'][$state] ?? 'Bilinmiyor';
+        return ['active' => 'Aktif', 'suspended' => 'Askıya alınmış', 'closed' => 'Kapatılmış', 'deleted' => 'Silinmiş', 'inactive' => 'Pasif'][$state] ?? 'Bilinmiyor';
     }
 }

@@ -30,7 +30,8 @@ class AdminDashboardService
         $last7 = $today->subDays(6);
         $previous7 = $today->subDays(13);
         $last30 = $today->subDays(29);
-        $userQuery = fn (): Builder => User::query()->where('role', User::ROLE_USER)->where('status', '!=', 'deleted');
+        $allUserQuery = fn (): Builder => User::query()->where('role', User::ROLE_USER);
+        $growthUserQuery = fn (): Builder => $allUserQuery()->where('status', '!=', 'deleted');
         $listingQuery = fn (): Builder => Listing::query();
         $statusCounts = $listingQuery()->selectRaw('status, COUNT(*) as aggregate')->groupBy('status')->pluck('aggregate', 'status');
         $moderation = $this->moderation();
@@ -41,12 +42,13 @@ class AdminDashboardService
             'generatedAt' => $now->toIso8601String(),
             'health' => ['issueCount' => array_sum(array_column($moderation, 'count')) + $announcementProblems, 'announcementProblems' => $announcementProblems],
             'users' => [
-                'total' => $userQuery()->count(),
-                'active' => $userQuery()->where('status', 'active')->count(),
-                'today' => $this->createdBetween($userQuery(), $today, $tomorrow),
-                'last7Days' => $this->createdBetween($userQuery(), $last7, $tomorrow),
-                'previous7Days' => $this->createdBetween($userQuery(), $previous7, $last7),
-                'last30Days' => $this->createdBetween($userQuery(), $last30, $tomorrow),
+                'total' => $allUserQuery()->count(),
+                'active' => $growthUserQuery()->where('status', 'active')->count(),
+                'deleted' => $allUserQuery()->where('status', 'deleted')->count(),
+                'today' => $this->createdBetween($growthUserQuery(), $today, $tomorrow),
+                'last7Days' => $this->createdBetween($growthUserQuery(), $last7, $tomorrow),
+                'previous7Days' => $this->createdBetween($growthUserQuery(), $previous7, $last7),
+                'last30Days' => $this->createdBetween($growthUserQuery(), $last30, $tomorrow),
             ],
             'listingMetrics' => [
                 'total' => $listingQuery()->count(),

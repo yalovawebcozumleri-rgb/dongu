@@ -40,7 +40,7 @@ class DashboardTest extends TestCase
             );
     }
 
-    public function test_dashboard_excludes_removed_marketplace_data_and_deleted_accounts(): void
+    public function test_dashboard_total_includes_deleted_accounts_but_growth_and_marketplace_data_remain_clean(): void
     {
         $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
         $seller = User::factory()->create(['status' => 'active']);
@@ -56,7 +56,10 @@ class DashboardTest extends TestCase
 
         $this->actingAs($admin)->get('/admin')->assertOk()
             ->assertInertia(fn (Assert $page) => $page
-                ->where('users.total', 1)
+                ->where('users.total', 2)
+                ->where('users.active', 1)
+                ->where('users.deleted', 1)
+                ->where('users.today', 1)
                 ->where('listingMetrics.total', 2)
                 ->where('listingMetrics.completed', 1)
                 ->where('listingMetrics.materials', 150)
