@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Jobs\SendAdminNewUserTelegram;
 use App\Mail\LoginCodeMail;
 use App\Models\LoginCode;
 use App\Models\User;
@@ -13,6 +14,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -159,6 +161,17 @@ class AuthController extends Controller
 
             return [$user, $created];
         });
+
+        if ($created && config('services.telegram_admin.enabled')) {
+            try {
+                SendAdminNewUserTelegram::dispatch($user->id, $validated['device_name']);
+            } catch (\Throwable $exception) {
+                Log::warning('Yeni kullanıcı Telegram bildirimi kuyruğa alınamadı.', [
+                    'user_id' => $user->id,
+                    'exception' => $exception::class,
+                ]);
+            }
+        }
 
         return response()->json(['data' => [
             'user' => $this->userData($user),

@@ -2,11 +2,13 @@
 
 namespace Tests\Feature\Api;
 
+use App\Jobs\SendAdminNewUserTelegram;
 use App\Mail\LoginCodeMail;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Queue;
 use Tests\TestCase;
 
 class AuthTest extends TestCase
@@ -16,6 +18,8 @@ class AuthTest extends TestCase
     public function test_user_can_register_with_emailed_one_time_code(): void
     {
         Mail::fake();
+        Queue::fake([SendAdminNewUserTelegram::class]);
+        config()->set('services.telegram_admin.enabled', true);
 
         $this->postJson('/api/v1/auth/code/request', [
             'intent' => 'register',
@@ -45,6 +49,10 @@ class AuthTest extends TestCase
             'privacy_notice_version' => '2026-08-05.2',
         ]);
         $this->assertDatabaseMissing('login_codes', ['email' => 'ramazan@example.com', 'consumed_at' => null]);
+        Queue::assertPushed(
+            SendAdminNewUserTelegram::class,
+            fn (SendAdminNewUserTelegram $job) => $job->deviceName === 'Test Telefonu'
+        );
     }
 
     public function test_installed_app_with_an_older_legal_version_can_request_a_registration_code(): void

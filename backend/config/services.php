@@ -20,6 +20,13 @@ return [
         'access_token' => env('EXPO_ACCESS_TOKEN'),
     ],
 
+    'telegram_admin' => [
+        'enabled' => filter_var(env('TELEGRAM_ADMIN_NOTIFICATIONS_ENABLED', false), FILTER_VALIDATE_BOOL),
+        'bot_token' => env('TELEGRAM_BOT_TOKEN'),
+        'chat_id' => env('TELEGRAM_ADMIN_CHAT_ID'),
+        'api_base_url' => env('TELEGRAM_API_BASE_URL', 'https://api.telegram.org'),
+    ],
+
     'google_play_review' => [
         'enabled' => filter_var(env('GOOGLE_PLAY_REVIEW_ENABLED', false), FILTER_VALIDATE_BOOL),
         'email' => env('GOOGLE_PLAY_REVIEW_EMAIL'),
