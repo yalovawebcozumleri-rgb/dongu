@@ -1,5 +1,5 @@
 @extends('layouts.marketing')
-@section('title', 'Reklam ve Kurumsal İş Birliği | Döngü')
+@section('title', 'Reklam ve Kurumsal İş Birliği | Döngü - Geri Dönüşüm Uygulaması')
 @section('description', 'Döngü ile proje destekçiliği, sürdürülebilirlik iş birlikleri ve Android ile iOS uygulamalarında sponsorlu görünürlük seçeneklerini keşfedin.')
 @section('content')
 <section class="vision-subhero vision-subhero-partnerships">
@@ -62,7 +62,7 @@
         <div class="vision-partnership-contact-list">
             <a href="mailto:yalovawebcozumleri@gmail.com"><small>E-posta</small><strong>E-posta gönder</strong><span>yalovawebcozumleri@gmail.com</span></a>
             <a href="tel:+905413342219"><small>Telefon</small><strong>Hemen ara</strong><span>+90 541 334 22 19</span></a>
-            <a href="https://wa.me/905413342219?text=Merhaba%2C%20D%C3%B6ng%C3%BC%20reklam%20ve%20kurumsal%20i%C5%9F%20birli%C4%9Fi%20se%C3%A7enekleri%20hakk%C4%B1nda%20bilgi%20almak%20istiyorum." target="_blank" rel="noopener noreferrer"><small>WhatsApp</small><strong>WhatsApp’tan yaz</strong><span>Hazır mesajla görüşmeyi başlat →</span></a>
+            <a href="{{ \App\Models\SupportSetting::whatsappUrl('Merhaba, Döngü reklam ve kurumsal iş birliği seçenekleri hakkında bilgi almak istiyorum.') }}" target="_blank" rel="noopener noreferrer"><small>WhatsApp</small><strong>WhatsApp’tan yaz</strong><span>Hazır mesajla görüşmeyi başlat →</span></a>
         </div>
     </div>
 </section>

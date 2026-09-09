@@ -26,6 +26,14 @@ Route::get('/gizlilik-politikasi', [LegalDocumentController::class, 'privacy'])-
 Route::get('/legal/{document}', [LegalDocumentController::class, 'web'])->whereIn('document', ['terms', 'privacy'])->name('legal.show');
 
 Route::view('/', 'marketing.home')->name('marketing.home');
+Route::get('/ilanlar', [\App\Http\Controllers\ListingPreviewController::class, 'index'])
+    ->withoutMiddleware(\App\Http\Middleware\HandleInertiaRequests::class)
+    ->middleware('throttle:120,1')->name('listings.index');
+Route::get('/ilan/{id}', \App\Http\Controllers\ListingPreviewController::class)->whereNumber('id')
+    ->withoutMiddleware(\App\Http\Middleware\HandleInertiaRequests::class)
+    ->middleware('throttle:120,1')->name('listing.preview');
+Route::get('/destek/whatsapp', fn () => redirect()->away(\App\Models\SupportSetting::whatsappUrl())->header('Cache-Control', 'no-store'))
+    ->name('support.whatsapp');
 Route::view('/nasil-calisir', 'marketing.how-it-works')->name('marketing.how-it-works');
 Route::view('/hakkimizda', 'marketing.about')->name('marketing.about');
 Route::view('/sss', 'marketing.faq')->name('marketing.faq');
@@ -42,6 +50,8 @@ Route::middleware('guest')->group(function () {
 });
 
 Route::prefix('admin')->middleware(['auth', 'admin'])->group(function () {
+    Route::get('/support-settings', [\App\Http\Controllers\Admin\SupportSettingController::class, 'edit'])->name('admin.support-settings.edit');
+    Route::patch('/support-settings', [\App\Http\Controllers\Admin\SupportSettingController::class, 'update'])->name('admin.support-settings.update');
     Route::get('/', DashboardController::class)->name('admin.dashboard');
     Route::get('/users', [UserManagementController::class, 'index'])->name('admin.users.index');
     Route::get('/users/{user}', [UserManagementController::class, 'show'])->name('admin.users.show');

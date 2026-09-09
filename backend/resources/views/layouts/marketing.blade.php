@@ -1,26 +1,44 @@
 <!doctype html>
 <html lang="tr">
+@php
+    $socialImageName = match (true) {
+        request()->routeIs('marketing.home') => 'ana-sayfa.png',
+        request()->routeIs('marketing.how-it-works') => 'nasil-calisir.png',
+        request()->routeIs('marketing.about') => 'hakkimizda.png',
+        request()->routeIs('marketing.faq') => 'sik-sorulan-sorular.png',
+        request()->routeIs('marketing.contact') => 'iletisim.png',
+        request()->routeIs('marketing.mobile-app') => 'mobil-uygulama.png',
+        request()->routeIs('marketing.partnerships') => 'reklam-ve-isbirligi.png',
+        request()->routeIs('listings.index') => 'ilanlar.png',
+        request()->routeIs('listing.preview') => 'ilan.png',
+        request()->routeIs('account-deletion.*') => 'hesap-silme.png',
+        request()->routeIs('legal.terms') || (request()->routeIs('legal.show') && request()->route('document') === 'terms') => 'kullanim-sartlari.png',
+        request()->routeIs('legal.privacy') || (request()->routeIs('legal.show') && request()->route('document') === 'privacy') => 'gizlilik-politikasi.png',
+        default => 'genel.png',
+    };
+    $socialImageUrl = url('/images/site/social/'.$socialImageName);
+@endphp
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="theme-color" content="#f6f7f2">
-    <meta name="robots" content="index, follow, max-image-preview:large">
+    <meta name="robots" content="@yield('robots', 'index, follow, max-image-preview:large')">
     <meta name="application-name" content="Döngü">
     <meta name="apple-mobile-web-app-title" content="Döngü">
     <meta name="description" content="@yield('description', 'Döngü, depozitolu PET, cam ve alüminyum ambalajlar için kullanıcıları yakındaki ilanlarla buluşturan bağımsız paylaşım platformudur.')">
     <meta property="og:type" content="website">
-    <meta property="og:site_name" content="Döngü">
-    <meta property="og:title" content="@yield('title', 'Döngü')">
+    <meta property="og:site_name" content="Döngü - Geri Dönüşüm Uygulaması">
+    <meta property="og:title" content="@yield('title', 'Döngü - Geri Dönüşüm Uygulaması')">
     <meta property="og:description" content="@yield('description', 'Depozitolu ambalajlar için yerel ve güvenli buluşma platformu.')">
     <meta property="og:url" content="{{ url()->current() }}">
-    <meta property="og:image" content="{{ url('/images/site/dongu-social.png') }}">
-    <meta property="og:image:secure_url" content="{{ url('/images/site/dongu-social.png') }}">
-    <meta property="og:image:alt" content="Döngü mobil uygulaması ve depozitolu ambalaj paylaşım platformu">
+    <meta property="og:image" content="{{ $socialImageUrl }}">
+    <meta property="og:image:secure_url" content="{{ $socialImageUrl }}">
+    <meta property="og:image:alt" content="Döngü - Geri Dönüşüm Uygulaması paylaşım görseli">
     <meta property="og:locale" content="tr_TR">
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="@yield('title', 'Döngü')">
+    <meta name="twitter:title" content="@yield('title', 'Döngü - Geri Dönüşüm Uygulaması')">
     <meta name="twitter:description" content="@yield('description', 'Depozitolu ambalajlar için yerel ve güvenli buluşma platformu.')">
-    <meta name="twitter:image" content="{{ url('/images/site/dongu-social.png') }}">
+    <meta name="twitter:image" content="{{ $socialImageUrl }}">
     <link rel="canonical" href="{{ url()->current() }}">
     <link rel="sitemap" type="application/xml" href="{{ url('/sitemap.xml') }}">
     <link rel="icon" type="image/png" href="{{ asset('images/site/dongu-icon.png') }}">
@@ -29,16 +47,20 @@
     <link rel="stylesheet" href="{{ asset('site/marketing.css') }}">
     <link rel="stylesheet" href="{{ asset('site/marketing-v2.css') }}">
     <link rel="stylesheet" href="{{ asset('site/marketing-mobile-fix.css') }}">
-    <link rel="stylesheet" href="{{ asset('site/marketing-vision.css') }}?v=20260819-partnerships-v2">
-    <link rel="stylesheet" href="{{ asset('site/marketing-vision-responsive.css') }}?v=20260819-partnerships">
+    <link rel="stylesheet" href="{{ asset('site/marketing-vision.css') }}?v=20260910-partnership-heading-font">
+    <link rel="stylesheet" href="{{ asset('site/marketing-vision-responsive.css') }}?v=20260910-brand-font">
     <link rel="stylesheet" href="{{ asset('site/marketing-app-carousel.css') }}?v=20260815-app-carousel">
     <link rel="stylesheet" href="{{ asset('site/store-badges.css') }}?v=20260822-store-links">
+    <link rel="stylesheet" href="{{ asset('site/welcome-modal.css') }}?v=20260910-download-panel">
+    <script src="{{ asset('site/open-dongu-app.js') }}?v=20260910-multiple-actions" defer></script>
+    <script src="{{ asset('site/welcome-modal.js') }}?v=20260910-session-v1" defer></script>
     <style>
         .site-footer-independence { line-height: 1.65; }
         .site-footer-independence a { color: inherit; text-decoration: underline; text-underline-offset: 3px; }
         @media (max-width: 720px) { .site-footer-bottom .site-footer-independence { display: block !important; margin-top: 12px !important; max-width: none !important; } }
     </style>
-    <title>@yield('title', 'Döngü')</title>
+    @stack('head')
+    <title>@yield('title', 'Döngü - Geri Dönüşüm Uygulaması')</title>
     <script type="application/ld+json">
         {!! json_encode([
             chr(64).'context' => 'https://schema.org',
@@ -72,6 +94,7 @@
         <nav class="site-nav" aria-label="Ana menü">
             <a class="{{ request()->routeIs('marketing.how-it-works') ? 'is-active' : '' }}" href="{{ route('marketing.how-it-works') }}">Nasıl çalışır?</a>
             <a class="{{ request()->routeIs('marketing.about') ? 'is-active' : '' }}" href="{{ route('marketing.about') }}">Hakkımızda</a>
+            <a class="{{ request()->routeIs('listings.index') ? 'is-active' : '' }}" href="{{ route('listings.index') }}">İlanlar</a>
             <a class="{{ request()->routeIs('marketing.faq') ? 'is-active' : '' }}" href="{{ route('marketing.faq') }}">SSS</a>
             <a class="{{ request()->routeIs('marketing.contact') ? 'is-active' : '' }}" href="{{ route('marketing.contact') }}">İletişim</a>
         </nav>
@@ -81,6 +104,7 @@
             <nav aria-label="Mobil menü">
                 <a href="{{ route('marketing.how-it-works') }}">Nasıl çalışır?</a>
                 <a href="{{ route('marketing.about') }}">Hakkımızda</a>
+                <a href="{{ route('listings.index') }}">İlanlar</a>
                 <a href="{{ route('marketing.faq') }}">Sık sorulanlar</a>
                 <a href="{{ route('marketing.contact') }}">İletişim</a>
                 <a href="{{ route('marketing.mobile-app') }}">Uygulamayı İndir</a>
@@ -124,7 +148,7 @@
                 <p>Döngü, depozitolu ambalajları yakındaki kullanıcılarla buluşturan; ilan, talep, mesajlaşma ve teslimat sürecini tek akışta toparlayan yerel paylaşım platformudur.</p>
             </div>
             <div class="site-footer-links">
-                <div><strong>Keşfet</strong><a href="{{ route('marketing.how-it-works') }}">Nasıl çalışır?</a><a href="{{ route('marketing.about') }}">Hakkımızda</a></div>
+                <div><strong>Keşfet</strong><a href="{{ route('marketing.how-it-works') }}">Nasıl çalışır?</a><a href="{{ route('marketing.about') }}">Hakkımızda</a><a href="{{ route('listings.index') }}">İlanlar</a></div>
                 <div><strong>Destek</strong><a href="{{ route('marketing.faq') }}">Sık sorulanlar</a><a href="{{ route('marketing.contact') }}">İletişim</a><a href="{{ route('marketing.partnerships') }}">Reklam ve İş Birliği</a><a href="{{ route('account-deletion.create') }}">Hesap silme</a></div>
                 <div><strong>Yasal</strong><a href="{{ route('legal.terms') }}">Kullanım Şartları</a><a href="{{ route('legal.privacy') }}">Gizlilik ve KVKK</a></div>
             </div>
@@ -135,5 +159,8 @@
         </div>
     </div>
 </footer>
+@unless(request()->routeIs('account-deletion.*', 'legal.*'))
+    @include('marketing.partials.welcome-modal')
+@endunless
 </body>
 </html>

@@ -1,5 +1,5 @@
 @extends('layouts.marketing')
-@section('title', $document['title'])
+@section('title', $document['title'].' | Döngü - Geri Dönüşüm Uygulaması')
 @section('description', $document['summary'])
 @section('content')
 <section class="vision-legal"><div class="site-shell">

@@ -1,5 +1,5 @@
 @extends('layouts.marketing')
-@section('title', 'Nasıl Çalışır? | Döngü')
+@section('title', 'Nasıl Çalışır? | Döngü - Geri Dönüşüm Uygulaması')
 @section('description', 'Döngü’de ilan oluşturma, alım talebi gönderme, satıcıyla mesajlaşma, rezervasyon ve teslimat kodu sürecinin nasıl çalıştığını öğrenin.')
 @section('content')
 <section class="vision-subhero vision-subhero-flow">

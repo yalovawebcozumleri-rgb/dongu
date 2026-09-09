@@ -1,5 +1,5 @@
 @extends('layouts.marketing')
-@section('title', 'Hakkımızda | Döngü')
+@section('title', 'Hakkımızda | Döngü - Geri Dönüşüm Uygulaması')
 @section('description', 'Döngü’nün depozitolu PET, cam ve alüminyum ambalajlar için kurduğu yerel ilan, talep, mesajlaşma ve teslimat modelini keşfedin.')
 @section('content')
 <section class="vision-subhero vision-subhero-about">

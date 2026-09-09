@@ -1,5 +1,5 @@
 @extends('layouts.marketing')
-@section('title', 'Döngü Mobil Uygulama | Google Play ve App Store')
+@section('title', 'Google Play ve App Store | Döngü - Geri Dönüşüm Uygulaması')
 @section('description', 'Döngü mobil uygulamasını Google Play veya App Store üzerinden indirin; yakındaki depozitolu ambalaj ilanlarını keşfedin, talep gönderin ve teslimatı yönetin.')
 @section('content')
 @php

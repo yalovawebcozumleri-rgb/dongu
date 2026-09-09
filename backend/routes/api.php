@@ -26,6 +26,7 @@ use App\Http\Controllers\LegalDocumentController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->group(function () {
+    Route::get('/auth/support', fn () => response()->json(['data' => ['phone' => \App\Models\SupportSetting::phone()]])->header('Cache-Control', 'no-store'))->middleware('throttle:60,1');
     Route::get('/legal-documents/{document}', [LegalDocumentController::class, 'api'])->whereIn('document', ['terms', 'privacy'])->middleware('throttle:60,1');
     Route::post('/auth/code/request', [AuthController::class, 'requestCode'])->middleware('throttle:5,10');
     Route::post('/auth/code/verify', [AuthController::class, 'verifyCode'])->middleware('throttle:10,10');

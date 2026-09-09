@@ -1,5 +1,5 @@
 @extends('layouts.marketing')
-@section('title', 'Sık Sorulan Sorular | Döngü')
+@section('title', 'Sık Sorulan Sorular | Döngü - Geri Dönüşüm Uygulaması')
 @section('description', 'Döngü’de ilan verme, alım talebi, fiyat, konum, teslimat kodu, güvenlik, puan, hesap silme ve KVKK hakkında sık sorulan sorular.')
 @section('content')
 <section class="vision-subhero vision-subhero-faq">

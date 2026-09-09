@@ -1,5 +1,5 @@
 @extends('layouts.marketing')
-@section('title', 'Hesap silme')
+@section('title', 'Hesap Silme | Döngü - Geri Dönüşüm Uygulaması')
 @section('description', 'Döngü hesabınızı ve kişisel verilerinizi silme talebi oluşturun.')
 @section('content')
 <section class="vision-legal"><div class="site-shell"><header class="vision-legal-hero"><span class="vision-legal-kicker">HESAP VE VERİ KONTROLÜ</span><h1>Döngü hesabını sil</h1><p class="vision-legal-summary">Uygulamadaki Profil → Hesabımı sil bölümünü kullanabilir veya uygulamaya erişemiyorsanız bu sayfadan e-posta doğrulaması yapabilirsiniz.</p></header><div class="vision-legal-layout"><aside class="vision-legal-toc"><strong>İŞLEM ÖZETİ</strong><a href="#silinenler">Silinen veriler</a><a href="#dogrulama">E-posta doğrulama</a><a href="{{ route('legal.privacy') }}">Gizlilik politikası</a></aside><article class="vision-legal-content">

@@ -58,6 +58,7 @@ const securityItems = [
 ];
 
 const systemItems = [
+    { label: 'Destek ayarları', description: 'WhatsApp destek numarası', href: '/admin/support-settings' },
     { label: 'Kullanım limitleri', description: 'İlan, talep ve mesaj sınırları', href: '/admin/usage-policies' },
 ];
 

@@ -1,5 +1,5 @@
 @extends('layouts.marketing')
-@section('title', 'İletişim | Döngü')
+@section('title', 'İletişim | Döngü - Geri Dönüşüm Uygulaması')
 @section('description', 'Döngü kullanıcı desteği, teknik destek, hesap silme, KVKK başvuruları, reklam ve iş birliği iletişim kanallarına ulaşın.')
 @section('content')
 <section class="vision-subhero vision-subhero-contact">
@@ -24,7 +24,7 @@
 <section class="vision-page-section">
     <div class="site-shell vision-contact-grid">
         <article><small>Kullanıcı desteği</small><h3>E-posta</h3><p>Hesap, ilan, güvenlik ve teknik destek taleplerini e-posta ile iletebilirsin.</p><a href="mailto:yalovawebcozumleri@gmail.com">yalovawebcozumleri@gmail.com →</a></article>
-        <article><small>İş birliği ve reklam</small><h3>WhatsApp</h3><p>Reklam veya iş birliği teklifin için doğrudan iletişime geçebilirsin.</p><a href="https://wa.me/905413342219?text=Merhaba%2C%20D%C3%B6ng%C3%BC%20hakk%C4%B1nda%20bilgi%20almak%20istiyorum." target="_blank" rel="noopener">+90 541 334 22 19 →</a></article>
+        <article><small>İş birliği ve reklam</small><h3>WhatsApp</h3><p>Reklam veya iş birliği teklifin için doğrudan iletişime geçebilirsin.</p><a href="{{ \App\Models\SupportSetting::whatsappUrl('Merhaba, Döngü hakkında bilgi almak istiyorum.') }}" target="_blank" rel="noopener">{{ \App\Models\SupportSetting::displayPhone() }} →</a></article>
         <article><small>Hesap ve veri</small><h3>Hesap silme</h3><p>Uygulamaya erişemiyorsan e-posta doğrulamasıyla hesap silme talebini tamamlayabilirsin.</p><a href="{{ route('account-deletion.create') }}">Hesap silme sayfası →</a></article>
         <article><small>Hukuk ve gizlilik</small><h3>KVKK başvuruları</h3><p>Verilerinin işlenmesiyle ilgili taleplerini hesabındaki e-posta adresi üzerinden iletebilirsin.</p><a href="{{ route('legal.privacy') }}">Gizlilik ve KVKK metni →</a></article>
     </div>
